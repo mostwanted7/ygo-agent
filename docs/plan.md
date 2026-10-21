@@ -242,6 +242,12 @@ Status: ☐ todo · ◐ in progress · ☑ done (verified by the orchestrator)
 - It should be good enough for a demo GIF.
 
 ### Stage 9: Polish and publish ☐
+- **Deck storage, agreed with the user (2026-10-21).** The repo ships curated decks in `decks/<name>/`:
+  playbook, rules, tests, ydk, deck.json and train-report.md. `decks/*/train/` is gitignored, apart from the
+  report, because it holds logs, prompts, copied scripts and card text. User-trained decks go to a
+  personal decks dir (e.g. `~/.local/share/ygo-agent/decks/`, configurable), which is also searched, so
+  training never dirties the repo and updates never clobber it. Sharing a deck is a deliberate copy into
+  `decks/` plus a PR. `train` writes to the user dir by default (`--into repo` writes to `decks/`).
 - `ygo-agent doctor`: checks the EDOPro dir, core version, scripts, mono, the fork build and backends.
 - Docs: `architecture.md`, adding a deck, adding a backend. README with diagram, demo GIF, bench table and
   quick start.
