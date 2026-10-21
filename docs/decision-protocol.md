@@ -3,7 +3,9 @@
 The schema between a **bot** (today: the WindBot fork's `BrainBridge`, `windbot-src/ExecutorBase/Game/BrainBridge.cs`
 plus the events in `Game/GameBehavior.cs`) and the **agent** (`ygo_agent/agent/bridge_server.py` → `brain.py`).
 Anything else that drives the agent, such as the arena's native AI seats, must emit exactly this schema, so that
-`describe.py`, the deck rules and the saved test cases keep working unchanged.
+`describe.py`, the deck rules and the saved test cases keep working unchanged. The native seats
+(`ygo_agent/arena/native_seat.py`) do, and add a few optional fields and events that WindBot never sends; they are
+marked *native* below, and [Native seats](#native-seats) describes how they build the messages.
 
 ## Transport
 
@@ -57,6 +59,11 @@ Full form (`state` piles and zones, options, `card` fields):
 | `dis` | true | optional: its effects are negated |
 | `att` | true | optional: it already attacked this turn |
 | `eq` | short card | optional: the card it is equipped to |
+| `ctr` | [[type, count]] | optional, *native*: counters on it (`type` as in `strings.conf !counter`) |
+| `sc` | [left, right] | optional, *native*: current Pendulum Scales, for a Pendulum card in a Pendulum Zone |
+| `blv` | int | optional, *native*: the printed Level (Rank for Xyz) of a monster on the field whose current `lv`/`rk` differs from it |
+| `own` | int | optional, *native*: the owner (`0` me / `1` opponent) of a card controlled by the other player |
+| `uid` | int | optional, *native*: the card instance (see [Native seats](#native-seats)); not in short cards |
 
 Short form (`chain_targets`, `last_summoned`, `battling`, `eq`): only `id`, `c`, `l`, `s`.
 
@@ -109,6 +116,14 @@ Every decision carries `state`, the board as the bot sees it right now:
 | `chat` | `player`, `position`, `message`, `source` (`"duelist"`, `"spectator"` or `"system"`), `name` (optional, sender name) | a chat line arrived |
 | `win` | `result` (0 I win, 1 I lose, 2 draw), `reason` (`strings.conf !victory` id) | end of a game |
 | `retry` | none | the engine rejected the last response |
+| `confirm` | `player` (who it was shown to), `cards` (full cards) | *native*: cards revealed, e.g. a searched card the opponent shows, or the top of a Deck |
+| `equip` | `card`, `target` (full cards) | *native*: an equip card was equipped |
+| `swap` | `cards` (two full cards, at their new places) | *native*: two monsters swapped control |
+| `counter` | `card` (full), `type`, `count`, `add` (bool) | *native*: counters placed (`add`) or removed |
+| `coin`, `dice` | `player`, `results` [int] (coin: 1 heads, 0 tails) | *native*: a coin toss or a die roll |
+| `declared` | `player`, `kind` (`card`, `attribute`, `race`, `number`, `option`), `value` (code, bits, number or effect description) | *native*: what the opponent declared or chose (EDOPro shows it to the other player) |
+
+A Flip Summon is a `summoning` with `special` false, like a Normal Summon; native seats add `flip: true` to it.
 
 Chat details: `position` is the bot's own room seat. `player` is the sender's seat for duelists (so
 `player == position` is the bot's own echo, which the agent ignores), 7 for spectators and 8+ for system messages.
@@ -176,7 +191,10 @@ Notes per kind:
 - `idle`/`battle`/`chain` options with `a == "activate"` carry the effect's `desc`, which tells apart a card's
   different effects.
 - Prompts WindBot answers itself, never sent: rock-paper-scissors, counter removal (`select_counter`), card sorting
-  (`sort_card`) and chain ordering (`sort_chain`, always the default order).
+  (`sort_card`) and chain ordering (`sort_chain`, always the default order). Native seats answer them the same way
+  without asking the agent: counters come off the cards in the order offered, sorted cards and chains keep their
+  order, rock-paper-scissors is random. Both also answer an empty chain window (pass), a single mandatory activation,
+  a position prompt with one position, and yes/no 1989 (yes) by themselves.
 
 ### Agent-side validation
 
@@ -186,6 +204,48 @@ bit. An invalid reply gets one retry with the error; a second failure becomes a 
 
 Backends get each decision as a `Request` carrying both the prompt text (`describe.py`) and the raw decision dict
 above, so non-LLM backends (heuristic, random) decide from the same JSON. See docs/backends.md.
+
+## Native seats
+
+`ygo_agent/arena/native_seat.py` (`AgentSeat`) plays an arena seat with the agent in-process, no WindBot.
+`native_view.py` (`NativeView`) builds the events and the state, `native_decide.py` (`build`) the decisions and their
+encoding.
+
+- **Sources.** Only what that player is allowed to see: the seat's own filtered message stream (exactly what its
+  EDOPro client would receive) and its `SeatView` queries. Events come from the stream, as WindBot's GameBehavior
+  builds them; `state` is queried at decision time, so ATK/DEF, Level/Rank, materials, counters, equip targets,
+  scales and the negated status are the core's current values (WindBot's are refreshed only at certain points, and
+  are 0 for cards it never got a refresh for, e.g. Deck cards offered by a search).
+- **Card instances (`uid`).** Each card the seat can follow is one object that moves with every `MSG_MOVE`, draw,
+  swap and shuffle, mirroring the core's arrays: piles in core order (Deck top last), zones by slot, Xyz materials
+  under their monster. `uid` is a per-game counter given when the object is created (the opening Deck and Extra
+  Deck, a token, a card the tracking had to rebuild), so it stays the same while the seat can follow the card,
+  across zones and piles. A reorder the seat can't see through gives new uids: a Deck shuffle, the opponent's hand
+  or Extra Deck shuffle, a Set-card shuffle. A card's code is kept the way WindBot keeps it: a move with a hidden
+  code forgets it, a hidden shuffle forgets it, a confirmation teaches it, and a query that shows the code wins.
+  `uid` adds nothing a careful human couldn't track at the table, and the fairness test checks that it never
+  survives a hidden shuffle.
+- **Conventions kept from the bridge.** The same option order, `desc` 0 for a generic trigger in `chain` and -1 in
+  `effect_yn`, `s` -1 for hand, Deck and Extra Deck cards outside `state` (never a Deck sequence), re-indexed piles
+  in `state`, the selection `hint` kept through a `select_unselect` selection and used up by the other selections,
+  `place` offered as WindBot offers it (the first group of zones with a free one) and answered in WindBot's zone
+  order.
+- **Where native seats are more exact.** Every option maps to its own response; WindBot sends the same response for
+  both options when one card is listed twice (a monster with two Special Summon procedures). Xyz materials offered
+  in a selection carry their real controller (WindBot gives the raw player id) and the core's material list.
+  `att` means "declared an attack this turn" (WindBot also marks, during the Battle Phase, monsters that can't
+  attack). Before the duel (`go_first`) the state is always empty.
+- **Replies.** The seat encodes the agent's choice into the core response (an index per option, `[code]` for
+  `announce_card`, a zone mask for `place`, one pick per prompt for `select_unselect`). A choice the engine would
+  refuse (e.g. a Ritual `select_sum` with a card too many), a brain error or a timeout gets the heuristic's answer;
+  after a RETRY the seat never sends the refused response again. `Decision.decode(response)` turns any response
+  for that prompt back into option indices (the same mapping the other way), for coach mode and the parity test.
+- **Watching a seat.** `SeatWatcher(team, cards, on_event=, on_decision=, on_choice=)` is a DuelObserver that builds
+  the same events and decisions for a seat it doesn't play (e.g. a human's, for coach mode) and reports each of that
+  seat's responses as the option indices it stands for (None for an unselect, which the schema can't express).
+- **Logs and the web panel.** Each game gets the usual `games/<time>_<deck>-vs-<opponent>/` folder.
+  `native_seat.link(a, b, match_id=)` gives the seats of one duel the same web-panel game id (`<match_id>-g<n>`);
+  the arena host links its agent seats with the arena run's folder name.
 
 ## Message flow of a match
 

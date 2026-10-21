@@ -42,6 +42,11 @@ class SeatView:
         return self._duel.names
 
     @property
+    def config(self):
+        """The duel's DuelConfig (rules flags, LP, hand size, ...): public, the room shows it to everyone."""
+        return self._duel.config
+
+    @property
     def turn(self) -> int:
         return self._duel.turn
 

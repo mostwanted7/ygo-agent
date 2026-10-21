@@ -62,19 +62,50 @@ class Describer:
             bits.append(f"ATK {card.get('atk')}")
         else:
             bits.append(f"ATK {card.get('atk')} / DEF {card.get('def')}")
+        if card.get("blv") is not None:
+            rank = data and data.has(0x800000)
+            bits.append(f"{'Rank' if rank else 'Level'} {card.get('rk' if rank else 'lv')} (printed {card['blv']})")
         if card.get("ov"):
             bits.append(f"{len(card['ov'])} material(s): " + ", ".join(self.db.name(i) for i in card["ov"]))
+        bits += self.extras(card)
         if card.get("dis"):
             bits.append("effects negated")
         if card.get("att"):
             bits.append("already attacked")
+        if card.get("own") is not None:
+            bits.append("owned by " + ("you" if card["own"] == 0 else "your opponent"))
         return ", ".join(b for b in bits if b)
+
+    def extras(self, card):
+        """Status the native arena seats add (counters, equip target, Pendulum Scales); WindBot never sends these
+        fields except `eq`, so decisions without them read as before."""
+        bits = []
+        for kind, n in card.get("ctr") or []:
+            bits.append(f"{n} {self.db.counters.get(kind, f'counter {kind:#x}')}(s)")
+        eq = card.get("eq")
+        if eq:
+            bits.append(f"equipped to {self.name(eq)} ({self.where(eq)})")
+        if card.get("sc"):
+            left, right = card["sc"]
+            bits.append(f"Pendulum Scale {left}" if left == right else f"Pendulum Scales {left}/{right}")
+        return bits
+
+    def zone_status(self, card):
+        """The status of a card in the Spell & Trap Zone (monsters get theirs from stats())."""
+        if not card or not card.get("id") or card.get("l") != 0x8:
+            return ""
+        bits = self.extras(card)
+        if card.get("dis"):
+            bits.append("effects negated")
+        if card.get("own") is not None:
+            bits.append("owned by " + ("you" if card["own"] == 0 else "your opponent"))
+        return ", ".join(bits)
 
     def card_line(self, card, with_where=False):
         text = self.name(card)
         if card and card.get("id") and card.get("l") == 0x8 and card.get("p", 0) & 0xA:
             text += " (set)"
-        stats = self.stats(card)
+        stats = self.stats(card) or self.zone_status(card)
         if stats:
             text += f" ({stats})"
         if with_where and card:
@@ -332,8 +363,13 @@ class Describer:
         if e == "lp":
             return f"{'Your' if ev['player'] == 0 else 'Opponent'}'s LP set to {ev['lp']}.".replace("Your's", "Your")
         if e == "pos_change":
-            return (f"{whose(ev['c']).capitalize()} \"{db.name(ev['id'])}\" changes to "
-                    f"{POSITIONS.get(ev['to'], '?')}.") if ev.get("id") else None
+            if not ev.get("id"):
+                return None
+            card = f"{whose(ev['c']).capitalize()} \"{db.name(ev['id'])}\""
+            if ev["to"] in POSITIONS:
+                return f"{card} changes to {POSITIONS[ev['to']]}."
+            # A Spell/Trap (or a card without a battle position) only turns face-up or face-down.
+            return f"{card} is flipped {'face-up' if ev['to'] & 0x5 else 'face-down'}."
         if e == "targeted":
             return f"   {self.card_line(ev['card'], True)} is targeted."
         if e == "win":
@@ -342,6 +378,44 @@ class Describer:
             return f"*** {outcome} *** {reason}".strip()
         if e == "retry":
             return "!!! The game engine rejected the last response."
+        return self._native_event(ev)
+
+    def _native_event(self, ev):
+        """Events only the native arena seats send (docs/decision-protocol.md, "Native seats")."""
+        e, db = ev["e"], self.db
+        you = ev.get("player") == 0
+        if e == "confirm":
+            cards = ", ".join(f"{self.name(c)} ({self.where(c)})" for c in ev.get("cards", []))
+            return f"Revealed to {'you' if you else 'the opponent'}: {cards}." if cards else None
+        if e == "equip":
+            return f"{self.card_line(ev['card'], True)} is equipped to {self.card_line(ev['target'], True)}."
+        if e == "swap":
+            a, b = (ev.get("cards") or [None, None])[:2]
+            return f"Control swap: {self.name(a)} is now in {self.where(a)}, {self.name(b)} in {self.where(b)}."
+        if e == "counter":
+            name = db.counters.get(ev["type"], f"counter {ev['type']:#x}")
+            how = "placed on" if ev.get("add") else "removed from"
+            return f"{ev['count']} {name}(s) {how} {self.card_line(ev['card'], True)}."
+        if e in ("coin", "dice"):
+            results = ev.get("results") or []
+            shown = ", ".join(("heads" if r else "tails") if e == "coin" else str(r) for r in results)
+            verb = {("coin", True): "You toss a coin", ("coin", False): "Opponent tosses a coin",
+                    ("dice", True): "You roll a die", ("dice", False): "Opponent rolls a die"}[(e, you)]
+            return f"{verb}: {shown}."
+        if e == "declared":
+            who = "You" if you else "Opponent"
+            kind, value = ev.get("kind"), ev.get("value", 0)
+            if kind == "card":
+                return f'{who} declared "{db.name(value)}".'
+            if kind == "attribute":
+                return f"{who} declared {' and '.join(n for b, n in ATTRIBUTE_FLAGS.items() if value & b)}."
+            if kind == "race":
+                from .carddb import RACES
+                return f"{who} declared {' and '.join(RACES[i] for i in range(len(RACES)) if value >> i & 1)}."
+            if kind == "number":
+                return f"{who} declared the number {value}."
+            text = db.desc(value)
+            return f'{who} chose: "{text}".' if text else None
         return None
 
     def _move(self, ev):

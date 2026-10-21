@@ -184,7 +184,7 @@ Status: ☐ todo · ◐ in progress · ☑ done (verified by the orchestrator)
 - User checkpoint: the user joins the arena from EDOPro (LAN → host 127.0.0.1) as a player and as a
   spectator, and opens a replay.
 
-### Stage 3: Native AI seats ☐ (after 2, and after 0 for the agent API)
+### Stage 3: Native AI seats ☑ (after 2, and after 0 for the agent API)
 - `native_seat.py`: core prompts plus queries → BrainBridge-schema decisions and events, filtered to that
   player's view. Choices are encoded into core responses. When the agent returns nothing, the heuristic
   fallback answers.
@@ -196,7 +196,7 @@ Status: ☐ todo · ◐ in progress · ☑ done (verified by the orchestrator)
     WindBot seat yield the same game, or a recorded list of known differences.
   - A full heuristic-vs-heuristic headless duel in CI-style integration tests.
 
-### Stage 4: Multi-seat agent, self-play, watching ☐ (after 1 and 3)
+### Stage 4: Multi-seat agent, self-play, watching ◐ (after 1 and 3)
 - The agent is per seat, with its own deck profile, backend, mode and log. Several duels and seats run in one
   process.
 - CLI:
@@ -328,3 +328,25 @@ Status: ☐ todo · ◐ in progress · ☑ done (verified by the orchestrator)
   `human_choice` (with `matched`) for the human seat; copilot already sends this sequence.
 - Screenshots are in `docs/img/` (1.9 MB; compress them in Stage 9). `tests/web/shoot.mjs` takes them with
   headless Firefox and Node.
+
+**Stage 3.**
+- New files in `arena/`:
+  - `native_view.py`: the bridge event stream, plus card tracking the way WindBot does it.
+  - `native_decide.py`: `build(prompt, view)` → `Decision` with `.fields`, `.encode(choice)` and
+    `.decode(response)`.
+  - `native_seat.py`: `AgentSeat.create(deck, backend)`, `add_to_room`, `PacedSeat`, `link(a, b,
+    match_id=)` (a shared web `game_id`) and `SeatWatcher(team, cards, on_decision=, on_choice=)`. The
+    watcher is a DuelObserver for the human seat: it builds the human's own-view decision JSON and decodes
+    each response into option indices. Use it in Stage 5.
+- Parity with the WindBot bridge over 19 games: kind and option count 100%, option meaning 1,679 of 1,685
+  (the rest is a WindBot bug). The known differences are all on WindBot's side.
+- Fairness: 0 leaks across 12 games, and all 6 injected leaks were caught. 60 heuristic-vs-heuristic games
+  and 11 against WindBot decks ran with 0 crashes.
+- Sonnet smoke game: Saffira beat Blue-Eyes in 7 turns, with 0 invalid replies and 2.4 s mean per decision.
+- Optional fields: `ctr`, `sc`, `blv`, `own`, `uid`. Optional events: `confirm`, `equip`, `swap`, `counter`,
+  `coin`, `dice`, `declared`, and `flip` on summoning.
+- Arena CLI: `agent:<deck>[:<backend>]` seats, `--pace`, `--games-dir`, `--chat`.
+- Open: (1) `brain.py` counts a false rollover when rules answered a turn's first decisions;
+  (2) `event_ids` ignores `confirm.cards`, so revealed cards' texts aren't added to the prompt;
+  (3) two Xyz-procedure options read identically. Brain fallbacks are only `place` (about 16%, as in the
+  bridge). The LAN test binds UDP 7920, so deselect it while an arena is running.

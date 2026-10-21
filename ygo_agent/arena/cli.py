@@ -17,6 +17,7 @@ from .deck import (AllowedCards, Deck, DeckRules, check_deck, deck_problems, fin
 from .duel import DuelConfig
 from .gamelog import DEFAULT_OUT, REPO_ROOT, GameLog, game_dir, write_result
 from .policies import POLICIES
+from .native_seat import PacedSeat, add_to_room, link
 from .runner import replay_duel, run_match
 from .seats import PolicySeat
 
@@ -134,16 +135,62 @@ def cmd_selfplay(args) -> int:
 
 # --- host / bots -----------------------------------------------------------------------------------------------
 
+SEAT_HELP = "human | windbot:<deck AI> | ai:<policy> | agent:<deck>[:<backend profile>]"
+
+
 def _seat_spec(spec: str) -> tuple[str, str]:
     kind, _, arg = spec.partition(":")
     kind = kind.lower()
-    if kind not in ("human", "windbot", "ai"):
-        raise argparse.ArgumentTypeError(f"seat must be human, windbot:<deck AI> or ai:<policy>, got {spec!r}")
+    if kind not in ("human", "windbot", "ai", "agent"):
+        raise argparse.ArgumentTypeError(f"seat must be {SEAT_HELP}, got {spec!r}")
     if kind == "ai" and arg not in POLICIES:
         raise argparse.ArgumentTypeError(f"ai policy must be one of {', '.join(POLICIES)}")
     if kind == "windbot" and not arg:
         raise argparse.ArgumentTypeError("windbot seat needs a deck AI name, e.g. windbot:Blue-Eyes")
+    if kind == "agent" and not arg.partition(":")[0]:
+        raise argparse.ArgumentTypeError("agent seat needs a deck profile, e.g. agent:saffira or agent:saffira:opus")
     return kind, arg
+
+
+class _Agents:
+    """The agent's config, card database and seats for `agent:` positions (loaded once, only when needed)."""
+
+    def __init__(self, args, engine: Engine):
+        self.args, self.engine = args, engine
+        self.cfg = self.db = None
+        self.seats: dict[int, object] = {}
+
+    def seat(self, pos: int, arg: str, rules: DeckRules):
+        from ..agent.profile import Profile
+        from ..config import ConfigError, backend, load_config
+        from .native_seat import AgentSeat
+        deck_key, _, profile_name = arg.partition(":")
+        if self.cfg is None:
+            overrides = {k: v for k, v in (("games_dir", self.args.games_dir), ("chat", self.args.chat)) if v}
+            try:
+                self.cfg = load_config(overrides=overrides)
+            except ConfigError as e:
+                sys.exit(f"config error: {e}")
+            from ..agent.carddb import CardDB
+            self.db = CardDB(self.cfg["edopro_dir"])
+        try:
+            profile = Profile(deck_key, self.db, self.cfg)
+            prof = backend(self.cfg, profile_name or None)
+        except (FileNotFoundError, ConfigError) as e:
+            sys.exit(f"error: seat {pos}: {e}")
+        from .. import backends
+        try:
+            backends.check(prof)
+        except backends.BackendError as e:
+            sys.exit(f"error: seat {pos}: {e}")
+        seat = AgentSeat(f"{profile.name} ({prof['name']})"[:19], self.cfg, self.db, profile, prof,
+                         cards=self.engine.cards, pace=self.args.pace, position=pos)
+        self.seats[pos] = seat
+        return seat, _deck(self.engine, profile.ydk, rules, f"seat {pos}")
+
+    def close(self) -> None:
+        for seat in self.seats.values():
+            seat.close()
 
 
 async def _host(args, engine: Engine, seats: list[tuple[str, str]], max_matches: int | None, rematch: bool,
@@ -156,6 +203,7 @@ async def _host(args, engine: Engine, seats: list[tuple[str, str]], max_matches:
     out = game_dir(args.out, label)
     reserved, local, bots = {}, {}, []
     install = None
+    agents = _Agents(args, engine)
     for pos, (kind, arg) in enumerate(seats):
         if kind == "windbot":
             try:
@@ -170,8 +218,11 @@ async def _host(args, engine: Engine, seats: list[tuple[str, str]], max_matches:
             deck_ref = getattr(args, f"deck{pos}")
             if not deck_ref:
                 sys.exit(f"error: seat {pos} is ai:{arg}; give it a deck with --deck{pos}")
-            local[pos] = (PolicySeat(f"{arg.capitalize()} AI", POLICIES[arg](args.seed)),
+            seat = PolicySeat(f"{arg.capitalize()} AI", POLICIES[arg](args.seed))
+            local[pos] = (PacedSeat(seat, args.pace) if args.pace else seat,
                           _deck(engine, deck_ref, rules, f"seat {pos}"))
+        elif kind == "agent":
+            local[pos] = agents.seat(pos, arg, rules)
     stack = {pos: _stack(engine, getattr(args, f"stack_hand{pos}")) for pos in (0, 1)}
     rc = RoomConfig(name=args.name, password=args.password, duel=config, best_of=args.best_of,
                     time_limit=args.time_limit, check_deck_size=not args.no_check_deck,
@@ -180,7 +231,12 @@ async def _host(args, engine: Engine, seats: list[tuple[str, str]], max_matches:
                     reserved=reserved, lan_discovery=not args.no_lan)
     room = Room(engine, rc)
     for pos, (seat, deck) in local.items():
-        room.add_local(pos, seat, deck)
+        if pos in agents.seats:
+            add_to_room(room, pos, seat, deck)
+        else:
+            room.add_local(pos, seat, deck)
+    if agents.seats:
+        link(*agents.seats.values(), match_id=os.path.basename(out))
     records = []
 
     class Recorder(RoomObserver):
@@ -269,6 +325,7 @@ async def _host(args, engine: Engine, seats: list[tuple[str, str]], max_matches:
             crash = p.crash_log()
             if crash:
                 print(f"WindBot {p.name} crash.log:\n{crash[-2000:]}", file=sys.stderr)
+        agents.close()
     for msg in failed:
         print(f"error: {msg}", file=sys.stderr)
     with open(os.path.join(out, "results.json"), "w") as f:
@@ -283,18 +340,21 @@ async def _host(args, engine: Engine, seats: list[tuple[str, str]], max_matches:
 def cmd_host(args) -> int:
     engine = _engine(args)
     seats = [args.seat0, args.seat1]
-    label = "host_" + "-vs-".join(a or k for k, a in seats)
+    label = "host_" + "-vs-".join((a or k).replace(":", "-") for k, a in seats)
     return asyncio.run(_host(args, engine, seats, args.games, rematch=True, label=label))
 
 
 def cmd_bots(args) -> int:
     engine = _engine(args)
-    seats = [("windbot", args.deck_a), ("windbot", args.deck_b)]
+    seats = [args.seat0 or ("windbot", args.deck_a), args.seat1 or ("windbot", args.deck_b)]
+    if any(kind == "human" for kind, _ in seats):
+        sys.exit("error: bots runs headless; use `host` for a human seat")
     args.best_of = 1
     if args.timeout is None:
-        args.timeout = 120 + 180 * args.games
-    return asyncio.run(_host(args, engine, seats, args.games, rematch=True,
-                             label=f"bots_{args.deck_a}-vs-{args.deck_b}"))
+        slow = any(kind == "agent" for kind, _ in seats) or args.pace
+        args.timeout = None if slow else 120 + 180 * args.games
+    label = "bots_" + "-vs-".join((a or k).replace(":", "-") for k, a in seats)
+    return asyncio.run(_host(args, engine, seats, args.games, rematch=True, label=label))
 
 
 # --- small commands -------------------------------------------------------------------------------------
@@ -372,6 +432,10 @@ def _common_host(p: argparse.ArgumentParser) -> None:
     p.add_argument("--stock-windbot", action="store_true", help="use EDOPro's WindBot, not the fork build")
     p.add_argument("--deck0", help="deck for an ai seat at position 0 (path or EDOPro deck name)")
     p.add_argument("--deck1", help="deck for an ai seat at position 1")
+    p.add_argument("--pace", type=float, default=0.0, metavar="SECONDS",
+                   help="minimum time per AI decision (agent: and ai: seats), so a spectator can follow")
+    p.add_argument("--games-dir", default=None, help="where agent: seats write their game logs (default: config)")
+    p.add_argument("--chat", choices=("banter", "off"), default=None, help="agent: seats' chat (default: config)")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -381,17 +445,19 @@ def build_parser() -> argparse.ArgumentParser:
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     p = sub.add_parser("host", help="host a room EDOPro clients can join (LAN → host address)")
-    p.add_argument("--seat0", type=_seat_spec, default=("human", ""), help="human | windbot:<deck AI> | ai:<policy>")
-    p.add_argument("--seat1", type=_seat_spec, default=("windbot", "Blue-Eyes"))
+    p.add_argument("--seat0", type=_seat_spec, default=("human", ""), help=SEAT_HELP)
+    p.add_argument("--seat1", type=_seat_spec, default=("windbot", "Blue-Eyes"), help=SEAT_HELP)
     p.add_argument("--best-of", type=int, default=1, choices=(1, 3, 5))
     p.add_argument("--games", type=int, default=None, help="close the room after this many matches")
     _common_duel(p)
     _common_host(p)
     p.set_defaults(func=cmd_host)
 
-    p = sub.add_parser("bots", help="WindBot vs WindBot through the arena, headless")
+    p = sub.add_parser("bots", help="AI vs AI through the arena, headless (WindBot deck AIs, agent: seats, ...)")
     p.add_argument("--deck-a", default="Blue-Eyes", help="WindBot deck AI for seat 0")
     p.add_argument("--deck-b", default="Blackwing", help="WindBot deck AI for seat 1")
+    p.add_argument("--seat0", type=_seat_spec, default=None, help=f"instead of --deck-a: {SEAT_HELP}")
+    p.add_argument("--seat1", type=_seat_spec, default=None, help=f"instead of --deck-b: {SEAT_HELP}")
     p.add_argument("--games", type=int, default=1)
     _common_duel(p)
     _common_host(p)
