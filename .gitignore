@@ -1,0 +1,18 @@
+# Local data and settings
+games/
+config.local.toml
+.venv/
+.spike/
+
+# The WindBot fork is its own git repository (a submodule once published)
+windbot-src/
+
+# Python and build outputs
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+dist/
+tests/build/
+*.exe
+*.dll

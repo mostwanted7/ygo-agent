@@ -1,0 +1,44 @@
+# ygo-agent defaults.
+#
+# Don't edit this file for personal settings: put overrides in config.local.toml at the repo root (same layout,
+# only the keys you change; it is gitignored). CLI flags override both files.
+
+edopro_dir = "~/Games/ProjectIgnis"  # EDOPro install: card databases, strings and card scripts
+deck = "saffira"                     # deck profile: a folder under decks/
+games_dir = "games"                  # game logs (relative paths are relative to the repo)
+
+# In-duel chat: "banter" = at most a few short joke lines per duel (start, a big play, the result);
+# "off" = none. The reasoning is never sent to chat; it's in the terminal and the game log.
+# Either way, a "!note" typed in the duel chat is saved and acknowledged.
+chat = "banter"
+
+[duel]
+# The rules stated in the prompt. When the bot joins a room it reads the room's real rule flags and uses those
+# instead; this is the fallback. A key (MR1 MR2 MR3 MR4 MR5 GOAT SPEED RUSH) or free text.
+rules = "MR3"
+
+[room]
+# play --join: the EDOPro LAN room you host.
+host = "127.0.0.1"
+port = 7911
+password = ""
+
+[bot]
+# The WindBot fork (windbot-src) that joins the room and asks the agent for every decision.
+name = "Agent"        # player name shown in EDOPro
+brain_port = 7922     # local TCP port the bot's bridge connects to
+# EDOPro network protocol version. 0 = automatic: the version EDOPro reported last time (cached in
+# ~/.cache/ygo-agent/state.json), else 720937. If EDOPro rejects it, the bot retries with the host's version.
+protocol_version = 0
+
+[agent]
+backend = "default"              # which [backends.NAME] profile makes the decisions
+decision_timeout_seconds = 120   # per decision; after that WindBot's built-in AI answers
+max_messages_per_session = 40    # a fresh session starts every game turn, or after this many decisions
+
+# Backend profiles. Only type "claude-code" exists so far: the `claude -p` CLI, using your Claude Code login
+# (no API key needed).
+[backends.default]
+type = "claude-code"
+model = "opus"
+effort = "medium"    # low | medium | high; "" = the CLI's default

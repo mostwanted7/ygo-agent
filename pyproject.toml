@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ygo-agent"
+version = "0.1.0"
+description = "LLM-driven Yu-Gi-Oh! players for EDOPro: play, teach, train and benchmark."
+readme = "README.md"
+license = "AGPL-3.0-or-later"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+ygo-agent = "ygo_agent.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["ygo_agent*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["integration: needs the EDOPro install (~/Games/ProjectIgnis) or other local tools; skipped without them"]
