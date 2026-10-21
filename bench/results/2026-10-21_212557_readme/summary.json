@@ -1,0 +1,2342 @@
+{
+  "name": "readme",
+  "folder": "2026-10-21_212557_readme",
+  "generated": "2026-10-21 22:06:35",
+  "period": {
+    "first": "2026-10-21 21:26:08",
+    "last": "2026-10-21 22:03:30"
+  },
+  "games": {
+    "planned": 268,
+    "done": 268,
+    "aborted": 0,
+    "errors": 0,
+    "left": 0
+  },
+  "game_seconds": 6466.51,
+  "cost_usd": 14.928,
+  "spec": {
+    "name": "readme",
+    "decks": [
+      "saffira",
+      "blackwing"
+    ],
+    "backends": [
+      "opus",
+      "sonnet",
+      "haiku",
+      "heuristic",
+      "random"
+    ],
+    "opponents": [
+      "windbot:Blue-Eyes",
+      "windbot:Time Thief"
+    ],
+    "games": 3,
+    "games_for": {
+      "opus": 1,
+      "heuristic": 30,
+      "random": 30
+    },
+    "seed": 1000,
+    "rules": "MR3",
+    "parallel": 3,
+    "budget_usd": null,
+    "timeout": 5400,
+    "note": "A small-sample pilot: 3 games per (deck, model, opponent) for Haiku and Sonnet and 1 for Opus, so the 95%\nintervals are wide and the ordering between the Claude models isn't settled. Opus played only game 1 of each pairing,\nwhere the AI seat goes first; the like-for-like table compares every backend on those same games. The baselines play\n30 games per pairing. The run is resumable: raise the counts in bench/configs/readme.toml and\n`ygo-agent bench readme --resume` plays only the new games, on the same seeds."
+  },
+  "backends": [
+    {
+      "backend": "opus",
+      "label": "opus (claude-code)",
+      "type": "claude-code",
+      "model": "opus",
+      "effort": "medium",
+      "model_ids": [
+        "claude-opus-5-5"
+      ],
+      "baseline": false,
+      "rating": 1845.436060104382,
+      "games": 4,
+      "wins": 4,
+      "losses": 0,
+      "draws": 0,
+      "win_rate": 1.0,
+      "ci95": [
+        0.5101091596030786,
+        0.9999999999999999
+      ],
+      "first": {
+        "games": 4,
+        "wins": 4
+      },
+      "second": {
+        "games": 0,
+        "wins": 0
+      },
+      "turns_mean": 3.75,
+      "seconds_mean": 171.3125,
+      "decisions": 221,
+      "decisions_per_game": 55.25,
+      "asks": 186,
+      "replies": 186,
+      "invalid_replies": 0,
+      "invalid_rate": 0.0,
+      "fallback_rate": 0.0,
+      "rule_share": 0.00904977375565611,
+      "backend_share": 0.8416289592760181,
+      "by_source": {
+        "backend": 186,
+        "rule": 2,
+        "auto": 33,
+        "fallback": 0,
+        "pilot": 0
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "engine_retries": 0,
+      "lua_errors": 0,
+      "latency_mean_s": 3.573279569892473,
+      "latency_p50_s": 2.73,
+      "latency_p95_s": 7.53,
+      "tokens": {
+        "input": 372,
+        "output": 42385,
+        "cache_read": 4733945,
+        "cache_write": 352245
+      },
+      "tokens_per_game": {
+        "input": 93.0,
+        "output": 10596.25,
+        "cache_read": 1183486.25,
+        "cache_write": 88061.25
+      },
+      "cost_usd": 4.6139,
+      "cost_per_game": 1.153475,
+      "cost_known_games": 4
+    },
+    {
+      "backend": "sonnet",
+      "label": "sonnet (claude-code)",
+      "type": "claude-code",
+      "model": "sonnet",
+      "effort": "medium",
+      "model_ids": [
+        "claude-sonnet-5-5"
+      ],
+      "baseline": false,
+      "rating": 1597.4995833204566,
+      "games": 12,
+      "wins": 7,
+      "losses": 5,
+      "draws": 0,
+      "win_rate": 0.5833333333333334,
+      "ci95": [
+        0.31951131084242423,
+        0.8067396875653928
+      ],
+      "first": {
+        "games": 8,
+        "wins": 5
+      },
+      "second": {
+        "games": 4,
+        "wins": 2
+      },
+      "turns_mean": 7.666666666666667,
+      "seconds_mean": 184.7825,
+      "decisions": 1086,
+      "decisions_per_game": 90.5,
+      "asks": 871,
+      "replies": 871,
+      "invalid_replies": 0,
+      "invalid_rate": 0.0,
+      "fallback_rate": 0.0,
+      "rule_share": 0.0718232044198895,
+      "backend_share": 0.8020257826887661,
+      "by_source": {
+        "backend": 871,
+        "rule": 78,
+        "auto": 137,
+        "fallback": 0,
+        "pilot": 0
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "engine_retries": 0,
+      "lua_errors": 0,
+      "latency_mean_s": 2.417646383467279,
+      "latency_p50_s": 1.86,
+      "latency_p95_s": 5.53,
+      "tokens": {
+        "input": 1742,
+        "output": 155471,
+        "cache_read": 22274045,
+        "cache_write": 1458346
+      },
+      "tokens_per_game": {
+        "input": 145.16666666666666,
+        "output": 12955.916666666666,
+        "cache_read": 1856170.4166666667,
+        "cache_write": 121528.83333333333
+      },
+      "cost_usd": 9.619,
+      "cost_per_game": 0.8015833333333333,
+      "cost_known_games": 12
+    },
+    {
+      "backend": "haiku",
+      "label": "haiku (claude-code)",
+      "type": "claude-code",
+      "model": "haiku",
+      "effort": "medium",
+      "model_ids": [
+        "claude-haiku-5-5"
+      ],
+      "baseline": false,
+      "rating": 1597.4995833204566,
+      "games": 12,
+      "wins": 7,
+      "losses": 5,
+      "draws": 0,
+      "win_rate": 0.5833333333333334,
+      "ci95": [
+        0.31951131084242423,
+        0.8067396875653928
+      ],
+      "first": {
+        "games": 8,
+        "wins": 4
+      },
+      "second": {
+        "games": 4,
+        "wins": 3
+      },
+      "turns_mean": 6.25,
+      "seconds_mean": 183.24333333333334,
+      "decisions": 925,
+      "decisions_per_game": 77.08333333333333,
+      "asks": 754,
+      "replies": 754,
+      "invalid_replies": 0,
+      "invalid_rate": 0.0,
+      "fallback_rate": 0.0,
+      "rule_share": 0.055135135135135134,
+      "backend_share": 0.8151351351351351,
+      "by_source": {
+        "backend": 754,
+        "rule": 51,
+        "auto": 120,
+        "fallback": 0,
+        "pilot": 0
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "engine_retries": 0,
+      "lua_errors": 0,
+      "latency_mean_s": 2.7945358090185675,
+      "latency_p50_s": 1.56,
+      "latency_p95_s": 9.04,
+      "tokens": {
+        "input": 1508,
+        "output": 366304,
+        "cache_read": 22515836,
+        "cache_write": 1433082
+      },
+      "tokens_per_game": {
+        "input": 125.66666666666667,
+        "output": 30525.333333333332,
+        "cache_read": 1876319.6666666667,
+        "cache_write": 119423.5
+      },
+      "cost_usd": 0.6951,
+      "cost_per_game": 0.057925000000000004,
+      "cost_known_games": 12
+    },
+    {
+      "backend": "heuristic",
+      "label": "heuristic",
+      "type": "heuristic",
+      "model": null,
+      "effort": null,
+      "model_ids": [],
+      "baseline": true,
+      "rating": 1282.0704010516665,
+      "games": 120,
+      "wins": 26,
+      "losses": 94,
+      "draws": 0,
+      "win_rate": 0.21666666666666667,
+      "ci95": [
+        0.15236723520915835,
+        0.2985436260301373
+      ],
+      "first": {
+        "games": 60,
+        "wins": 15
+      },
+      "second": {
+        "games": 60,
+        "wins": 11
+      },
+      "turns_mean": 7.608333333333333,
+      "seconds_mean": 5.8254166666666665,
+      "decisions": 5460,
+      "decisions_per_game": 45.5,
+      "asks": 4283,
+      "replies": 4283,
+      "invalid_replies": 0,
+      "invalid_rate": 0.0,
+      "fallback_rate": 0.0,
+      "rule_share": 0.03205128205128205,
+      "backend_share": 0.7844322344322344,
+      "by_source": {
+        "backend": 4283,
+        "rule": 175,
+        "auto": 1002,
+        "fallback": 0,
+        "pilot": 0
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "engine_retries": 0,
+      "lua_errors": 0,
+      "latency_mean_s": 0.0,
+      "latency_p50_s": 0.0,
+      "latency_p95_s": 0.0,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0
+      },
+      "tokens_per_game": {
+        "input": 0.0,
+        "output": 0.0,
+        "cache_read": 0.0,
+        "cache_write": 0.0
+      },
+      "cost_usd": null,
+      "cost_per_game": 0.0,
+      "cost_known_games": 0
+    },
+    {
+      "backend": "random",
+      "label": "random",
+      "type": "random",
+      "model": null,
+      "effort": null,
+      "model_ids": [],
+      "baseline": true,
+      "rating": 838.462513023604,
+      "games": 120,
+      "wins": 2,
+      "losses": 118,
+      "draws": 0,
+      "win_rate": 0.016666666666666666,
+      "ci95": [
+        0.004582564524701124,
+        0.05873596347174441
+      ],
+      "first": {
+        "games": 60,
+        "wins": 0
+      },
+      "second": {
+        "games": 60,
+        "wins": 2
+      },
+      "turns_mean": 7.358333333333333,
+      "seconds_mean": 5.549166666666666,
+      "decisions": 3186,
+      "decisions_per_game": 26.55,
+      "asks": 2413,
+      "replies": 2413,
+      "invalid_replies": 0,
+      "invalid_rate": 0.0,
+      "fallback_rate": 0.0,
+      "rule_share": 0.039861895794099184,
+      "backend_share": 0.7573760200878845,
+      "by_source": {
+        "backend": 2413,
+        "rule": 127,
+        "auto": 646,
+        "fallback": 0,
+        "pilot": 0
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "engine_retries": 0,
+      "lua_errors": 0,
+      "latency_mean_s": 0.0,
+      "latency_p50_s": 0.0,
+      "latency_p95_s": 0.0,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0
+      },
+      "tokens_per_game": {
+        "input": 0.0,
+        "output": 0.0,
+        "cache_read": 0.0,
+        "cache_write": 0.0
+      },
+      "cost_usd": null,
+      "cost_per_game": 0.0,
+      "cost_known_games": 0
+    }
+  ],
+  "common": {
+    "slots": 4,
+    "games_numbers": [
+      1
+    ],
+    "backends": [
+      {
+        "backend": "opus",
+        "games": 4,
+        "wins": 4,
+        "win_rate": 1.0,
+        "ci95": [
+          0.5101091596030786,
+          0.9999999999999999
+        ]
+      },
+      {
+        "backend": "sonnet",
+        "games": 4,
+        "wins": 3,
+        "win_rate": 0.75,
+        "ci95": [
+          0.3006418400969081,
+          0.954412739704631
+        ]
+      },
+      {
+        "backend": "haiku",
+        "games": 4,
+        "wins": 1,
+        "win_rate": 0.25,
+        "ci95": [
+          0.04558726029536886,
+          0.6993581599030918
+        ]
+      },
+      {
+        "backend": "heuristic",
+        "games": 4,
+        "wins": 1,
+        "win_rate": 0.25,
+        "ci95": [
+          0.04558726029536886,
+          0.6993581599030918
+        ]
+      },
+      {
+        "backend": "random",
+        "games": 4,
+        "wins": 0,
+        "win_rate": 0.0,
+        "ci95": [
+          0.0,
+          0.4898908403969213
+        ]
+      }
+    ]
+  },
+  "matchups": [
+    {
+      "deck": "blackwing",
+      "backend": "haiku",
+      "opponent": "windbot:Blue-Eyes",
+      "baseline": false,
+      "games": 3,
+      "wins": 0,
+      "losses": 3,
+      "draws": 0,
+      "win_rate": 0.0,
+      "ci95": [
+        0.0,
+        0.5614970356393196
+      ],
+      "first": {
+        "games": 2,
+        "wins": 0
+      },
+      "second": {
+        "games": 1,
+        "wins": 0
+      },
+      "turns_mean": 6.333333333333333,
+      "seconds_mean": 199.67,
+      "decisions": 216,
+      "decisions_per_game": 72.0,
+      "asks": 168,
+      "replies": 168,
+      "invalid_replies": 0,
+      "invalid_rate": 0.0,
+      "fallback_rate": 0.0,
+      "rule_share": 0.027777777777777776,
+      "backend_share": 0.7777777777777778,
+      "by_source": {
+        "backend": 168,
+        "rule": 6,
+        "auto": 42,
+        "fallback": 0,
+        "pilot": 0
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "engine_retries": 0,
+      "lua_errors": 0,
+      "latency_mean_s": 3.413273809523809,
+      "latency_p50_s": 1.71,
+      "latency_p95_s": 11.57,
+      "tokens": {
+        "input": 336,
+        "output": 106349,
+        "cache_read": 5662962,
+        "cache_write": 366946
+      },
+      "tokens_per_game": {
+        "input": 112.0,
+        "output": 35449.666666666664,
+        "cache_read": 1887654.0,
+        "cache_write": 122315.33333333333
+      },
+      "cost_usd": 0.1833,
+      "cost_per_game": 0.061099999999999995,
+      "cost_known_games": 3
+    },
+    {
+      "deck": "blackwing",
+      "backend": "haiku",
+      "opponent": "windbot:Time Thief",
+      "baseline": false,
+      "games": 3,
+      "wins": 2,
+      "losses": 1,
+      "draws": 0,
+      "win_rate": 0.6666666666666666,
+      "ci95": [
+        0.2076595988078242,
+        0.9385080559790691
+      ],
+      "first": {
+        "games": 2,
+        "wins": 1
+      },
+      "second": {
+        "games": 1,
+        "wins": 1
+      },
+      "turns_mean": 7.666666666666667,
+      "seconds_mean": 190.76333333333332,
+      "decisions": 224,
+      "decisions_per_game": 74.66666666666667,
+      "asks": 183,
+      "replies": 183,
+      "invalid_replies": 0,
+      "invalid_rate": 0.0,
+      "fallback_rate": 0.0,
+      "rule_share": 0.04017857142857143,
+      "backend_share": 0.8169642857142857,
+      "by_source": {
+        "backend": 183,
+        "rule": 9,
+        "auto": 32,
+        "fallback": 0,
+        "pilot": 0
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "engine_retries": 0,
+      "lua_errors": 0,
+      "latency_mean_s": 2.9935519125683063,
+      "latency_p50_s": 1.65,
+      "latency_p95_s": 9.38,
+      "tokens": {
+        "input": 366,
+        "output": 95380,
+        "cache_read": 5867648,
+        "cache_write": 366934
+      },
+      "tokens_per_game": {
+        "input": 122.0,
+        "output": 31793.333333333332,
+        "cache_read": 1955882.6666666667,
+        "cache_write": 122311.33333333333
+      },
+      "cost_usd": 0.17980000000000002,
+      "cost_per_game": 0.05993333333333334,
+      "cost_known_games": 3
+    },
+    {
+      "deck": "blackwing",
+      "backend": "heuristic",
+      "opponent": "windbot:Blue-Eyes",
+      "baseline": true,
+      "games": 30,
+      "wins": 2,
+      "losses": 28,
+      "draws": 0,
+      "win_rate": 0.06666666666666667,
+      "ci95": [
+        0.018477023624516822,
+        0.21323458516874166
+      ],
+      "first": {
+        "games": 15,
+        "wins": 0
+      },
+      "second": {
+        "games": 15,
+        "wins": 2
+      },
+      "turns_mean": 5.5,
+      "seconds_mean": 5.104333333333333,
+      "decisions": 1261,
+      "decisions_per_game": 42.03333333333333,
+      "asks": 978,
+      "replies": 978,
+      "invalid_replies": 0,
+      "invalid_rate": 0.0,
+      "fallback_rate": 0.0,
+      "rule_share": 0.014274385408406027,
+      "backend_share": 0.7755749405233942,
+      "by_source": {
+        "backend": 978,
+        "rule": 18,
+        "auto": 265,
+        "fallback": 0,
+        "pilot": 0
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "engine_retries": 0,
+      "lua_errors": 0,
+      "latency_mean_s": 0.0,
+      "latency_p50_s": 0.0,
+      "latency_p95_s": 0.0,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0
+      },
+      "tokens_per_game": {
+        "input": 0.0,
+        "output": 0.0,
+        "cache_read": 0.0,
+        "cache_write": 0.0
+      },
+      "cost_usd": null,
+      "cost_per_game": null,
+      "cost_known_games": 0
+    },
+    {
+      "deck": "blackwing",
+      "backend": "heuristic",
+      "opponent": "windbot:Time Thief",
+      "baseline": true,
+      "games": 30,
+      "wins": 9,
+      "losses": 21,
+      "draws": 0,
+      "win_rate": 0.3,
+      "ci95": [
+        0.16664748188562525,
+        0.4787578760189556
+      ],
+      "first": {
+        "games": 15,
+        "wins": 6
+      },
+      "second": {
+        "games": 15,
+        "wins": 3
+      },
+      "turns_mean": 9.2,
+      "seconds_mean": 6.355,
+      "decisions": 1647,
+      "decisions_per_game": 54.9,
+      "asks": 1283,
+      "replies": 1283,
+      "invalid_replies": 0,
+      "invalid_rate": 0.0,
+      "fallback_rate": 0.0,
+      "rule_share": 0.02853673345476624,
+      "backend_share": 0.7789921068609593,
+      "by_source": {
+        "backend": 1283,
+        "rule": 47,
+        "auto": 317,
+        "fallback": 0,
+        "pilot": 0
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "engine_retries": 0,
+      "lua_errors": 0,
+      "latency_mean_s": 0.0,
+      "latency_p50_s": 0.0,
+      "latency_p95_s": 0.0,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0
+      },
+      "tokens_per_game": {
+        "input": 0.0,
+        "output": 0.0,
+        "cache_read": 0.0,
+        "cache_write": 0.0
+      },
+      "cost_usd": null,
+      "cost_per_game": null,
+      "cost_known_games": 0
+    },
+    {
+      "deck": "blackwing",
+      "backend": "opus",
+      "opponent": "windbot:Blue-Eyes",
+      "baseline": false,
+      "games": 1,
+      "wins": 1,
+      "losses": 0,
+      "draws": 0,
+      "win_rate": 1.0,
+      "ci95": [
+        0.2065493117918027,
+        1.0
+      ],
+      "first": {
+        "games": 1,
+        "wins": 1
+      },
+      "second": {
+        "games": 0,
+        "wins": 0
+      },
+      "turns_mean": 3.0,
+      "seconds_mean": 139.55,
+      "decisions": 52,
+      "decisions_per_game": 52.0,
+      "asks": 41,
+      "replies": 41,
+      "invalid_replies": 0,
+      "invalid_rate": 0.0,
+      "fallback_rate": 0.0,
+      "rule_share": 0.0,
+      "backend_share": 0.7884615384615384,
+      "by_source": {
+        "backend": 41,
+        "rule": 0,
+        "auto": 11,
+        "fallback": 0,
+        "pilot": 0
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "engine_retries": 0,
+      "lua_errors": 0,
+      "latency_mean_s": 3.304390243902439,
+      "latency_p50_s": 2.33,
+      "latency_p95_s": 6.96,
+      "tokens": {
+        "input": 82,
+        "output": 8119,
+        "cache_read": 1160128,
+        "cache_write": 74562
+      },
+      "tokens_per_game": {
+        "input": 82.0,
+        "output": 8119.0,
+        "cache_read": 1160128.0,
+        "cache_write": 74562.0
+      },
+      "cost_usd": 0.9912,
+      "cost_per_game": 0.9912,
+      "cost_known_games": 1
+    },
+    {
+      "deck": "blackwing",
+      "backend": "opus",
+      "opponent": "windbot:Time Thief",
+      "baseline": false,
+      "games": 1,
+      "wins": 1,
+      "losses": 0,
+      "draws": 0,
+      "win_rate": 1.0,
+      "ci95": [
+        0.2065493117918027,
+        1.0
+      ],
+      "first": {
+        "games": 1,
+        "wins": 1
+      },
+      "second": {
+        "games": 0,
+        "wins": 0
+      },
+      "turns_mean": 4.0,
+      "seconds_mean": 174.71,
+      "decisions": 57,
+      "decisions_per_game": 57.0,
+      "asks": 47,
+      "replies": 47,
+      "invalid_replies": 0,
+      "invalid_rate": 0.0,
+      "fallback_rate": 0.0,
+      "rule_share": 0.0,
+      "backend_share": 0.8245614035087719,
+      "by_source": {
+        "backend": 47,
+        "rule": 0,
+        "auto": 10,
+        "fallback": 0,
+        "pilot": 0
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "engine_retries": 0,
+      "lua_errors": 0,
+      "latency_mean_s": 3.6187234042553196,
+      "latency_p50_s": 3.05,
+      "latency_p95_s": 7.34,
+      "tokens": {
+        "input": 94,
+        "output": 10804,
+        "cache_read": 1290859,
+        "cache_write": 85956
+      },
+      "tokens_per_game": {
+        "input": 94.0,
+        "output": 10804.0,
+        "cache_read": 1290859.0,
+        "cache_write": 85956.0
+      },
+      "cost_usd": 1.1623,
+      "cost_per_game": 1.1623,
+      "cost_known_games": 1
+    },
+    {
+      "deck": "blackwing",
+      "backend": "random",
+      "opponent": "windbot:Blue-Eyes",
+      "baseline": true,
+      "games": 30,
+      "wins": 0,
+      "losses": 30,
+      "draws": 0,
+      "win_rate": 0.0,
+      "ci95": [
+        0.0,
+        0.11351339476145204
+      ],
+      "first": {
+        "games": 15,
+        "wins": 0
+      },
+      "second": {
+        "games": 15,
+        "wins": 0
+      },
+      "turns_mean": 5.066666666666666,
+      "seconds_mean": 4.520333333333334,
+      "decisions": 544,
+      "decisions_per_game": 18.133333333333333,
+      "asks": 395,
+      "replies": 395,
+      "invalid_replies": 0,
+      "invalid_rate": 0.0,
+      "fallback_rate": 0.0,
+      "rule_share": 0.027573529411764705,
+      "backend_share": 0.7261029411764706,
+      "by_source": {
+        "backend": 395,
+        "rule": 15,
+        "auto": 134,
+        "fallback": 0,
+        "pilot": 0
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "engine_retries": 0,
+      "lua_errors": 0,
+      "latency_mean_s": 0.0,
+      "latency_p50_s": 0.0,
+      "latency_p95_s": 0.0,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0
+      },
+      "tokens_per_game": {
+        "input": 0.0,
+        "output": 0.0,
+        "cache_read": 0.0,
+        "cache_write": 0.0
+      },
+      "cost_usd": null,
+      "cost_per_game": null,
+      "cost_known_games": 0
+    },
+    {
+      "deck": "blackwing",
+      "backend": "random",
+      "opponent": "windbot:Time Thief",
+      "baseline": true,
+      "games": 30,
+      "wins": 0,
+      "losses": 30,
+      "draws": 0,
+      "win_rate": 0.0,
+      "ci95": [
+        0.0,
+        0.11351339476145204
+      ],
+      "first": {
+        "games": 15,
+        "wins": 0
+      },
+      "second": {
+        "games": 15,
+        "wins": 0
+      },
+      "turns_mean": 9.9,
+      "seconds_mean": 6.799,
+      "decisions": 1080,
+      "decisions_per_game": 36.0,
+      "asks": 813,
+      "replies": 813,
+      "invalid_replies": 0,
+      "invalid_rate": 0.0,
+      "fallback_rate": 0.0,
+      "rule_share": 0.041666666666666664,
+      "backend_share": 0.7527777777777778,
+      "by_source": {
+        "backend": 813,
+        "rule": 45,
+        "auto": 222,
+        "fallback": 0,
+        "pilot": 0
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "engine_retries": 0,
+      "lua_errors": 0,
+      "latency_mean_s": 0.0,
+      "latency_p50_s": 0.0,
+      "latency_p95_s": 0.0,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0
+      },
+      "tokens_per_game": {
+        "input": 0.0,
+        "output": 0.0,
+        "cache_read": 0.0,
+        "cache_write": 0.0
+      },
+      "cost_usd": null,
+      "cost_per_game": null,
+      "cost_known_games": 0
+    },
+    {
+      "deck": "blackwing",
+      "backend": "sonnet",
+      "opponent": "windbot:Blue-Eyes",
+      "baseline": false,
+      "games": 3,
+      "wins": 0,
+      "losses": 3,
+      "draws": 0,
+      "win_rate": 0.0,
+      "ci95": [
+        0.0,
+        0.5614970356393196
+      ],
+      "first": {
+        "games": 2,
+        "wins": 0
+      },
+      "second": {
+        "games": 1,
+        "wins": 0
+      },
+      "turns_mean": 8.333333333333334,
+      "seconds_mean": 166.08666666666667,
+      "decisions": 242,
+      "decisions_per_game": 80.66666666666667,
+      "asks": 184,
+      "replies": 184,
+      "invalid_replies": 0,
+      "invalid_rate": 0.0,
+      "fallback_rate": 0.0,
+      "rule_share": 0.049586776859504134,
+      "backend_share": 0.7603305785123967,
+      "by_source": {
+        "backend": 184,
+        "rule": 12,
+        "auto": 46,
+        "fallback": 0,
+        "pilot": 0
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "engine_retries": 0,
+      "lua_errors": 0,
+      "latency_mean_s": 2.5327717391304345,
+      "latency_p50_s": 1.87,
+      "latency_p95_s": 5.97,
+      "tokens": {
+        "input": 368,
+        "output": 38001,
+        "cache_read": 4786456,
+        "cache_write": 352509
+      },
+      "tokens_per_game": {
+        "input": 122.66666666666667,
+        "output": 12667.0,
+        "cache_read": 1595485.3333333333,
+        "cache_write": 117503.0
+      },
+      "cost_usd": 2.2694,
+      "cost_per_game": 0.7564666666666667,
+      "cost_known_games": 3
+    },
+    {
+      "deck": "blackwing",
+      "backend": "sonnet",
+      "opponent": "windbot:Time Thief",
+      "baseline": false,
+      "games": 3,
+      "wins": 3,
+      "losses": 0,
+      "draws": 0,
+      "win_rate": 1.0,
+      "ci95": [
+        0.43850296436068037,
+        1.0
+      ],
+      "first": {
+        "games": 2,
+        "wins": 2
+      },
+      "second": {
+        "games": 1,
+        "wins": 1
+      },
+      "turns_mean": 6.666666666666667,
+      "seconds_mean": 181.5,
+      "decisions": 270,
+      "decisions_per_game": 90.0,
+      "asks": 219,
+      "replies": 219,
+      "invalid_replies": 0,
+      "invalid_rate": 0.0,
+      "fallback_rate": 0.0,
+      "rule_share": 0.03333333333333333,
+      "backend_share": 0.8111111111111111,
+      "by_source": {
+        "backend": 219,
+        "rule": 9,
+        "auto": 42,
+        "fallback": 0,
+        "pilot": 0
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "engine_retries": 0,
+      "lua_errors": 0,
+      "latency_mean_s": 2.376027397260274,
+      "latency_p50_s": 1.82,
+      "latency_p95_s": 5.72,
+      "tokens": {
+        "input": 438,
+        "output": 40075,
+        "cache_read": 6757251,
+        "cache_write": 362116
+      },
+      "tokens_per_game": {
+        "input": 146.0,
+        "output": 13358.333333333334,
+        "cache_read": 2252417.0,
+        "cache_write": 120705.33333333333
+      },
+      "cost_usd": 2.5258000000000003,
+      "cost_per_game": 0.8419333333333334,
+      "cost_known_games": 3
+    },
+    {
+      "deck": "saffira",
+      "backend": "haiku",
+      "opponent": "windbot:Blue-Eyes",
+      "baseline": false,
+      "games": 3,
+      "wins": 2,
+      "losses": 1,
+      "draws": 0,
+      "win_rate": 0.6666666666666666,
+      "ci95": [
+        0.2076595988078242,
+        0.9385080559790691
+      ],
+      "first": {
+        "games": 2,
+        "wins": 1
+      },
+      "second": {
+        "games": 1,
+        "wins": 1
+      },
+      "turns_mean": 6.0,
+      "seconds_mean": 168.49333333333334,
+      "decisions": 226,
+      "decisions_per_game": 75.33333333333333,
+      "asks": 184,
+      "replies": 184,
+      "invalid_replies": 0,
+      "invalid_rate": 0.0,
+      "fallback_rate": 0.0,
+      "rule_share": 0.084070796460177,
+      "backend_share": 0.8141592920353983,
+      "by_source": {
+        "backend": 184,
+        "rule": 19,
+        "auto": 23,
+        "fallback": 0,
+        "pilot": 0
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "engine_retries": 0,
+      "lua_errors": 0,
+      "latency_mean_s": 2.614130434782609,
+      "latency_p50_s": 1.71,
+      "latency_p95_s": 6.75,
+      "tokens": {
+        "input": 368,
+        "output": 81021,
+        "cache_read": 4412107,
+        "cache_write": 335397
+      },
+      "tokens_per_game": {
+        "input": 122.66666666666667,
+        "output": 27007.0,
+        "cache_read": 1470702.3333333333,
+        "cache_write": 111799.0
+      },
+      "cost_usd": 0.1517,
+      "cost_per_game": 0.05056666666666667,
+      "cost_known_games": 3
+    },
+    {
+      "deck": "saffira",
+      "backend": "haiku",
+      "opponent": "windbot:Time Thief",
+      "baseline": false,
+      "games": 3,
+      "wins": 3,
+      "losses": 0,
+      "draws": 0,
+      "win_rate": 1.0,
+      "ci95": [
+        0.43850296436068037,
+        1.0
+      ],
+      "first": {
+        "games": 2,
+        "wins": 2
+      },
+      "second": {
+        "games": 1,
+        "wins": 1
+      },
+      "turns_mean": 5.0,
+      "seconds_mean": 174.04666666666665,
+      "decisions": 259,
+      "decisions_per_game": 86.33333333333333,
+      "asks": 219,
+      "replies": 219,
+      "invalid_replies": 0,
+      "invalid_rate": 0.0,
+      "fallback_rate": 0.0,
+      "rule_share": 0.06563706563706563,
+      "backend_share": 0.8455598455598455,
+      "by_source": {
+        "backend": 219,
+        "rule": 17,
+        "auto": 23,
+        "fallback": 0,
+        "pilot": 0
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "engine_retries": 0,
+      "lua_errors": 0,
+      "latency_mean_s": 2.305159817351598,
+      "latency_p50_s": 1.31,
+      "latency_p95_s": 7.18,
+      "tokens": {
+        "input": 438,
+        "output": 83554,
+        "cache_read": 6573119,
+        "cache_write": 363805
+      },
+      "tokens_per_game": {
+        "input": 146.0,
+        "output": 27851.333333333332,
+        "cache_read": 2191039.6666666665,
+        "cache_write": 121268.33333333333
+      },
+      "cost_usd": 0.18030000000000002,
+      "cost_per_game": 0.06010000000000001,
+      "cost_known_games": 3
+    },
+    {
+      "deck": "saffira",
+      "backend": "heuristic",
+      "opponent": "windbot:Blue-Eyes",
+      "baseline": true,
+      "games": 30,
+      "wins": 3,
+      "losses": 27,
+      "draws": 0,
+      "win_rate": 0.1,
+      "ci95": [
+        0.03459988847741868,
+        0.256210827331743
+      ],
+      "first": {
+        "games": 15,
+        "wins": 1
+      },
+      "second": {
+        "games": 15,
+        "wins": 2
+      },
+      "turns_mean": 6.6,
+      "seconds_mean": 5.664333333333333,
+      "decisions": 1202,
+      "decisions_per_game": 40.06666666666667,
+      "asks": 942,
+      "replies": 942,
+      "invalid_replies": 0,
+      "invalid_rate": 0.0,
+      "fallback_rate": 0.0,
+      "rule_share": 0.054076539101497505,
+      "backend_share": 0.78369384359401,
+      "by_source": {
+        "backend": 942,
+        "rule": 65,
+        "auto": 195,
+        "fallback": 0,
+        "pilot": 0
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "engine_retries": 0,
+      "lua_errors": 0,
+      "latency_mean_s": 0.0,
+      "latency_p50_s": 0.0,
+      "latency_p95_s": 0.0,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0
+      },
+      "tokens_per_game": {
+        "input": 0.0,
+        "output": 0.0,
+        "cache_read": 0.0,
+        "cache_write": 0.0
+      },
+      "cost_usd": null,
+      "cost_per_game": null,
+      "cost_known_games": 0
+    },
+    {
+      "deck": "saffira",
+      "backend": "heuristic",
+      "opponent": "windbot:Time Thief",
+      "baseline": true,
+      "games": 30,
+      "wins": 12,
+      "losses": 18,
+      "draws": 0,
+      "win_rate": 0.4,
+      "ci95": [
+        0.24590628016444746,
+        0.576796398787843
+      ],
+      "first": {
+        "games": 15,
+        "wins": 8
+      },
+      "second": {
+        "games": 15,
+        "wins": 4
+      },
+      "turns_mean": 9.133333333333333,
+      "seconds_mean": 6.178,
+      "decisions": 1350,
+      "decisions_per_game": 45.0,
+      "asks": 1080,
+      "replies": 1080,
+      "invalid_replies": 0,
+      "invalid_rate": 0.0,
+      "fallback_rate": 0.0,
+      "rule_share": 0.03333333333333333,
+      "backend_share": 0.8,
+      "by_source": {
+        "backend": 1080,
+        "rule": 45,
+        "auto": 225,
+        "fallback": 0,
+        "pilot": 0
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "engine_retries": 0,
+      "lua_errors": 0,
+      "latency_mean_s": 0.0,
+      "latency_p50_s": 0.0,
+      "latency_p95_s": 0.0,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0
+      },
+      "tokens_per_game": {
+        "input": 0.0,
+        "output": 0.0,
+        "cache_read": 0.0,
+        "cache_write": 0.0
+      },
+      "cost_usd": null,
+      "cost_per_game": null,
+      "cost_known_games": 0
+    },
+    {
+      "deck": "saffira",
+      "backend": "opus",
+      "opponent": "windbot:Blue-Eyes",
+      "baseline": false,
+      "games": 1,
+      "wins": 1,
+      "losses": 0,
+      "draws": 0,
+      "win_rate": 1.0,
+      "ci95": [
+        0.2065493117918027,
+        1.0
+      ],
+      "first": {
+        "games": 1,
+        "wins": 1
+      },
+      "second": {
+        "games": 0,
+        "wins": 0
+      },
+      "turns_mean": 5.0,
+      "seconds_mean": 247.12,
+      "decisions": 67,
+      "decisions_per_game": 67.0,
+      "asks": 59,
+      "replies": 59,
+      "invalid_replies": 0,
+      "invalid_rate": 0.0,
+      "fallback_rate": 0.0,
+      "rule_share": 0.014925373134328358,
+      "backend_share": 0.8805970149253731,
+      "by_source": {
+        "backend": 59,
+        "rule": 1,
+        "auto": 7,
+        "fallback": 0,
+        "pilot": 0
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "engine_retries": 0,
+      "lua_errors": 0,
+      "latency_mean_s": 4.040169491525424,
+      "latency_p50_s": 3.11,
+      "latency_p95_s": 10.33,
+      "tokens": {
+        "input": 118,
+        "output": 15075,
+        "cache_read": 1451060,
+        "cache_write": 126969
+      },
+      "tokens_per_game": {
+        "input": 118.0,
+        "output": 15075.0,
+        "cache_read": 1451060.0,
+        "cache_write": 126969.0
+      },
+      "cost_usd": 1.6079,
+      "cost_per_game": 1.6079,
+      "cost_known_games": 1
+    },
+    {
+      "deck": "saffira",
+      "backend": "opus",
+      "opponent": "windbot:Time Thief",
+      "baseline": false,
+      "games": 1,
+      "wins": 1,
+      "losses": 0,
+      "draws": 0,
+      "win_rate": 1.0,
+      "ci95": [
+        0.2065493117918027,
+        1.0
+      ],
+      "first": {
+        "games": 1,
+        "wins": 1
+      },
+      "second": {
+        "games": 0,
+        "wins": 0
+      },
+      "turns_mean": 3.0,
+      "seconds_mean": 123.87,
+      "decisions": 45,
+      "decisions_per_game": 45.0,
+      "asks": 39,
+      "replies": 39,
+      "invalid_replies": 0,
+      "invalid_rate": 0.0,
+      "fallback_rate": 0.0,
+      "rule_share": 0.022222222222222223,
+      "backend_share": 0.8666666666666667,
+      "by_source": {
+        "backend": 39,
+        "rule": 1,
+        "auto": 5,
+        "fallback": 0,
+        "pilot": 0
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "engine_retries": 0,
+      "lua_errors": 0,
+      "latency_mean_s": 3.094871794871795,
+      "latency_p50_s": 2.16,
+      "latency_p95_s": 10.08,
+      "tokens": {
+        "input": 78,
+        "output": 8387,
+        "cache_read": 831898,
+        "cache_write": 64758
+      },
+      "tokens_per_game": {
+        "input": 78.0,
+        "output": 8387.0,
+        "cache_read": 831898.0,
+        "cache_write": 64758.0
+      },
+      "cost_usd": 0.8525,
+      "cost_per_game": 0.8525,
+      "cost_known_games": 1
+    },
+    {
+      "deck": "saffira",
+      "backend": "random",
+      "opponent": "windbot:Blue-Eyes",
+      "baseline": true,
+      "games": 30,
+      "wins": 0,
+      "losses": 30,
+      "draws": 0,
+      "win_rate": 0.0,
+      "ci95": [
+        0.0,
+        0.11351339476145204
+      ],
+      "first": {
+        "games": 15,
+        "wins": 0
+      },
+      "second": {
+        "games": 15,
+        "wins": 0
+      },
+      "turns_mean": 4.766666666666667,
+      "seconds_mean": 4.283333333333333,
+      "decisions": 594,
+      "decisions_per_game": 19.8,
+      "asks": 457,
+      "replies": 457,
+      "invalid_replies": 0,
+      "invalid_rate": 0.0,
+      "fallback_rate": 0.0,
+      "rule_share": 0.03872053872053872,
+      "backend_share": 0.7693602693602694,
+      "by_source": {
+        "backend": 457,
+        "rule": 23,
+        "auto": 114,
+        "fallback": 0,
+        "pilot": 0
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "engine_retries": 0,
+      "lua_errors": 0,
+      "latency_mean_s": 0.0,
+      "latency_p50_s": 0.0,
+      "latency_p95_s": 0.0,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0
+      },
+      "tokens_per_game": {
+        "input": 0.0,
+        "output": 0.0,
+        "cache_read": 0.0,
+        "cache_write": 0.0
+      },
+      "cost_usd": null,
+      "cost_per_game": null,
+      "cost_known_games": 0
+    },
+    {
+      "deck": "saffira",
+      "backend": "random",
+      "opponent": "windbot:Time Thief",
+      "baseline": true,
+      "games": 30,
+      "wins": 2,
+      "losses": 28,
+      "draws": 0,
+      "win_rate": 0.06666666666666667,
+      "ci95": [
+        0.018477023624516822,
+        0.21323458516874166
+      ],
+      "first": {
+        "games": 15,
+        "wins": 0
+      },
+      "second": {
+        "games": 15,
+        "wins": 2
+      },
+      "turns_mean": 9.7,
+      "seconds_mean": 6.593999999999999,
+      "decisions": 968,
+      "decisions_per_game": 32.266666666666666,
+      "asks": 748,
+      "replies": 748,
+      "invalid_replies": 0,
+      "invalid_rate": 0.0,
+      "fallback_rate": 0.0,
+      "rule_share": 0.045454545454545456,
+      "backend_share": 0.7727272727272727,
+      "by_source": {
+        "backend": 748,
+        "rule": 44,
+        "auto": 176,
+        "fallback": 0,
+        "pilot": 0
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "engine_retries": 0,
+      "lua_errors": 0,
+      "latency_mean_s": 0.0,
+      "latency_p50_s": 0.0,
+      "latency_p95_s": 0.0,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0
+      },
+      "tokens_per_game": {
+        "input": 0.0,
+        "output": 0.0,
+        "cache_read": 0.0,
+        "cache_write": 0.0
+      },
+      "cost_usd": null,
+      "cost_per_game": null,
+      "cost_known_games": 0
+    },
+    {
+      "deck": "saffira",
+      "backend": "sonnet",
+      "opponent": "windbot:Blue-Eyes",
+      "baseline": false,
+      "games": 3,
+      "wins": 1,
+      "losses": 2,
+      "draws": 0,
+      "win_rate": 0.3333333333333333,
+      "ci95": [
+        0.06149194402093078,
+        0.7923404011921757
+      ],
+      "first": {
+        "games": 2,
+        "wins": 1
+      },
+      "second": {
+        "games": 1,
+        "wins": 0
+      },
+      "turns_mean": 7.0,
+      "seconds_mean": 171.4333333333333,
+      "decisions": 236,
+      "decisions_per_game": 78.66666666666667,
+      "asks": 194,
+      "replies": 194,
+      "invalid_replies": 0,
+      "invalid_rate": 0.0,
+      "fallback_rate": 0.0,
+      "rule_share": 0.07203389830508475,
+      "backend_share": 0.8220338983050848,
+      "by_source": {
+        "backend": 194,
+        "rule": 17,
+        "auto": 25,
+        "fallback": 0,
+        "pilot": 0
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "engine_retries": 0,
+      "lua_errors": 0,
+      "latency_mean_s": 2.5088144329896904,
+      "latency_p50_s": 1.87,
+      "latency_p95_s": 5.84,
+      "tokens": {
+        "input": 388,
+        "output": 34546,
+        "cache_read": 4260665,
+        "cache_write": 329327
+      },
+      "tokens_per_game": {
+        "input": 129.33333333333334,
+        "output": 11515.333333333334,
+        "cache_read": 1420221.6666666667,
+        "cache_write": 109775.66666666667
+      },
+      "cost_usd": 2.0897,
+      "cost_per_game": 0.6965666666666667,
+      "cost_known_games": 3
+    },
+    {
+      "deck": "saffira",
+      "backend": "sonnet",
+      "opponent": "windbot:Time Thief",
+      "baseline": false,
+      "games": 3,
+      "wins": 3,
+      "losses": 0,
+      "draws": 0,
+      "win_rate": 1.0,
+      "ci95": [
+        0.43850296436068037,
+        1.0
+      ],
+      "first": {
+        "games": 2,
+        "wins": 2
+      },
+      "second": {
+        "games": 1,
+        "wins": 1
+      },
+      "turns_mean": 8.666666666666666,
+      "seconds_mean": 220.10999999999999,
+      "decisions": 338,
+      "decisions_per_game": 112.66666666666667,
+      "asks": 274,
+      "replies": 274,
+      "invalid_replies": 0,
+      "invalid_rate": 0.0,
+      "fallback_rate": 0.0,
+      "rule_share": 0.11834319526627218,
+      "backend_share": 0.8106508875739645,
+      "by_source": {
+        "backend": 274,
+        "rule": 40,
+        "auto": 24,
+        "fallback": 0,
+        "pilot": 0
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "engine_retries": 0,
+      "lua_errors": 0,
+      "latency_mean_s": 2.3090510948905107,
+      "latency_p50_s": 1.86,
+      "latency_p95_s": 4.72,
+      "tokens": {
+        "input": 548,
+        "output": 42849,
+        "cache_read": 6469673,
+        "cache_write": 414394
+      },
+      "tokens_per_game": {
+        "input": 182.66666666666666,
+        "output": 14283.0,
+        "cache_read": 2156557.6666666665,
+        "cache_write": 138131.33333333334
+      },
+      "cost_usd": 2.7341,
+      "cost_per_game": 0.9113666666666668,
+      "cost_known_games": 3
+    }
+  ],
+  "decks": [
+    {
+      "deck": "blackwing",
+      "backend": "haiku",
+      "games": 6,
+      "wins": 2,
+      "losses": 4,
+      "draws": 0,
+      "win_rate": 0.3333333333333333,
+      "ci95": [
+        0.09677141021353453,
+        0.7000066870052566
+      ],
+      "first": {
+        "games": 4,
+        "wins": 1
+      },
+      "second": {
+        "games": 2,
+        "wins": 1
+      },
+      "turns_mean": 7.0,
+      "seconds_mean": 195.21666666666667,
+      "decisions": 440,
+      "decisions_per_game": 73.33333333333333,
+      "asks": 351,
+      "replies": 351,
+      "invalid_replies": 0,
+      "invalid_rate": 0.0,
+      "fallback_rate": 0.0,
+      "rule_share": 0.03409090909090909,
+      "backend_share": 0.7977272727272727,
+      "by_source": {
+        "backend": 351,
+        "rule": 15,
+        "auto": 74,
+        "fallback": 0,
+        "pilot": 0
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "engine_retries": 0,
+      "lua_errors": 0,
+      "latency_mean_s": 3.1944444444444446,
+      "latency_p50_s": 1.7,
+      "latency_p95_s": 10.17,
+      "tokens": {
+        "input": 702,
+        "output": 201729,
+        "cache_read": 11530610,
+        "cache_write": 733880
+      },
+      "tokens_per_game": {
+        "input": 117.0,
+        "output": 33621.5,
+        "cache_read": 1921768.3333333333,
+        "cache_write": 122313.33333333333
+      },
+      "cost_usd": 0.36310000000000003,
+      "cost_per_game": 0.06051666666666667,
+      "cost_known_games": 6
+    },
+    {
+      "deck": "blackwing",
+      "backend": "heuristic",
+      "games": 60,
+      "wins": 11,
+      "losses": 49,
+      "draws": 0,
+      "win_rate": 0.18333333333333332,
+      "ci95": [
+        0.10557796842900966,
+        0.2991975384926676
+      ],
+      "first": {
+        "games": 30,
+        "wins": 6
+      },
+      "second": {
+        "games": 30,
+        "wins": 5
+      },
+      "turns_mean": 7.35,
+      "seconds_mean": 5.729666666666666,
+      "decisions": 2908,
+      "decisions_per_game": 48.46666666666667,
+      "asks": 2261,
+      "replies": 2261,
+      "invalid_replies": 0,
+      "invalid_rate": 0.0,
+      "fallback_rate": 0.0,
+      "rule_share": 0.02235213204951857,
+      "backend_share": 0.7775103163686382,
+      "by_source": {
+        "backend": 2261,
+        "rule": 65,
+        "auto": 582,
+        "fallback": 0,
+        "pilot": 0
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "engine_retries": 0,
+      "lua_errors": 0,
+      "latency_mean_s": 0.0,
+      "latency_p50_s": 0.0,
+      "latency_p95_s": 0.0,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0
+      },
+      "tokens_per_game": {
+        "input": 0.0,
+        "output": 0.0,
+        "cache_read": 0.0,
+        "cache_write": 0.0
+      },
+      "cost_usd": null,
+      "cost_per_game": null,
+      "cost_known_games": 0
+    },
+    {
+      "deck": "blackwing",
+      "backend": "opus",
+      "games": 2,
+      "wins": 2,
+      "losses": 0,
+      "draws": 0,
+      "win_rate": 1.0,
+      "ci95": [
+        0.3423802239546494,
+        1.0
+      ],
+      "first": {
+        "games": 2,
+        "wins": 2
+      },
+      "second": {
+        "games": 0,
+        "wins": 0
+      },
+      "turns_mean": 3.5,
+      "seconds_mean": 157.13,
+      "decisions": 109,
+      "decisions_per_game": 54.5,
+      "asks": 88,
+      "replies": 88,
+      "invalid_replies": 0,
+      "invalid_rate": 0.0,
+      "fallback_rate": 0.0,
+      "rule_share": 0.0,
+      "backend_share": 0.8073394495412844,
+      "by_source": {
+        "backend": 88,
+        "rule": 0,
+        "auto": 21,
+        "fallback": 0,
+        "pilot": 0
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "engine_retries": 0,
+      "lua_errors": 0,
+      "latency_mean_s": 3.472272727272727,
+      "latency_p50_s": 2.73,
+      "latency_p95_s": 7.34,
+      "tokens": {
+        "input": 176,
+        "output": 18923,
+        "cache_read": 2450987,
+        "cache_write": 160518
+      },
+      "tokens_per_game": {
+        "input": 88.0,
+        "output": 9461.5,
+        "cache_read": 1225493.5,
+        "cache_write": 80259.0
+      },
+      "cost_usd": 2.1535,
+      "cost_per_game": 1.07675,
+      "cost_known_games": 2
+    },
+    {
+      "deck": "blackwing",
+      "backend": "random",
+      "games": 60,
+      "wins": 0,
+      "losses": 60,
+      "draws": 0,
+      "win_rate": 0.0,
+      "ci95": [
+        0.0,
+        0.060171853034227174
+      ],
+      "first": {
+        "games": 30,
+        "wins": 0
+      },
+      "second": {
+        "games": 30,
+        "wins": 0
+      },
+      "turns_mean": 7.483333333333333,
+      "seconds_mean": 5.659666666666666,
+      "decisions": 1624,
+      "decisions_per_game": 27.066666666666666,
+      "asks": 1208,
+      "replies": 1208,
+      "invalid_replies": 0,
+      "invalid_rate": 0.0,
+      "fallback_rate": 0.0,
+      "rule_share": 0.03694581280788178,
+      "backend_share": 0.7438423645320197,
+      "by_source": {
+        "backend": 1208,
+        "rule": 60,
+        "auto": 356,
+        "fallback": 0,
+        "pilot": 0
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "engine_retries": 0,
+      "lua_errors": 0,
+      "latency_mean_s": 0.0,
+      "latency_p50_s": 0.0,
+      "latency_p95_s": 0.0,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0
+      },
+      "tokens_per_game": {
+        "input": 0.0,
+        "output": 0.0,
+        "cache_read": 0.0,
+        "cache_write": 0.0
+      },
+      "cost_usd": null,
+      "cost_per_game": null,
+      "cost_known_games": 0
+    },
+    {
+      "deck": "blackwing",
+      "backend": "sonnet",
+      "games": 6,
+      "wins": 3,
+      "losses": 3,
+      "draws": 0,
+      "win_rate": 0.5,
+      "ci95": [
+        0.18761630498040816,
+        0.8123836950195918
+      ],
+      "first": {
+        "games": 4,
+        "wins": 2
+      },
+      "second": {
+        "games": 2,
+        "wins": 1
+      },
+      "turns_mean": 7.5,
+      "seconds_mean": 173.79333333333332,
+      "decisions": 512,
+      "decisions_per_game": 85.33333333333333,
+      "asks": 403,
+      "replies": 403,
+      "invalid_replies": 0,
+      "invalid_rate": 0.0,
+      "fallback_rate": 0.0,
+      "rule_share": 0.041015625,
+      "backend_share": 0.787109375,
+      "by_source": {
+        "backend": 403,
+        "rule": 21,
+        "auto": 88,
+        "fallback": 0,
+        "pilot": 0
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "engine_retries": 0,
+      "lua_errors": 0,
+      "latency_mean_s": 2.4475930521091813,
+      "latency_p50_s": 1.85,
+      "latency_p95_s": 5.76,
+      "tokens": {
+        "input": 806,
+        "output": 78076,
+        "cache_read": 11543707,
+        "cache_write": 714625
+      },
+      "tokens_per_game": {
+        "input": 134.33333333333334,
+        "output": 13012.666666666666,
+        "cache_read": 1923951.1666666667,
+        "cache_write": 119104.16666666667
+      },
+      "cost_usd": 4.7952,
+      "cost_per_game": 0.7992,
+      "cost_known_games": 6
+    },
+    {
+      "deck": "saffira",
+      "backend": "haiku",
+      "games": 6,
+      "wins": 5,
+      "losses": 1,
+      "draws": 0,
+      "win_rate": 0.8333333333333334,
+      "ci95": [
+        0.4364971749742326,
+        0.969946630588185
+      ],
+      "first": {
+        "games": 4,
+        "wins": 3
+      },
+      "second": {
+        "games": 2,
+        "wins": 2
+      },
+      "turns_mean": 5.5,
+      "seconds_mean": 171.26999999999998,
+      "decisions": 485,
+      "decisions_per_game": 80.83333333333333,
+      "asks": 403,
+      "replies": 403,
+      "invalid_replies": 0,
+      "invalid_rate": 0.0,
+      "fallback_rate": 0.0,
+      "rule_share": 0.07422680412371134,
+      "backend_share": 0.8309278350515464,
+      "by_source": {
+        "backend": 403,
+        "rule": 36,
+        "auto": 46,
+        "fallback": 0,
+        "pilot": 0
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "engine_retries": 0,
+      "lua_errors": 0,
+      "latency_mean_s": 2.446228287841191,
+      "latency_p50_s": 1.5,
+      "latency_p95_s": 6.75,
+      "tokens": {
+        "input": 806,
+        "output": 164575,
+        "cache_read": 10985226,
+        "cache_write": 699202
+      },
+      "tokens_per_game": {
+        "input": 134.33333333333334,
+        "output": 27429.166666666668,
+        "cache_read": 1830871.0,
+        "cache_write": 116533.66666666667
+      },
+      "cost_usd": 0.332,
+      "cost_per_game": 0.05533333333333334,
+      "cost_known_games": 6
+    },
+    {
+      "deck": "saffira",
+      "backend": "heuristic",
+      "games": 60,
+      "wins": 15,
+      "losses": 45,
+      "draws": 0,
+      "win_rate": 0.25,
+      "ci95": [
+        0.15776522471268753,
+        0.3723207018044261
+      ],
+      "first": {
+        "games": 30,
+        "wins": 9
+      },
+      "second": {
+        "games": 30,
+        "wins": 6
+      },
+      "turns_mean": 7.866666666666666,
+      "seconds_mean": 5.921166666666666,
+      "decisions": 2552,
+      "decisions_per_game": 42.53333333333333,
+      "asks": 2022,
+      "replies": 2022,
+      "invalid_replies": 0,
+      "invalid_rate": 0.0,
+      "fallback_rate": 0.0,
+      "rule_share": 0.04310344827586207,
+      "backend_share": 0.792319749216301,
+      "by_source": {
+        "backend": 2022,
+        "rule": 110,
+        "auto": 420,
+        "fallback": 0,
+        "pilot": 0
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "engine_retries": 0,
+      "lua_errors": 0,
+      "latency_mean_s": 0.0,
+      "latency_p50_s": 0.0,
+      "latency_p95_s": 0.0,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0
+      },
+      "tokens_per_game": {
+        "input": 0.0,
+        "output": 0.0,
+        "cache_read": 0.0,
+        "cache_write": 0.0
+      },
+      "cost_usd": null,
+      "cost_per_game": null,
+      "cost_known_games": 0
+    },
+    {
+      "deck": "saffira",
+      "backend": "opus",
+      "games": 2,
+      "wins": 2,
+      "losses": 0,
+      "draws": 0,
+      "win_rate": 1.0,
+      "ci95": [
+        0.3423802239546494,
+        1.0
+      ],
+      "first": {
+        "games": 2,
+        "wins": 2
+      },
+      "second": {
+        "games": 0,
+        "wins": 0
+      },
+      "turns_mean": 4.0,
+      "seconds_mean": 185.495,
+      "decisions": 112,
+      "decisions_per_game": 56.0,
+      "asks": 98,
+      "replies": 98,
+      "invalid_replies": 0,
+      "invalid_rate": 0.0,
+      "fallback_rate": 0.0,
+      "rule_share": 0.017857142857142856,
+      "backend_share": 0.875,
+      "by_source": {
+        "backend": 98,
+        "rule": 2,
+        "auto": 12,
+        "fallback": 0,
+        "pilot": 0
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "engine_retries": 0,
+      "lua_errors": 0,
+      "latency_mean_s": 3.6639795918367346,
+      "latency_p50_s": 2.73,
+      "latency_p95_s": 10.08,
+      "tokens": {
+        "input": 196,
+        "output": 23462,
+        "cache_read": 2282958,
+        "cache_write": 191727
+      },
+      "tokens_per_game": {
+        "input": 98.0,
+        "output": 11731.0,
+        "cache_read": 1141479.0,
+        "cache_write": 95863.5
+      },
+      "cost_usd": 2.4604,
+      "cost_per_game": 1.2302,
+      "cost_known_games": 2
+    },
+    {
+      "deck": "saffira",
+      "backend": "random",
+      "games": 60,
+      "wins": 2,
+      "losses": 58,
+      "draws": 0,
+      "win_rate": 0.03333333333333333,
+      "ci95": [
+        0.009189319173450283,
+        0.11363774365849509
+      ],
+      "first": {
+        "games": 30,
+        "wins": 0
+      },
+      "second": {
+        "games": 30,
+        "wins": 2
+      },
+      "turns_mean": 7.233333333333333,
+      "seconds_mean": 5.438666666666666,
+      "decisions": 1562,
+      "decisions_per_game": 26.033333333333335,
+      "asks": 1205,
+      "replies": 1205,
+      "invalid_replies": 0,
+      "invalid_rate": 0.0,
+      "fallback_rate": 0.0,
+      "rule_share": 0.04289372599231754,
+      "backend_share": 0.7714468629961587,
+      "by_source": {
+        "backend": 1205,
+        "rule": 67,
+        "auto": 290,
+        "fallback": 0,
+        "pilot": 0
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "engine_retries": 0,
+      "lua_errors": 0,
+      "latency_mean_s": 0.0,
+      "latency_p50_s": 0.0,
+      "latency_p95_s": 0.0,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0
+      },
+      "tokens_per_game": {
+        "input": 0.0,
+        "output": 0.0,
+        "cache_read": 0.0,
+        "cache_write": 0.0
+      },
+      "cost_usd": null,
+      "cost_per_game": null,
+      "cost_known_games": 0
+    },
+    {
+      "deck": "saffira",
+      "backend": "sonnet",
+      "games": 6,
+      "wins": 4,
+      "losses": 2,
+      "draws": 0,
+      "win_rate": 0.6666666666666666,
+      "ci95": [
+        0.29999331299474324,
+        0.9032285897864654
+      ],
+      "first": {
+        "games": 4,
+        "wins": 3
+      },
+      "second": {
+        "games": 2,
+        "wins": 1
+      },
+      "turns_mean": 7.833333333333333,
+      "seconds_mean": 195.77166666666668,
+      "decisions": 574,
+      "decisions_per_game": 95.66666666666667,
+      "asks": 468,
+      "replies": 468,
+      "invalid_replies": 0,
+      "invalid_rate": 0.0,
+      "fallback_rate": 0.0,
+      "rule_share": 0.09930313588850175,
+      "backend_share": 0.8153310104529616,
+      "by_source": {
+        "backend": 468,
+        "rule": 57,
+        "auto": 49,
+        "fallback": 0,
+        "pilot": 0
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "engine_retries": 0,
+      "lua_errors": 0,
+      "latency_mean_s": 2.3918589743589744,
+      "latency_p50_s": 1.86,
+      "latency_p95_s": 5.12,
+      "tokens": {
+        "input": 936,
+        "output": 77395,
+        "cache_read": 10730338,
+        "cache_write": 743721
+      },
+      "tokens_per_game": {
+        "input": 156.0,
+        "output": 12899.166666666666,
+        "cache_read": 1788389.6666666667,
+        "cache_write": 123953.5
+      },
+      "cost_usd": 4.8238,
+      "cost_per_game": 0.8039666666666667,
+      "cost_known_games": 6
+    }
+  ],
+  "opponents": [
+    {
+      "opponent": "windbot:Blue-Eyes",
+      "difficulty": 2,
+      "rating": 1711.1906444438755,
+      "games": 134,
+      "seat_wins": 10,
+      "seat_win_rate": 0.07462686567164178
+    },
+    {
+      "opponent": "windbot:Time Thief",
+      "difficulty": 2,
+      "rating": 1378.5402612261303,
+      "games": 134,
+      "seat_wins": 36,
+      "seat_win_rate": 0.26865671641791045
+    }
+  ],
+  "skipped": []
+}

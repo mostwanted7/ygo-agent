@@ -1,0 +1,7 @@
+# A quick no-LLM check of the whole pipeline (about a minute): ygo-agent bench smoke
+name = "smoke"
+decks = ["saffira", "blackwing"]
+backends = ["heuristic", "random"]
+opponents = ["windbot:Blue-Eyes", "blackwing:heuristic"]
+games = 4
+parallel = 4

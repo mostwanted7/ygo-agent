@@ -1,0 +1,25 @@
+# The README benchmark: both AI-piloted decks, the Claude models and the no-LLM baselines, against MR3-legal WindBot
+# deck AIs (docs/bench.md has the strength scan behind the choice).
+#   ygo-agent bench readme            # a new run in bench/results/<time>_readme/
+#   ygo-agent bench readme --resume   # continue the newest one: finished games are skipped, so raising the
+#                                     # counts below and resuming extends the run on the same seeds
+name = "readme"
+decks = ["saffira", "blackwing"]
+backends = ["opus", "sonnet", "haiku", "heuristic", "random"]
+opponents = ["windbot:Blue-Eyes", "windbot:Time Thief"]
+games = 3            # per (deck, backend, opponent); game i uses seed + i, the AI seat goes first in odd games
+seed = 1000
+rules = "MR3"
+parallel = 3
+budget_usd = 0       # 0 = no limit (the claude CLI's cost figure; a subscription isn't billed per call)
+timeout = 5400       # seconds before a WindBot game is given up
+note = """A small-sample pilot: 3 games per (deck, model, opponent) for Haiku and Sonnet and 1 for Opus, so the 95%
+intervals are wide and the ordering between the Claude models isn't settled. Opus played only game 1 of each pairing,
+where the AI seat goes first; the like-for-like table compares every backend on those same games. The baselines play
+30 games per pairing. The run is resumable: raise the counts in bench/configs/readme.toml and
+`ygo-agent bench readme --resume` plays only the new games, on the same seeds."""
+
+[games_for]
+opus = 1             # the slowest and most expensive: one game per (deck, opponent) for now
+heuristic = 30       # the baselines take seconds per game
+random = 30

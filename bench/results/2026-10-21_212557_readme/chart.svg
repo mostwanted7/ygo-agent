@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="250" viewBox="0 0 820 250" role="img" aria-label="Benchmark readme">
+<style>
+  .surface { fill: #fcfcfb; } .ink { fill: #0b0b0b; } .ink2 { fill: #52514e; } .muted { fill: #898781; }
+  .grid { stroke: #e1e0d9; } .axis { stroke: #c3c2b7; }
+  .llm { fill: #2a78d6; stroke: #fcfcfb; } .llm-ci { stroke: #2a78d6; }
+  .base { fill: #898781; stroke: #fcfcfb; } .base-ci { stroke: #898781; }
+  @media (prefers-color-scheme: dark) {
+    .surface { fill: #1a1a19; } .ink { fill: #f0efec; } .ink2 { fill: #c3c2b7; }
+    .grid { stroke: #2c2c2a; } .axis { stroke: #383835; }
+    .llm { fill: #3987e5; stroke: #1a1a19; } .llm-ci { stroke: #3987e5; } .base { stroke: #1a1a19; }
+  }
+  text { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 12px; }
+  .title { font-size: 13px; font-weight: 600; } .tick { font-size: 11px; font-variant-numeric: tabular-nums; }
+</style>
+<rect class="surface" width="820" height="250" rx="8"/>
+<text class="title ink" x="16" y="24">Win rate, with 95% CI</text>
+<line class="grid" x1="118.0" y1="42" x2="118.0" y2="194" stroke-width="1"/>
+<text class="tick muted" x="118.0" y="210" text-anchor="middle">0%</text>
+<line class="grid" x1="177.5" y1="42" x2="177.5" y2="194" stroke-width="1"/>
+<text class="tick muted" x="177.5" y="210" text-anchor="middle">25%</text>
+<line class="grid" x1="237.0" y1="42" x2="237.0" y2="194" stroke-width="1"/>
+<text class="tick muted" x="237.0" y="210" text-anchor="middle">50%</text>
+<line class="grid" x1="296.5" y1="42" x2="296.5" y2="194" stroke-width="1"/>
+<text class="tick muted" x="296.5" y="210" text-anchor="middle">75%</text>
+<line class="grid" x1="356.0" y1="42" x2="356.0" y2="194" stroke-width="1"/>
+<text class="tick muted" x="356.0" y="210" text-anchor="middle">100%</text>
+<text class="ink" x="106" y="62" text-anchor="end">opus</text>
+<g><title>opus: 100% of 4 games (95% CI 51%–100%)</title><line class="llm-ci" x1="239.4" y1="58" x2="356.0" y2="58" stroke-width="2" stroke-linecap="round"/><circle class="llm" cx="356.0" cy="58" r="5" stroke-width="2"/></g>
+<text class="tick ink2" x="364.0" y="62">100% · 4 games</text>
+<text class="ink" x="106" y="92" text-anchor="end">sonnet</text>
+<g><title>sonnet: 58% of 12 games (95% CI 32%–81%)</title><line class="llm-ci" x1="194.0" y1="88" x2="310.0" y2="88" stroke-width="2" stroke-linecap="round"/><circle class="llm" cx="256.8" cy="88" r="5" stroke-width="2"/></g>
+<text class="tick ink2" x="318.0" y="92">58% · 12 games</text>
+<text class="ink" x="106" y="122" text-anchor="end">haiku</text>
+<g><title>haiku: 58% of 12 games (95% CI 32%–81%)</title><line class="llm-ci" x1="194.0" y1="118" x2="310.0" y2="118" stroke-width="2" stroke-linecap="round"/><circle class="llm" cx="256.8" cy="118" r="5" stroke-width="2"/></g>
+<text class="tick ink2" x="318.0" y="122">58% · 12 games</text>
+<text class="ink" x="106" y="152" text-anchor="end">heuristic</text>
+<g><title>heuristic: 22% of 120 games (95% CI 15%–30%)</title><line class="base-ci" x1="154.3" y1="148" x2="189.1" y2="148" stroke-width="2" stroke-linecap="round"/><circle class="base" cx="169.6" cy="148" r="5" stroke-width="2"/></g>
+<text class="tick ink2" x="197.1" y="152">22% · 120 games</text>
+<text class="ink" x="106" y="182" text-anchor="end">random</text>
+<g><title>random: 2% of 120 games (95% CI 0%–6%)</title><line class="base-ci" x1="119.1" y1="178" x2="132.0" y2="178" stroke-width="2" stroke-linecap="round"/><circle class="base" cx="122.0" cy="178" r="5" stroke-width="2"/></g>
+<text class="tick ink2" x="140.0" y="182">2% · 120 games</text>
+<circle class="llm" cx="22" cy="232" r="5" stroke-width="2"/><text class="ink2" x="32" y="236">LLM backend</text><circle class="base" cx="132" cy="232" r="5" stroke-width="2"/><text class="ink2" x="142" y="236">no-LLM baseline</text>
+<text class="title ink" x="416" y="24">Cost per game (at API prices) vs win rate</text>
+<line class="grid" x1="466" y1="192.0" x2="790" y2="192.0" stroke-width="1"/>
+<text class="tick muted" x="458" y="196.0" text-anchor="end">0%</text>
+<line class="grid" x1="466" y1="154.5" x2="790" y2="154.5" stroke-width="1"/>
+<text class="tick muted" x="458" y="158.5" text-anchor="end">25%</text>
+<line class="grid" x1="466" y1="117.0" x2="790" y2="117.0" stroke-width="1"/>
+<text class="tick muted" x="458" y="121.0" text-anchor="end">50%</text>
+<line class="grid" x1="466" y1="79.5" x2="790" y2="79.5" stroke-width="1"/>
+<text class="tick muted" x="458" y="83.5" text-anchor="end">75%</text>
+<line class="grid" x1="466" y1="42.0" x2="790" y2="42.0" stroke-width="1"/>
+<text class="tick muted" x="458" y="46.0" text-anchor="end">100%</text>
+<text class="tick muted" x="474" y="208" text-anchor="middle">free</text>
+<line class="axis" x1="522.0" y1="192" x2="522.0" y2="196" stroke-width="1"/>
+<text class="tick muted" x="522.0" y="208" text-anchor="middle">$0.01</text>
+<line class="axis" x1="611.3" y1="192" x2="611.3" y2="196" stroke-width="1"/>
+<text class="tick muted" x="611.3" y="208" text-anchor="middle">$0.1</text>
+<line class="axis" x1="700.7" y1="192" x2="700.7" y2="196" stroke-width="1"/>
+<text class="tick muted" x="700.7" y="208" text-anchor="middle">$1</text>
+<line class="axis" x1="790.0" y1="192" x2="790.0" y2="196" stroke-width="1"/>
+<text class="tick muted" x="790.0" y="208" text-anchor="middle">$10</text>
+<text class="tick muted" x="656.0" y="226" text-anchor="middle">cost per game (log scale)</text>
+<g><title>opus: $1.15 per game, 100% wins</title><circle class="llm" cx="706.2" cy="42.0" r="5" stroke-width="2"/></g>
+<text class="ink2" x="715.2" y="46.0" text-anchor="start">opus</text>
+<g><title>sonnet: $0.80 per game, 58% wins</title><circle class="llm" cx="692.1" cy="104.5" r="5" stroke-width="2"/></g>
+<text class="ink2" x="701.1" y="108.5" text-anchor="start">sonnet</text>
+<g><title>haiku: $0.058 per game, 58% wins</title><circle class="llm" cx="590.1" cy="104.5" r="5" stroke-width="2"/></g>
+<text class="ink2" x="599.1" y="108.5" text-anchor="start">haiku</text>
+<g><title>heuristic: free per game, 22% wins</title><circle class="base" cx="474.0" cy="159.5" r="5" stroke-width="2"/></g>
+<text class="ink2" x="483.0" y="163.5" text-anchor="start">heuristic</text>
+<g><title>random: free per game, 2% wins</title><circle class="base" cx="474.0" cy="189.5" r="5" stroke-width="2"/></g>
+<text class="ink2" x="483.0" y="193.5" text-anchor="start">random</text>
+</svg>
