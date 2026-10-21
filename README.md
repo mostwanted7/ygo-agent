@@ -31,6 +31,14 @@ While you play:
 - Type `!` followed by a note in the duel chat (e.g. `!don't Veiler my Stratos, save it`) to bookmark feedback at
   that exact moment. The bot confirms it with "Noted feedback #1." and the note is saved with the game log.
 
+Add `--web` (to `play`, `teach` or `copilot`) to follow the duel in your browser as well, at http://127.0.0.1:7930/:
+the board with card pictures, every decision with the options, the choice, the reasoning and the turn's plan, the
+event log, and a feedback box that works like a `!note`. `ygo-agent web` browses and replays recorded games
+(`←`/`→` steps through the decisions), and `ygo-agent web --demo games/<dir>` replays one live. See
+[docs/web.md](docs/web.md).
+
+![The web panel](docs/img/web-panel.png)
+
 After the game:
 - The log is in `games/latest/` (each game gets `games/<time>_<deck>-vs-<opponent>/`): `game.md` to read,
   `feedback.md` with your notes, `game.jsonl` and `prompts.jsonl` with the raw data, and `windbot.log`.
@@ -39,8 +47,8 @@ After the game:
 
 Options: `--backend sonnet` (faster, a bit weaker; also `haiku`, `api-opus`, `local`, `heuristic`, `random` or
 your own profile), `--model`/`--effort` to override the profile's, `--deck blackwing` (any folder under `decks/`),
-`--host`/`--port`/`--password` for the room, `--chat off`, `--brain-only` (run only the agent and print the bot
-command). `ygo-agent play --help` lists them all. At the end of a game the terminal prints the decision stats
+`--host`/`--port`/`--password` for the room, `--chat off`, `--web` (the browser panel), `--brain-only` (run only the
+agent and print the bot command). `ygo-agent play --help` lists them all. At the end of a game the terminal prints the decision stats
 (who decided, latency, invalid replies, tokens, cost), which `meta.json` keeps too.
 
 ## Learning a deck (e.g. Blackwings)
@@ -103,8 +111,14 @@ EDOPro room ⇄ WindBot fork (windbot-src, C#) ⇄ agent (Python, port 7922) ⇄
   - `rules.py`: hard rules that override the AI, for mistakes a lesson didn't fix.
   - `tests/`: past mistakes saved as test cases.
   - `deck.ydk` (the deck list) and `deck.json` (its name, and whether to go first).
+- `ygo_agent/web/`: the browser panel. Every game log publishes to an in-process bus that the panel's server streams
+  to the page (docs/web.md).
 - `ygo-agent replay games/latest 14` re-asks decision #14 with the current playbook and rules, and
   `ygo-agent test` re-runs every saved mistake.
+- *In progress (the `ygo-agent` commands come in Stage 4):* the arena (`python -m ygo_agent.arena`) can also seat the
+  agent itself, with no WindBot: `host --seat0 human --seat1 agent:saffira:opus` (you join from EDOPro), or
+  `bots --seat0 agent:saffira:heuristic --seat1 windbot:Blue-Eyes --no-lan` headless (`--pace 2` slows AI turns
+  down for a spectator). Game logs are the usual `games/<time>_<deck>-vs-<opponent>/`.
 
 ## Tests
 
@@ -113,6 +127,8 @@ EDOPro room ⇄ WindBot fork (windbot-src, C#) ⇄ agent (Python, port 7922) ⇄
   call (and an Anthropic API call when `ANTHROPIC_API_KEY` is set).
 - `tests/run_bridge_test.sh`: checks the C# ⇄ agent ⇄ model plumbing without EDOPro (real model calls, about a minute;
   `--model sonnet` makes it quicker).
+- `tests/native/`: the arena's native agent seats (fairness, protocol conformance, parity with the WindBot bridge);
+  `python tests/native/parity.py --games 5` prints a parity report.
 
 ## License
 

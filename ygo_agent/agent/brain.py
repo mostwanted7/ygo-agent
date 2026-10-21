@@ -53,13 +53,17 @@ class DuelBrain:
     `fallback` is who answers when the backend can't: "bot" (choice null, WindBot's own AI) or "heuristic"."""
 
     def __init__(self, cfg, db, profile, log=None, prewarm=True, runtime=None, room=None, backend=None,
-                 fallback=None):
+                 fallback=None, game_id=None, seat=0):
         self.cfg = cfg
         self.db = db
         self.profile = profile
         self.rules = Rules(profile.dir)
         self.describer = Describer(db)
         self._log = log
+        self.game_id = game_id  # the web panel's ids for this game and seat (several seats can share a game)
+        self.seat = seat
+        if getattr(log, "web", None):
+            log.web.on_feedback(self.panel_note)
         self.prewarm = prewarm
         self.runtime = runtime
         self.mode = cfg.get("mode", "play")
@@ -109,7 +113,8 @@ class DuelBrain:
         # Created on first use, so a bot that never got into a duel leaves no empty log behind.
         if self._log is None:
             self._log = GameLog(paths.resolve(self.cfg.get("games_dir", "games")), self.profile.name,
-                                deck_key=self.profile.key)
+                                deck_key=self.profile.key, game_id=self.game_id, seat=self.seat)
+            self._log.web.on_feedback(self.panel_note)
             self._log.write_meta(deck=self.profile.key, deck_name=self.profile.name, mode=self.mode,
                                  backend=self.backend_meta(), rules=self.rules_key,
                                  started=time.strftime("%Y-%m-%d %H:%M:%S"))
@@ -219,6 +224,14 @@ class DuelBrain:
             self.history.append(line)
             self.pending.append(line)
             self.log.event(line)
+
+    def panel_note(self, text, decision=None, turn=None):
+        """A note typed in the web panel, saved like a `!note` from the duel chat. `decision`/`turn`: the decision
+        the panel was showing, when the viewer had scrolled back to an earlier one."""
+        self.feedback += 1
+        context = f"turn {turn or self.turn}, right after decision #{decision or self.last_decision}"
+        self.log.feedback(text, context, who="Web panel")
+        return {"n": self.feedback, "context": context}
 
     # ---- sessions ----
 

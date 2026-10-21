@@ -31,6 +31,15 @@ brain_port = 7922     # local TCP port the bot's bridge connects to
 # ~/.cache/ygo-agent/state.json), else 720937. If EDOPro rejects it, the bot retries with the host's version.
 protocol_version = 0
 
+[web]
+# The local web panel: the board with card pictures, every decision with its reasoning and plan, coach advice and a
+# feedback box (docs/web.md). play/teach/copilot start it with --web; `ygo-agent web` browses recorded games.
+enabled = false      # true = always start it with play/teach/copilot (same as --web)
+host = "127.0.0.1"   # keep it local: the panel serves your game logs and writes feedback notes
+port = 7930          # --web-port
+open_browser = false # open the panel in your browser when it starts
+fetch_pics = true    # download card pictures EDOPro hasn't (cached in ~/.cache/ygo-agent/pics); else placeholders
+
 [agent]
 backend = "opus"                 # which [backends.NAME] profile makes the decisions (--backend NAME)
 decision_timeout_seconds = 120   # per decision, retries included; after that the fallback answers

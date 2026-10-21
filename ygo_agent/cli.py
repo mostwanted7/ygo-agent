@@ -6,6 +6,7 @@
     ygo-agent copilot              # you choose every move in this terminal, the agent recommends
     ygo-agent replay games/latest 14 [--save NAME --expect '[[2]]' --note "..."]
     ygo-agent test [NAME ...]      # re-run saved regression cases
+    ygo-agent web [--demo games/<dir> --speed 2]   # the web panel: recorded games, or one replayed live
 """
 
 import argparse
@@ -37,6 +38,9 @@ def add_bot(p):
     p.add_argument("--name", help="the bot's player name in EDOPro")
     p.add_argument("--brain-port", type=int, help="local port for the bot ⇄ agent bridge")
     p.add_argument("--chat", choices=("banter", "off"), help="in-duel chat: a few jokes, or none")
+    p.add_argument("--web", action="store_true", default=None,
+                   help="also serve the web panel (board, reasoning, feedback box) on http://127.0.0.1:7930/")
+    p.add_argument("--web-port", type=int, help="port for the web panel (default from the config)")
 
 
 def parser():
@@ -75,6 +79,18 @@ def parser():
     p.add_argument("names", nargs="*", metavar="NAME", help="case names (default: every case of the deck)")
     p.add_argument("--repeat", type=int, default=3, help="runs per case (the model isn't deterministic)")
     add_common(p)
+
+    p = sub.add_parser("web", help="the web panel on its own: browse and replay recorded games, or a live demo")
+    p.add_argument("--demo", metavar="GAME_DIR", help="replay a recorded game (games/<dir>) live, as if it were "
+                                                       "being played now")
+    p.add_argument("--speed", type=float, default=2.0, help="demo speed (default 2: about twice real time)")
+    p.add_argument("--loop", action="store_true", help="restart the demo when it ends")
+    p.add_argument("--port", dest="web_port", type=int, help="port (default from the config: 7930)")
+    p.add_argument("--host", dest="web_host", help="bind address (default 127.0.0.1)")
+    p.add_argument("--open", action="store_true", help="open the panel in your browser")
+    p.add_argument("--edopro-dir", help="EDOPro install folder")
+    p.add_argument("--games-dir", help="where game logs are")
+    p.add_argument("--config", metavar="FILE", help="use FILE instead of config.local.toml")
     return ap
 
 
@@ -90,16 +106,20 @@ def overrides(args):
             node = node.setdefault(key, {})
         node[path[-1]] = value
 
-    put(("deck",), args.deck)
-    put(("edopro_dir",), args.edopro_dir)
-    put(("games_dir",), args.games_dir)
-    put(("duel", "rules"), args.rules)
-    put(("agent", "backend"), args.backend)
+    put(("deck",), getattr(args, "deck", None))
+    put(("edopro_dir",), getattr(args, "edopro_dir", None))
+    put(("games_dir",), getattr(args, "games_dir", None))
+    put(("duel", "rules"), getattr(args, "rules", None))
+    put(("agent", "backend"), getattr(args, "backend", None))
     for flag in ("host", "port", "password"):
         put(("room", flag), getattr(args, flag, None))
     put(("bot", "name"), getattr(args, "name", None))
     put(("bot", "brain_port"), getattr(args, "brain_port", None))
     put(("chat",), getattr(args, "chat", None))
+    put(("web", "enabled"), getattr(args, "web", None))
+    put(("web", "port"), getattr(args, "web_port", None))
+    put(("web", "host"), getattr(args, "web_host", None))
+    put(("web", "open_browser"), getattr(args, "open", None) or None)
     return o
 
 
@@ -166,12 +186,53 @@ def cmd_play(args, cfg):
                                    f"{len(profile.extra)} extra), backend: {backends.label(profile_cfg)}"
                                    f"{' — ' + detail if detail else ''}{mode}"))
     print(paint(DIM, f"{len(db.cards)} cards loaded from {len(db.db_paths)} databases."))
+    if cfg["web"].get("enabled"):
+        start_panel(cfg, db)
     try:
         join.play(Runtime(cfg, db, profile), brain_only=args.brain_only)
     except OSError as e:
         sys.exit(str(e))
     except (KeyboardInterrupt, EOFError):
         print()
+
+
+def start_panel(cfg, db):
+    """Serve the web panel in the background (the agent's seats publish to it) and print where it is."""
+    from .agent.gamelog import paint, BOLD, CYAN
+    from .web import server
+    try:
+        srv = server.start(cfg, db)
+    except OSError as e:
+        sys.exit(str(e))
+    print(paint(BOLD + ";" + CYAN, f"Web panel: {srv.url}"))
+    if cfg["web"].get("open_browser"):
+        import webbrowser
+        webbrowser.open(srv.url)
+    return srv
+
+
+def cmd_web(args, cfg):
+    import os
+    import threading
+    from .agent.gamelog import paint, DIM
+    from .web import demo
+    db = load_db(cfg)
+    if args.demo and not os.path.isfile(os.path.join(args.demo, "game.jsonl")):
+        sys.exit(f"{args.demo} is not a game log folder (no game.jsonl)")
+    srv = start_panel(cfg, db)
+    if args.demo:
+        demo.Demo(args.demo, db, speed=args.speed, loop=args.loop).start()
+        print(paint(DIM, f"Demo: replaying {args.demo} at {args.speed:g}x speed as a live game. Ctrl+C stops."))
+    else:
+        games = len(srv.panel.library.names())
+        print(paint(DIM, f"{games} recorded game(s) in {srv.panel.library.games_dir}. Live games show up in the "
+                         "panel of the process that plays them (play/teach/copilot --web). Ctrl+C stops."))
+    try:
+        threading.Event().wait()
+    except KeyboardInterrupt:
+        print()
+    finally:
+        srv.stop()
 
 
 def check_backend(cfg):
@@ -231,6 +292,8 @@ def main(argv=None):
         sys.exit(cmd_replay(args, cfg))
     if args.cmd == "test":
         sys.exit(run_tests(args, cfg, args.names))
+    if args.cmd == "web":
+        return cmd_web(args, cfg)
 
 
 if __name__ == "__main__":

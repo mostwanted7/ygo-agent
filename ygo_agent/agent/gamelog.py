@@ -4,7 +4,10 @@ import json
 import os
 import re
 import sys
+import threading
 import time
+
+from ..web.bus import Channel
 
 COLOR = sys.stdout.isatty() and os.environ.get("NO_COLOR") is None
 
@@ -35,12 +38,20 @@ def unique_dir(parent, name):
     raise OSError(f"too many game folders named {name} in {parent}")
 
 
+RESULTS = {0: "win", 1: "loss", 2: "draw"}
+USAGE = ("seconds", "input_tokens", "output_tokens", "cache_read_tokens", "cache_write_tokens", "cost_usd")
+
+
 class GameLog:
     """One game's folder: game.md (readable), game.jsonl (everything the bot sent and the replies), prompts.jsonl
     (every prompt and model reply), feedback.md (!notes) and meta.json. A fresh timestamped folder is named
-    <time>_<deck>, and gets -vs-<opponent> once the duel starts; games/latest points at the newest one."""
+    <time>_<deck>, and gets -vs-<opponent> once the duel starts; games/latest points at the newest one.
 
-    def __init__(self, games_dir, deck_name, name=None, latest=True, quiet=False, deck_key=None):
+    Everything it logs also goes to the web panel's bus (a no-op unless a panel is running; docs/web.md) as seat
+    `seat` of game `game_id` (default: this folder's first name). `publish` defaults to `not quiet`."""
+
+    def __init__(self, games_dir, deck_name, name=None, latest=True, quiet=False, deck_key=None, game_id=None,
+                 seat=0, publish=None):
         self.quiet = quiet
         self.games_dir = games_dir
         self.latest = latest
@@ -60,6 +71,12 @@ class GameLog:
         self.md.write(f"# {deck_name} — game started {time.strftime('%Y-%m-%d %H:%M')}\n\n")
         self.meta = {}
         self._flush()
+        self._lock = threading.RLock()  # the panel's feedback box writes from another thread
+        self._outcome = None            # the decision logged last, sent to the panel along with its reply
+        self._advice = {}               # decision id -> what the agent suggested before the human chose
+        self._usage = {}                # decision id -> the backend's time and tokens for it
+        self.web = Channel(game_id or self.name, seat, enabled=not quiet if publish is None else publish)
+        self.web.send("game_start", deck=deck_key, deck_name=deck_name, dir=self.dir, name=self.name)
         if not quiet:
             print(paint(BOLD, f"\n▶ New game — logging to {self.dir}"))
 
@@ -89,6 +106,7 @@ class GameLog:
                     return
                 self.name, self.dir = target, os.path.join(self.games_dir, target)
                 self._link_latest()
+                self.web.send("meta", dir=self.dir, name=self.name)
                 return
 
     def write_meta(self, **fields):
@@ -96,6 +114,7 @@ class GameLog:
         with open(os.path.join(self.dir, "meta.json"), "w", encoding="utf-8") as f:
             json.dump(self.meta, f, indent=2)
             f.write("\n")
+        self.web.send("meta", **fields)
 
     def link_windbot_log(self, path):
         """Point <game>/windbot.log at the bot output file of the run this game belongs to."""
@@ -112,12 +131,53 @@ class GameLog:
     def record(self, kind, payload):
         self.jsonl.write(json.dumps({"ts": round(time.time(), 3), "kind": kind, "msg": payload}) + "\n")
         self._flush()
+        if not self.web.live:
+            return
+        if kind == "event":
+            self.web.send("event", ev=payload)
+            if payload.get("e") == "win":
+                self.web.send("game_end", result=RESULTS.get(payload.get("result"), "draw"),
+                              reason=payload.get("reason"))
+        elif kind == "decide" and payload.get("kind") != "game_over":
+            self.web.send("decision", decision=payload)
+        elif kind == "reply":
+            self._publish_reply(payload)
+
+    def _publish_reply(self, record):
+        """The panel's view of a reply: what was decided and why (from decision()), the backend's usage (from
+        prompt()) and what was actually sent. A human's choice after a suggestion is also a human_choice."""
+        did = record.get("id")
+        outcome = self._outcome if self._outcome and self._outcome["id"] == did else {"id": did}
+        self._outcome = None
+        msg = {"choice": record.get("choice"), **outcome, "sent": record.get("choice"),
+               "source": record.get("source") or outcome.get("source")}
+        for key in ("say", "suggested"):
+            if record.get(key) is not None:
+                msg[key] = record[key]
+        if did in self._usage:
+            msg["usage"] = self._usage.pop(did)
+        self.web.send("reply", **msg)
+        if did in self._advice:
+            advised = self._advice.pop(did)
+            self.web.send("human_choice", id=did, choice=msg["choice"], advised=advised,
+                          matched=msg["choice"] == advised)
 
     def prompt(self, decision_id, text, reply, info):
         self.prompts.write(json.dumps({"id": decision_id, "prompt": text, "reply": reply, "info": info}) + "\n")
         self._flush()
+        if self.web.live:
+            usage = self._usage.setdefault(decision_id, {})
+            for key in USAGE:
+                if isinstance(info.get(key), (int, float)):
+                    usage[key] = round(usage.get(key, 0) + info[key], 4)
+            if info.get("error"):
+                usage["error"] = info["error"]
 
     def event(self, line):
+        with self._lock:
+            self._event(line)
+
+    def _event(self, line):
         if self.quiet:
             self.md.write(f"- {line}\n")
             return
@@ -151,7 +211,16 @@ class GameLog:
         if echo:
             self._echo_decision(decision_id, question, options, chosen, why, plan, source, tag, timing, note, many)
         if write:
-            self._write_decision(decision_id, question, options, chosen, why, plan, tag, timing, note)
+            with self._lock:
+                self._write_decision(decision_id, question, options, chosen, why, plan, tag, timing, note)
+        if self.web.live:
+            outcome = {"id": decision_id, "choice": list(chosen or []), "why": why, "plan": plan, "source": source,
+                       "label": label, "seconds": seconds, "note": note}
+            if write:
+                self._outcome = outcome
+            else:  # shown before a human makes the call (copilot): that's advice
+                self._advice[decision_id] = outcome["choice"]
+                self.web.send("advice", **outcome, late=False)
 
     def _echo_decision(self, decision_id, question, options, chosen, why, plan, source, tag, timing, note, many):
         print(paint(BOLD + ";" + CYAN, f"\n  ? #{decision_id} {question}"))
@@ -201,16 +270,20 @@ class GameLog:
 
     def note(self, text):
         print(paint(YELLOW, f"    ✎ {text}"))
-        self.md.write(f"> ✎ {text}\n\n")
-        self._flush()
+        with self._lock:
+            self.md.write(f"> ✎ {text}\n\n")
+            self._flush()
 
     def feedback(self, text, context, who="Opponent"):
         print(paint(BOLD + ";" + YELLOW, f"\n  ✍ feedback noted: {text}"))
-        path = os.path.join(self.dir, "feedback.md")
-        with open(path, "a", encoding="utf-8") as f:
-            f.write(f"- ({context}) {text}\n")
-        self.md.write(f"\n> ✍ **{who} feedback** ({context}): {text}\n\n")
-        self._flush()
+        with self._lock:
+            path = os.path.join(self.dir, "feedback.md")
+            with open(path, "a", encoding="utf-8") as f:
+                f.write(f"- ({context}) {text}\n")
+            if not self.md.closed:  # a note from the panel can come after the game's log was closed
+                self.md.write(f"\n> ✍ **{who} feedback** ({context}): {text}\n\n")
+                self._flush()
+        self.web.send("feedback_ack", text=text, context=context, who=who)
 
     def close(self):
         for f in (self.md, self.jsonl, self.prompts):

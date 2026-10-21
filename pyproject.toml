@@ -20,6 +20,9 @@ ygo-agent = "ygo_agent.cli:main"
 [tool.setuptools.packages.find]
 include = ["ygo_agent*"]
 
+[tool.setuptools.package-data]
+"ygo_agent.web" = ["static/*"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [

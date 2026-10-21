@@ -52,7 +52,7 @@ For `decks/blackwing` the user is learning the deck and can't spot mistakes, so 
 
 ## Code map
 
-- `ygo_agent/cli.py`: the `ygo-agent` command (`play --join`, `teach`, `copilot`, `replay`, `test`).
+- `ygo_agent/cli.py`: the `ygo-agent` command (`play --join`, `teach`, `copilot`, `replay`, `test`, `web`).
   `ygo_agent/join.py`: launches the bot into the user's room. `ygo_agent/config.py`: `config/default.toml`, then
   `config.local.toml`, then CLI flags.
 - `ygo_agent/agent/brain.py`: one game (events → history, decisions → rules → model → validation → reply).
@@ -64,6 +64,9 @@ For `decks/blackwing` the user is learning the deck and can't spot mistakes, so 
   llama.cpp, LM Studio, OpenRouter), `heuristic.py`, `random_.py`, `scripted.py` (tests); `parse.py` reads sloppy
   model output. `ygo_agent/agent/stats.py`: the per-game stats in `meta.json`.
 - `docs/decision-protocol.md`: the bot ⇄ agent message schema. Keep it in sync with any change to either side.
+- `ygo_agent/web/`: the browser panel (`--web`, `ygo-agent web [--demo games/<dir>]`). `GameLog` publishes everything
+  it logs to `web/bus.py` (a no-op unless a panel runs); `server.py` serves it over SSE; `recorded.py` turns a game
+  folder into the same messages. Notes typed in the panel land in `feedback.md` like `!notes`. Schema: `docs/web.md`.
 - `windbot-src/`: WindBot fork, its own git repo, branch `brain-bridge` (`ExecutorBase/Game/BrainBridge.cs`, the
   `Brain` hooks in `ExecutorBase/Game/GameAI.cs` and `Game/GameBehavior.cs`, `Game/AI/Decks/AgentExecutor.cs`).
   Run `./build.sh` after editing C#, then `tests/run_bridge_test.sh` (real Claude calls, ~1 minute).
