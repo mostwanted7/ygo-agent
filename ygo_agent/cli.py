@@ -18,9 +18,10 @@ from .config import ConfigError, load_config, backend
 
 def add_common(p):
     p.add_argument("--deck", help="deck profile: a folder under decks/ (default from the config)")
-    p.add_argument("--backend", help="backend profile: a [backends.NAME] table in the config")
-    p.add_argument("--model", help="override the backend's model (e.g. opus, sonnet)")
-    p.add_argument("--effort", help="override the backend's effort level (low, medium, high)")
+    p.add_argument("--backend", help="backend profile: a [backends.NAME] table in the config (e.g. opus, sonnet, "
+                                     "api-opus, local, heuristic, random)")
+    p.add_argument("--model", help="override the backend's model (e.g. opus, sonnet, qwen3:14b)")
+    p.add_argument("--effort", help="override the backend's effort level (low, medium, high, xhigh, max)")
     p.add_argument("--edopro-dir", help="EDOPro install folder")
     p.add_argument("--games-dir", help="where game logs go")
     p.add_argument("--rules", help="rules stated when the room doesn't report them (e.g. MR3, MR5)")
@@ -154,11 +155,7 @@ def cmd_play(args, cfg):
     cfg["mode"] = mode_of(args)
     if cfg["mode"] == "copilot":
         cfg["chat"] = "off"
-    profile_cfg = backend(cfg)
-    try:
-        backends.check(profile_cfg)
-    except backends.BackendError as e:
-        sys.exit(str(e))
+    profile_cfg = check_backend(cfg)
     if not args.brain_only and not os.path.exists(paths.WINDBOT_EXE):
         sys.exit(f"{paths.WINDBOT_EXE} is missing — run ./build.sh first.")
     os.makedirs(paths.resolve(cfg["games_dir"]), exist_ok=True)
@@ -166,8 +163,8 @@ def cmd_play(args, cfg):
     detail = backends.describe(profile_cfg)
     mode = {"copilot": " — COPILOT: you choose, the agent recommends", "teach": " — teaching mode"}.get(cfg["mode"], "")
     print(paint(BOLD + ";" + CYAN, f"ygo-agent — deck: {profile.name} ({len(profile.main)} main / "
-                                   f"{len(profile.extra)} extra), backend: {profile_cfg['name']} "
-                                   f"({profile_cfg['type']}{', ' + detail if detail else ''}){mode}"))
+                                   f"{len(profile.extra)} extra), backend: {backends.label(profile_cfg)}"
+                                   f"{' — ' + detail if detail else ''}{mode}"))
     print(paint(DIM, f"{len(db.cards)} cards loaded from {len(db.db_paths)} databases."))
     try:
         join.play(Runtime(cfg, db, profile), brain_only=args.brain_only)
@@ -177,9 +174,20 @@ def cmd_play(args, cfg):
         print()
 
 
+def check_backend(cfg):
+    """The active backend profile, after checking it can run here (exits with the reason if not)."""
+    profile = backend(cfg)
+    try:
+        backends.check(profile)
+    except backends.BackendError as e:
+        sys.exit(str(e))
+    return profile
+
+
 def cmd_replay(args, cfg):
     from .agent import replay
     cfg["chat"] = "off"
+    check_backend(cfg)
     if args.tests is not None:
         return run_tests(args, cfg, args.tests)
     if not args.game_dir or args.decision is None:
@@ -197,6 +205,7 @@ def run_tests(args, cfg, names):
     from .agent import replay
     from .agent.profile import deck_keys
     cfg["chat"] = "off"
+    check_backend(cfg)
     decks = [args.deck] if args.deck else (deck_keys() if names else [cfg["deck"]])
     cases = replay.case_paths(decks, names)
     db = load_db(cfg)

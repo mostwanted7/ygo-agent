@@ -13,6 +13,8 @@ from .paths import CONFIG_DIR, ROOT
 DEFAULT_PATH = os.path.join(CONFIG_DIR, "default.toml")
 LOCAL_PATH = os.path.join(ROOT, "config.local.toml")
 CHAT_MODES = ("banter", "off")
+FALLBACKS = ("bot", "heuristic")
+CARD_TEXTS = ("full", "compact", "none")
 
 
 class ConfigError(Exception):
@@ -51,15 +53,25 @@ def load_config(local=LOCAL_PATH, overrides=None):
 def check(cfg):
     if cfg.get("chat") not in CHAT_MODES:
         raise ConfigError(f'chat must be one of {", ".join(CHAT_MODES)} (got {cfg.get("chat")!r})')
-    backend(cfg)
+    agent = cfg["agent"]
+    if agent.get("fallback", "bot") not in FALLBACKS:
+        raise ConfigError(f'agent.fallback must be one of {", ".join(FALLBACKS)} (got {agent.get("fallback")!r})')
+    profile = backend(cfg)
+    texts = profile.get("card_texts", agent.get("card_texts", "full"))
+    if texts not in CARD_TEXTS:
+        raise ConfigError(f'card_texts must be one of {", ".join(CARD_TEXTS)} (got {texts!r})')
 
 
-def backend(cfg):
-    """The active backend profile, with its name filled in."""
-    name = cfg["agent"]["backend"]
+def backend(cfg, name=None):
+    """A backend profile (the active one by default), with its name filled in."""
+    from .backends import TYPES
+    name = name or cfg["agent"]["backend"]
     profile = cfg.get("backends", {}).get(name)
     if not isinstance(profile, dict):
-        raise ConfigError(f"agent.backend is {name!r}, but there is no [backends.{name}] table")
+        known = ", ".join(cfg.get("backends", {}))
+        raise ConfigError(f"no backend profile {name!r}: add a [backends.{name}] table (profiles: {known})")
+    if profile.get("type") not in TYPES:
+        raise ConfigError(f"[backends.{name}] has type {profile.get('type')!r}; supported: {', '.join(TYPES)}")
     return {"name": name, **profile}
 
 

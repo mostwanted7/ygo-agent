@@ -113,7 +113,8 @@ def intro(mode="play", rules="MR3"):
     return INTRO.format(rules=name, situation=m["situation"], rules_line=rules_line, reader=m["reader"])
 
 
-def system_prompt(profile, mode="play", rules="MR3"):
+def system_prompt(profile, mode="play", rules="MR3", card_texts="full"):
+    """card_texts: "full", "compact" or "none" (no card-text section; the decklist carries the type lines)."""
     general = profile.general_playbook
     parts = [intro(mode, rules)]
     if general:
@@ -122,6 +123,10 @@ def system_prompt(profile, mode="play", rules="MR3"):
         parts.append("\n\n" + TEACH)
     if mode == "copilot":
         parts.append("\n" + COPILOT)
-    parts.append(f"\n\n# Your deck: {profile.name}\n{profile.decklist()}\n\n## Card texts\n{profile.card_texts()}"
-                 f"\n\n# Playbook (coaching notes — follow these)\n{profile.playbook}\n")
+    if card_texts == "none":
+        parts.append(f"\n\n# Your deck: {profile.name}\n{profile.decklist(with_types=True)}")
+    else:
+        parts.append(f"\n\n# Your deck: {profile.name}\n{profile.decklist()}\n\n## Card texts\n"
+                     f"{profile.card_texts(card_texts)}")
+    parts.append(f"\n\n# Playbook (coaching notes — follow these)\n{profile.playbook}\n")
     return "".join(parts)

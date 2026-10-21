@@ -136,16 +136,17 @@ class GameLog:
         self._flush()
 
     def decision(self, decision_id, question, options, chosen, why, plan, source, seconds=None, note=None,
-                 label="Claude", echo=True, write=True):
-        """source: 'llm' (shown as `label`), 'rule:<name>', 'auto', 'fallback' or 'pilot'.
-        echo/write: show it in the terminal / write it to game.md (copilot shows the advice first, and writes the
-        decision once the human has made it)."""
+                 label="backend", echo=True, write=True, fallback="the built-in AI"):
+        """source: 'backend' (shown as `label`, e.g. "opus (claude-code)"), 'rule:<name>', 'auto', 'fallback' or
+        'pilot'. echo/write: show it in the terminal / write it to game.md (copilot shows the advice first, and
+        writes the decision once the human has made it)."""
         if len(options) > 40:  # e.g. "declare a card name": only show what was picked
             many = len(options)
             options = [t if i in chosen else "" for i, t in enumerate(options)]
         else:
             many = 0
-        tag = {"llm": label, "auto": "auto", "fallback": "FALLBACK (built-in AI)"}.get(source, source)
+        tag = {"backend": label, "auto": "auto", "fallback": f"FALLBACK ({fallback.removeprefix('the ')})"}.get(
+            source, source)
         timing = f" ({seconds}s)" if seconds is not None else ""
         if echo:
             self._echo_decision(decision_id, question, options, chosen, why, plan, source, tag, timing, note, many)

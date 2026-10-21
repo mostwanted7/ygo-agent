@@ -25,20 +25,83 @@ password = ""
 
 [bot]
 # The WindBot fork (windbot-src) that joins the room and asks the agent for every decision.
-name = "Agent"        # player name shown in EDOPro
+name = "ygo-agent"    # player name shown in EDOPro
 brain_port = 7922     # local TCP port the bot's bridge connects to
 # EDOPro network protocol version. 0 = automatic: the version EDOPro reported last time (cached in
 # ~/.cache/ygo-agent/state.json), else 720937. If EDOPro rejects it, the bot retries with the host's version.
 protocol_version = 0
 
 [agent]
-backend = "default"              # which [backends.NAME] profile makes the decisions
-decision_timeout_seconds = 120   # per decision; after that WindBot's built-in AI answers
+backend = "opus"                 # which [backends.NAME] profile makes the decisions (--backend NAME)
+decision_timeout_seconds = 120   # per decision, retries included; after that the fallback answers
+# Who answers when the backend can't (timeout, error, no legal reply, a prompt left to the bot):
+# "bot" = WindBot's built-in AI; "heuristic" = the heuristic policy (what native arena seats use).
+fallback = "bot"
+# Prompt budget. Every backend profile below may override these three for itself (small-context models).
 max_messages_per_session = 40    # a fresh session starts every game turn, or after this many decisions
+history_lines = 500              # duel-log lines replayed when a session starts (0 = none)
+# Card texts in the system prompt and for cards seen during the game:
+# "full" = complete texts; "compact" = shortened (cards the playbook covers get a short excerpt);
+# "none" = names and type/stats lines only. See docs/backends.md for the sizes.
+card_texts = "full"
 
-# Backend profiles. Only type "claude-code" exists so far: the `claude -p` CLI, using your Claude Code login
-# (no API key needed).
-[backends.default]
+# ---- Backend profiles ----
+# Each [backends.NAME] table is one profile; `type` picks the implementation (docs/backends.md has them all):
+#   claude-code  the `claude -p` CLI with your Claude Code login (no API key)
+#   anthropic    the Claude Messages API (needs an API key)
+#   openai       any OpenAI-compatible /v1/chat/completions server (Ollama, vLLM, llama.cpp, LM Studio, OpenRouter)
+#   heuristic    a no-LLM rule-based player (also the native-seat fallback)
+#   random       uniformly random legal moves
+# Keys every profile may set: history_lines, card_texts, max_session_messages (override [agent] above).
+# --model and --effort on the command line override the chosen profile's model/effort.
+
+[backends.opus]
 type = "claude-code"
-model = "opus"
-effort = "medium"    # low | medium | high; "" = the CLI's default
+model = "opus"       # any model name or alias the claude CLI accepts
+effort = "medium"    # low | medium | high | xhigh | max; "" = the CLI's default
+
+[backends.sonnet]
+type = "claude-code"
+model = "sonnet"
+effort = "medium"
+
+[backends.haiku]
+type = "claude-code"
+model = "haiku"
+effort = "medium"
+
+[backends.api-opus]
+type = "anthropic"
+model = "opus"                    # opus | sonnet | haiku (= claude-opus-5-5 / -sonnet-5-5 / -haiku-5-5) or a model id
+effort = "medium"                 # output_config.effort: low | medium | high | xhigh | max; "" = the model's default
+api_key_env = "ANTHROPIC_API_KEY" # environment variable holding the key (it is never logged)
+max_tokens = 16000                # reply budget, thinking included
+structured = "json_schema"        # json_schema (output_config.format) | tool (a strict reply tool) | none (parse text)
+# base_url = "https://api.anthropic.com"
+# max_retries = 3                 # on 429 / 5xx / 529 overloaded, with backoff, inside the decision timeout
+# price = { input = 4.0, output = 20.0, cache_read = 0.2, cache_write = 5.0 }  # USD per million tokens
+# betas = []                      # extra anthropic-beta header values
+
+[backends.local]
+type = "openai"
+base_url = "http://localhost:11434/v1"  # Ollama; vLLM :8000/v1, llama-server :8080/v1, LM Studio :1234/v1
+model = "qwen3:14b"
+api_key_env = ""          # e.g. "OPENROUTER_API_KEY"; empty = no key (local servers)
+json_mode = "auto"        # schema | json | none | auto (try schema, step down when the server rejects it)
+temperature = 0.2
+max_tokens = 4096         # room for a reasoning model's thinking plus the JSON reply
+num_ctx = 32768           # Ollama context size (sent as options.num_ctx; see docs/backends.md)
+card_texts = "compact"    # small models: a smaller prompt
+history_lines = 150
+max_session_messages = 20
+price = { input = 0, output = 0 }  # local = free; omit for "unknown"
+# headers = { "HTTP-Referer" = "https://github.com/mostwanted7/ygo-agent", "X-Title" = "ygo-agent" }  # OpenRouter
+# extra_body = { top_k = 20 }      # merged into every request body as is
+# max_retries = 3
+
+[backends.heuristic]
+type = "heuristic"
+
+[backends.random]
+type = "random"
+# seed = 1               # fixed seed for reproducible runs; unset = a new seed each run

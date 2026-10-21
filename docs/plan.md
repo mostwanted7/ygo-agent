@@ -121,7 +121,7 @@ docs/          plan.md, decision-protocol.md, architecture.md, …
 
 Status: ☐ todo · ◐ in progress · ☑ done (verified by the orchestrator)
 
-### Stage 0: Foundation ◐
+### Stage 0: Foundation ☑
 - Package `ygo_agent` with the CLI. `brain/` moves into `ygo_agent/agent/` with its behaviour unchanged.
 - Config moves to `config/default.toml`, with user overrides in `config.local.toml` (gitignored) and CLI
   flags on top. Nothing rewrites config at runtime; the detected protocol version is cached under
@@ -152,7 +152,7 @@ Status: ☐ todo · ◐ in progress · ☑ done (verified by the orchestrator)
 - Verify: unit tests pass; `tests/run_bridge_test.sh` passes; `ygo-agent replay --tests` runs (one case is
   enough for timing); `ygo-agent play --join` still launches WindBot correctly.
 
-### Stage 1: Backends ☐ (after 0)
+### Stage 1: Backends ☑ (after 0)
 - `Backend.open_session(system_prompt) → Session.ask(text, schema, timeout) → (reply|None, info)`. `info`
   holds seconds, input/output/cache tokens, cost if known, and error.
   - `claude-code`: the current CLI. Pass the system prompt via a file or stdin, not argv.
@@ -170,7 +170,7 @@ Status: ☐ todo · ◐ in progress · ☑ done (verified by the orchestrator)
 - Tests: mock HTTP servers for the anthropic and openai backends; a real one-call smoke test for
   claude-code.
 
-### Stage 2: Arena ☐ (parallel with 0; touches only `ygo_agent/core`, `ygo_agent/arena`, `tests/arena`)
+### Stage 2: Arena ◐ (parallel with 0; touches only `ygo_agent/core`, `ygo_agent/arena`, `tests/arena`)
 - Turn the spike into production code:
   - core binding, card data, script loader;
   - duel driver with seed control, rules flags (mr1 to mr5), deck validation, stacked opening hands / custom
@@ -253,4 +253,37 @@ Status: ☐ todo · ◐ in progress · ☑ done (verified by the orchestrator)
 
 ## Notes from finished stages
 
-(empty)
+**Stage 0 (commit b56c7fd).**
+- Additions to the planned layout: `ygo_agent/join.py` (launches WindBot into a room the user hosts),
+  `cache.py`, `agent/banter.py`, `agent/replay.py`, `agent/validate.py`. The `bridge_server.py` `Runtime`
+  holds one `Match` per bot connection, with a fresh `DuelBrain` and log for each game.
+- Backend seam: `backends.open_session(profile, system_prompt, SCHEMA)` → a session with
+  `.ask(text, timeout) → (dict|None, info)`, `.alive`, `.messages` and `.close()`. Also `backends.check()` and
+  `backends.label()`. `SCHEMA` lives in `agent/prompts.py`. Config has `[backends.NAME]` tables and
+  `agent.backend`; `--backend`, `--model` and `--effort` override them. The claude-code backend still passes
+  the system prompt on argv.
+- Bridge additions: a `room` event (the room's real `duel_flags`), a `chat` event with `source`, and a
+  `game_over` decision round trip after `win`, which lets the reply carry a final `say`. Ids restart at 1 per
+  game. Native seats must emit these too.
+- Fork commit 6610fbd on branch `brain-bridge` in windbot-src (not pushed). The bridge is active only with
+  `Brain=`. Deck `Agent` (alias `Claude`).
+- Tests: `tests/fixtures/cards.json` plus `CardDB.from_dict` (regenerate with `tests/fixtures/make_cards.py`)
+  let tests run without EDOPro. There are 60 pytest tests.
+- Still left to WindBot: `place`, and `announce_card` with more than 150 names.
+
+**Stage 1.**
+- Interface: `backends.create(profile, db)` → `Backend` (`.label`, `.check()`, `.describe()`,
+  `.open_session(system_prompt, schema)`), then `session.ask(Request(text, decision, schema, timeout, error))`
+  → `(reply|None, info)`. Info fields and per-game stats are documented in `docs/backends.md`, which Stage 7
+  aggregates.
+- Per-seat agent: `DuelBrain(cfg, db, profile, backend=<profile dict|Backend>, fallback="heuristic")`,
+  then `on_event(ev)` / `on_decide(d)` → `{"id","choice","say"}`. With `fallback="heuristic"` the choice is
+  never null except on `game_over`. That covers place, `announce_card` with more than 150 names, and backend
+  failure; after a `retry` it answers at random.
+- Native seats must catch exceptions themselves (`heuristic.Policy(db).choose(d)` / `first_legal(d)`) and
+  emit `new_turn`, which drives pre-warming, per-turn sessions and the plan carry-over.
+- Prompt budget: `card_texts = full|compact|none`. Saffira is 10.2k/8.4k/6.1k tokens, Blackwing
+  13.9k/11.5k/8.0k.
+- Not run against a real Ollama/vLLM server (only the mock), and no real Anthropic API calls (no key).
+- Reply `source` is `backend`, not `llm`. The bot name defaults to `ygo-agent`. Shared test helpers are in
+  `tests/helpers.py`.

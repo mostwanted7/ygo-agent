@@ -22,4 +22,7 @@ include = ["ygo_agent*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-markers = ["integration: needs the EDOPro install (~/Games/ProjectIgnis) or other local tools; skipped without them"]
+markers = [
+    "integration: needs the EDOPro install (~/Games/ProjectIgnis) or other local tools; skipped without them",
+    "live: makes real model calls (claude CLI, API keys); skipped unless pytest --live or YGO_AGENT_LIVE=1",
+]

@@ -1,31 +1,26 @@
-import glob
 import json
 import os
-import sys
 
 import pytest
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, ROOT)
-
-from ygo_agent.agent.carddb import CardDB  # noqa: E402
-from ygo_agent.config import load_config  # noqa: E402
-
-EDOPRO = os.path.expanduser("~/Games/ProjectIgnis")
-CASES = sorted(glob.glob(os.path.join(ROOT, "decks", "*", "tests", "*.json")))
+from helpers import CASES, EDOPRO, ROOT, case_id, first_valid, load_case  # noqa: F401
+from ygo_agent.agent.carddb import CardDB
+from ygo_agent.config import load_config
 
 
-def case_id(path):
-    return f"{path.split(os.sep)[-3]}/{os.path.splitext(os.path.basename(path))[0]}"
+def pytest_addoption(parser):
+    parser.addoption("--live", action="store_true", help="also run the tests that make real model calls")
 
 
 def pytest_collection_modifyitems(config, items):
-    if os.path.exists(os.path.join(EDOPRO, "expansions", "cards.cdb")):
-        return
-    skip = pytest.mark.skip(reason=f"EDOPro install not found at {EDOPRO}")
+    edopro = os.path.exists(os.path.join(EDOPRO, "expansions", "cards.cdb"))
+    live = config.getoption("--live") or os.environ.get("YGO_AGENT_LIVE") == "1"
     for item in items:
-        if "integration" in item.keywords:
-            item.add_marker(skip)
+        if "live" in item.keywords:
+            if not live:
+                item.add_marker(pytest.mark.skip(reason="real model calls: run with --live (or YGO_AGENT_LIVE=1)"))
+        elif "integration" in item.keywords and not edopro:
+            item.add_marker(pytest.mark.skip(reason=f"EDOPro install not found at {EDOPRO}"))
 
 
 @pytest.fixture(scope="session")
@@ -41,54 +36,12 @@ def cfg(tmp_path):
     return load_config(local=None, overrides={"games_dir": str(tmp_path / "games")})
 
 
-def load_case(path):
-    with open(path, encoding="utf-8") as f:
-        return json.load(f)
-
-
-class ScriptedSession:
-    """Stands in for a backend session: answers each decision with policy(decision)."""
-
-    def __init__(self, policy, brain_ref):
-        self.policy = policy
-        self.brain_ref = brain_ref
-        self.messages = 0
-        self.alive = True
-        self.prompts = []
-
-    def ask(self, text, timeout):
-        self.messages += 1
-        self.prompts.append(text)
-        return {"choice": self.policy(self.brain_ref["decision"]), "why": "scripted", "plan": None}, {"seconds": 0.0}
-
-    def close(self):
-        self.alive = False
-
-
-def first_valid(d):
-    """A deterministic, usually-legal answer to any decision."""
-    k = d["kind"]
-    if k in ("effect_yn", "yesno", "go_first"):
-        return [1]
-    if k == "chain":
-        return [0] if d.get("forced") else []
-    if k in ("select_card", "tribute", "select_sum"):
-        return list(range(d["min"]))
-    if k in ("announce_attrib", "announce_race"):
-        return list(range(d.get("count", 1)))
-    return [0]
-
-
 @pytest.fixture
-def scripted(monkeypatch):
-    """Patch the backend so DuelBrains get ScriptedSessions; returns a dict with the sessions and current decision."""
-    from ygo_agent import backends
-    state = {"decision": None, "sessions": [], "policy": first_valid}
-
-    def open_session(profile, system_prompt, schema):
-        s = ScriptedSession(lambda d: state["policy"](d), state)
-        s.system_prompt = system_prompt
-        state["sessions"].append(s)
-        return s
-    monkeypatch.setattr(backends, "open_session", open_session)
+def scripted(cfg):
+    """Make `cfg` use a scripted backend that answers each decision with state["policy"](decision).
+    state["sessions"] collects the sessions (each has .system_prompt, .prompts and .requests)."""
+    state = {"sessions": [], "policy": first_valid}
+    cfg["backends"]["test"] = {"type": "scripted", "policy": lambda d: state["policy"](d),
+                               "sessions": state["sessions"]}
+    cfg["agent"]["backend"] = "test"
     return state

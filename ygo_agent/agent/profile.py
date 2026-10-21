@@ -8,6 +8,9 @@ from .. import paths
 from ..config import deck_overrides
 from . import prompts
 
+CARD_TEXT_MODES = ("full", "compact", "none")
+COMPACT_COVERED, COMPACT_OTHER = 160, 300  # effect characters kept per card in "compact" mode
+
 
 def parse_ydk(path):
     """(main, extra, side) card id lists from a .ydk file."""
@@ -72,19 +75,26 @@ class Profile:
         """Deck-agnostic strategy shared by every deck (playbooks/general.md)."""
         return self._read(os.path.join(paths.PLAYBOOKS, "general.md"), "")
 
-    def decklist(self):
+    def decklist(self, with_types=False):
         def block(title, ids):
             counts = collections.Counter(ids)
-            return f"{title} ({len(ids)}):\n" + "\n".join(f"  {n}x {self.db.name(i)}" for i, n in counts.items())
+            name = self.db.type_text if with_types else self.db.name
+            return f"{title} ({len(ids)}):\n" + "\n".join(f"  {n}x {name(i)}" for i, n in counts.items())
         return block("Main Deck", self.main) + "\n" + block("Extra Deck", self.extra)
 
-    def card_texts(self):
-        seen, lines = set(), []
-        for i in self.main + self.extra:
-            if i not in seen:
-                seen.add(i)
-                lines.append("- " + self.db.full_text(i))
-        return "\n".join(lines)
+    def card_text(self, cid, mode="full", playbook=None):
+        """One card as the prompt shows it: "full" text, "compact" (shortened; cards the playbook covers are cut
+        shorter, since the playbook explains how to use them) or "none" (name and type line only)."""
+        if mode == "none":
+            return self.db.type_text(cid)
+        if mode == "compact":
+            covered = self.db.name(cid) in (self.playbook if playbook is None else playbook)
+            return self.db.compact_text(cid, COMPACT_COVERED if covered else COMPACT_OTHER)
+        return self.db.full_text(cid)
 
-    def system_prompt(self, mode="play", rules="MR3"):
-        return prompts.system_prompt(self, mode, rules)
+    def card_texts(self, mode="full"):
+        playbook = self.playbook
+        return "\n".join("- " + self.card_text(i, mode, playbook) for i in dict.fromkeys(self.main + self.extra))
+
+    def system_prompt(self, mode="play", rules="MR3", card_texts="full"):
+        return prompts.system_prompt(self, mode, rules, card_texts)

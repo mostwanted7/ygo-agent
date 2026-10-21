@@ -12,7 +12,13 @@ def test_defaults():
     assert cfg["room"] == {"host": "127.0.0.1", "port": 7911, "password": ""}
     assert cfg["bot"]["brain_port"] == 7922 and cfg["bot"]["protocol_version"] == 0
     assert cfg["agent"]["decision_timeout_seconds"] == 120 and cfg["agent"]["max_messages_per_session"] == 40
-    assert backend(cfg) == {"name": "default", "type": "claude-code", "model": "opus", "effort": "medium"}
+    assert backend(cfg) == {"name": "opus", "type": "claude-code", "model": "opus", "effort": "medium"}
+    assert cfg["agent"]["fallback"] == "bot" and cfg["agent"]["card_texts"] == "full"
+    assert cfg["agent"]["history_lines"] == 500 and cfg["bot"]["name"] == "ygo-agent"
+    for name in ("opus", "sonnet", "haiku", "api-opus", "local", "heuristic", "random"):
+        assert backend(cfg, name)["name"] == name
+    assert backend(cfg, "api-opus")["type"] == "anthropic" and backend(cfg, "local")["type"] == "openai"
+    assert backend(cfg, "local")["base_url"] == "http://localhost:11434/v1"
 
 
 def test_local_file_merges_tables(tmp_path):
@@ -31,6 +37,12 @@ def test_bad_values_are_reported(tmp_path):
         load_config(local=None, overrides={"chat": "main"})
     with pytest.raises(ConfigError):
         load_config(local=None, overrides={"agent": {"backend": "nope"}})
+    with pytest.raises(ConfigError, match="supported"):
+        load_config(local=None, overrides={"backends": {"x": {"type": "gpt"}}, "agent": {"backend": "x"}})
+    with pytest.raises(ConfigError, match="card_texts"):
+        load_config(local=None, overrides={"agent": {"card_texts": "tiny"}})
+    with pytest.raises(ConfigError, match="fallback"):
+        load_config(local=None, overrides={"agent": {"fallback": "human"}})
     broken = tmp_path / "broken.toml"
     broken.write_text("chat = \n")
     with pytest.raises(ConfigError):
@@ -48,6 +60,9 @@ def test_cli_flags_win(tmp_path):
     assert cfg["bot"]["brain_port"] == 7930 and cfg["games_dir"] == str(tmp_path)
     assert backend(cfg)["model"] == "sonnet" and backend(cfg)["effort"] == "low"
     assert mode_of(args) == "play"
+    args = parser().parse_args(["test", "--backend", "local", "--model", "llama3.1:8b", "--config", str(local)])
+    cfg = configure(args)
+    assert backend(cfg)["name"] == "local" and backend(cfg)["model"] == "llama3.1:8b"
     assert mode_of(parser().parse_args(["play", "--join", "--copilot"])) == "copilot"
     assert mode_of(parser().parse_args(["teach"])) == "teach"
 
@@ -81,5 +96,5 @@ def test_bot_command(cfg):
     assert cmd[0] == "mono" and cmd[1].endswith("windbot-src/bin/Release/WindBot.exe")
     assert args["Deck"] == "Agent" and args["DeckFile"] == "/decks/saffira/deck.ydk"
     assert args["Brain"] == "127.0.0.1:7922" and args["Version"] == "720937"
-    assert args["Host"] == "127.0.0.1" and args["Port"] == "7911" and args["Name"] == "Agent"
+    assert args["Host"] == "127.0.0.1" and args["Port"] == "7911" and args["Name"] == "ygo-agent"
     assert args["Chat"] == "false"

@@ -2,7 +2,9 @@
 
 Play Yu-Gi-Oh! in EDOPro against an AI that pilots a real deck (Saffira and Blackwing so far). It shows every
 decision and its reasoning in your terminal, and it gets better at the deck from your feedback after each game.
-The AI is Claude, through your normal Claude Code login (no API key needed).
+By default the AI is Claude, through your normal Claude Code login (no API key needed); it can also run on the
+Anthropic API, any OpenAI-compatible server (Ollama, vLLM, llama.cpp, LM Studio, OpenRouter) or a built-in
+heuristic player (see [docs/backends.md](docs/backends.md)).
 
 ## Setup
 
@@ -35,9 +37,11 @@ After the game:
 - Open Claude Code in this folder and tell it what the AI got wrong. It updates the deck's playbook and rules (see
   CLAUDE.md), and the next game uses them.
 
-Options: `--model sonnet` (faster, a bit weaker), `--effort low|medium|high`, `--deck blackwing` (any folder under
-`decks/`), `--host`/`--port`/`--password` for the room, `--chat off`, `--brain-only` (run only the agent and print
-the bot command). `ygo-agent play --help` lists them all.
+Options: `--backend sonnet` (faster, a bit weaker; also `haiku`, `api-opus`, `local`, `heuristic`, `random` or
+your own profile), `--model`/`--effort` to override the profile's, `--deck blackwing` (any folder under `decks/`),
+`--host`/`--port`/`--password` for the room, `--chat off`, `--brain-only` (run only the agent and print the bot
+command). `ygo-agent play --help` lists them all. At the end of a game the terminal prints the decision stats
+(who decided, latency, invalid replies, tokens, cost), which `meta.json` keeps too.
 
 ## Learning a deck (e.g. Blackwings)
 
@@ -62,6 +66,20 @@ to play the EDOPro copy of a deck so that edits made in EDOPro's deck editor car
 ydk = "~/Games/ProjectIgnis/deck/Saffira.ydk"
 ```
 
+Backends are named profiles under `[backends.NAME]` (type `claude-code`, `anthropic`, `openai`, `heuristic` or
+`random`); a profile can also shrink the prompt for small-context models (`card_texts = "compact"`,
+`history_lines`, `max_session_messages`). For example, a local model through Ollama:
+
+```toml
+[backends.qwen]
+type = "openai"
+base_url = "http://localhost:11434/v1"
+model = "qwen3:14b"
+card_texts = "compact"
+```
+
+and `ygo-agent play --join --backend qwen`. [docs/backends.md](docs/backends.md) covers every backend and key.
+
 The rules stated to the AI come from the room's own settings when the bot joins (Master Rule 3 by default). When
 EDOPro updates its network protocol, the bot notices, retries with the new version and remembers it in
 `~/.cache/ygo-agent/`.
@@ -69,15 +87,17 @@ EDOPro updates its network protocol, the bot notices, retries with the new versi
 ## How it works
 
 ```
-EDOPro room ⇄ WindBot fork (windbot-src, C#) ⇄ agent (Python, port 7922) ⇄ claude -p (your Claude Code login)
+EDOPro room ⇄ WindBot fork (windbot-src, C#) ⇄ agent (Python, port 7922) ⇄ backend (default: claude -p, your Claude Code login)
 ```
 
 - `windbot-src/` is a fork of ProjectIgnis WindBot, branch `brain-bridge`. When started with `Brain=host:port`, its
   `BrainBridge` sends every decision (the visible board and the legal options) and every game event to the agent; if
   the agent can't answer, WindBot's own AI does. Without `Brain=` it is plain WindBot. Rebuild with `./build.sh`
   after changing it. The message format is in `docs/decision-protocol.md`.
-- `ygo_agent/agent/` turns each decision into text, runs the deck's hard rules, asks the model, checks the answer is
-  legal and logs everything. Each game turn gets one model session, so the AI remembers its plan during the turn.
+- `ygo_agent/agent/` turns each decision into text, runs the deck's hard rules, asks the backend, checks the answer
+  is legal and logs everything. Each game turn gets one backend session, so the AI remembers its plan during the
+  turn (and a session that restarts mid-turn is told the plan and the turn's decisions so far).
+  `ygo_agent/backends/` holds the backends.
 - `playbooks/general.md`: strategy for every deck. `decks/<deck>/` holds what the AI learns about one deck:
   - `playbook.md`: strategy and coaching lessons, given to the AI on every decision.
   - `rules.py`: hard rules that override the AI, for mistakes a lesson didn't fix.
@@ -89,7 +109,8 @@ EDOPro room ⇄ WindBot fork (windbot-src, C#) ⇄ agent (Python, port 7922) ⇄
 ## Tests
 
 - `.venv/bin/python -m pytest`: unit tests (no EDOPro or model needed; the tests that read the EDOPro install skip
-  without it).
+  without it). The API backends are tested against local mock servers; `pytest --live` adds one real claude-code
+  call (and an Anthropic API call when `ANTHROPIC_API_KEY` is set).
 - `tests/run_bridge_test.sh`: checks the C# ⇄ agent ⇄ model plumbing without EDOPro (real model calls, about a minute;
   `--model sonnet` makes it quicker).
 

@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from conftest import EDOPRO
+from helpers import EDOPRO
 from ygo_agent.agent.carddb import CardDB
 from ygo_agent.agent.profile import Profile, parse_ydk
 

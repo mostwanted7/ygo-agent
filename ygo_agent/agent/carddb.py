@@ -2,6 +2,7 @@
 
 import glob
 import os
+import re
 import sqlite3
 from dataclasses import dataclass, field
 
@@ -21,6 +22,18 @@ RACES = [
     "Illusion", "Cyborg", "Magical Knight", "High Dragon", "Omega Psychic", "Celestial Warrior", "Galaxy",
 ]
 EXTRA_TYPES = 0x40 | 0x2000 | 0x800000 | 0x4000000
+
+
+def shorten(text, name):
+    """Card text with the same meaning in fewer tokens: no "unofficial text" notes, one line, short limit clauses."""
+    text = "\n".join(line for line in text.splitlines() if not line.strip().startswith("* The above text"))
+    text = re.sub(r"\s+", " ", text).strip()
+    q = re.escape(f'"{name}"')
+    text = re.sub(rf"You can only use (this|each) effect of {q} once per turn\.",
+                  lambda m: f"({m.group(1).capitalize()} effect: once per turn.)", text)
+    text = re.sub(rf"You can only activate 1 {q} per turn\.", "(Activate once per turn.)", text)
+    return re.sub(rf"You can only use 1 {q} effect per turn, and only once that turn\.",
+                  "(Only 1 of its effects per turn.)", text)
 
 
 @dataclass
@@ -147,6 +160,24 @@ class CardDB:
         if not card:
             return f"card #{cid}: (no data)"
         return f'"{card.name}" [{card.type_line()}]: {card.text.strip()}'
+
+    def type_text(self, cid):
+        """Name and type line only (no effect text), for small-context prompts."""
+        card = self.cards.get(cid)
+        return f'"{card.name}" [{card.type_line()}]' if card else f"card #{cid}: (no data)"
+
+    def compact_text(self, cid, limit=None):
+        """full_text without the boilerplate, with the usual once-per-turn clauses shortened, and the effect cut at
+        a sentence boundary near `limit` characters (marked with …)."""
+        card = self.cards.get(cid)
+        if not card:
+            return f"card #{cid}: (no data)"
+        text = shorten(card.text, card.name)
+        if limit and len(text) > limit:
+            cut = text[:limit]
+            end = max(cut.rfind(". "), cut.rfind("; "), cut.rfind(": "))
+            text = (cut[:end + 1] if end > limit // 2 else cut[:cut.rfind(" ")]) + " …"
+        return f'"{card.name}" [{card.type_line()}]: {text}'
 
     def desc(self, value, card_id=None):
         """Resolve an effect/hint description id to text (card strings are encoded as code << 20 | index)."""

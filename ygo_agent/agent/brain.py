@@ -5,17 +5,23 @@ import collections
 import time
 
 from .. import backends, paths
+from ..backends import Request
 from ..config import backend as backend_profile
 from .banter import Banter
 from .describe import Describer
 from .gamelog import GameLog, paint, BOLD, YELLOW, RED
 from .prompts import SCHEMA, rules_from_flags
 from .rules import Context, Rules
+from .stats import GameStats
 from .validate import validate
 
 BOSS_TYPES = 0x40 | 0x80 | 0x2000 | 0x800000 | 0x4000000  # Fusion, Ritual, Synchro, Xyz, Link
 BOSS_ATK = 2500
 FIELD = (0x4, 0x8)
+FALLBACKS = ("bot", "heuristic")
+# Backend profile keys meta.json records (never headers or keys).
+META_KEYS = ("name", "type", "model", "effort", "base_url", "json_mode", "structured", "api_key_env", "temperature",
+             "max_tokens", "num_ctx", "history_lines", "card_texts", "max_session_messages", "seed")
 
 
 def card_key(c):
@@ -43,7 +49,11 @@ def chat_source(ev):
 
 
 class DuelBrain:
-    def __init__(self, cfg, db, profile, log=None, prewarm=True, runtime=None, room=None):
+    """One game for one seat. `backend` (a profile dict or a Backend) overrides the config's agent.backend;
+    `fallback` is who answers when the backend can't: "bot" (choice null, WindBot's own AI) or "heuristic"."""
+
+    def __init__(self, cfg, db, profile, log=None, prewarm=True, runtime=None, room=None, backend=None,
+                 fallback=None):
         self.cfg = cfg
         self.db = db
         self.profile = profile
@@ -54,8 +64,18 @@ class DuelBrain:
         self.runtime = runtime
         self.mode = cfg.get("mode", "play")
         self.copilot = self.mode == "copilot"
-        self.backend = backend_profile(cfg)
-        self.label = backends.label(self.backend)
+        if backend is None:
+            backend = backend_profile(cfg)
+        self.backend = backends.create(backend, db=db)
+        self.backend_cfg = self.backend.profile
+        self.label = self.backend.label
+        agent = cfg["agent"]
+        # The prompt budget: a profile's own keys win over [agent] (small-context models need smaller prompts).
+        self.history_lines = int(self.backend_cfg.get("history_lines", agent.get("history_lines", 500)))
+        self.card_texts = self.backend_cfg.get("card_texts", agent.get("card_texts", "full"))
+        self.session_limit = int(self.backend_cfg.get("max_session_messages", agent["max_messages_per_session"]))
+        self.fallback = fallback or agent.get("fallback", "bot")
+        self._fallback_policies = {}
         self.room = room
         self._system_prompt = None
         # The pilot's moves aren't the bot's, so no jokes in copilot mode.
@@ -74,8 +94,11 @@ class DuelBrain:
         self.last_decision = None
         self.suggested = None
         self.feedback = 0
-        self.stats = collections.Counter()
-        self.seconds = 0.0
+        self.stats = GameStats()
+        self.overridden = 0
+        self.turn_log = []     # this turn's decisions, replayed to a session that starts mid-turn
+        self.turn_plan = None  # the last plan the backend gave this turn
+        self.memory_turn = None
         self.started = False  # got this game's `start` event
         self.over = False     # got its `win` event
         self.chain_players = {}
@@ -88,8 +111,8 @@ class DuelBrain:
             self._log = GameLog(paths.resolve(self.cfg.get("games_dir", "games")), self.profile.name,
                                 deck_key=self.profile.key)
             self._log.write_meta(deck=self.profile.key, deck_name=self.profile.name, mode=self.mode,
-                                 backend={k: self.backend.get(k) for k in ("name", "type", "model", "effort")},
-                                 rules=self.rules_key, started=time.strftime("%Y-%m-%d %H:%M:%S"))
+                                 backend=self.backend_meta(), rules=self.rules_key,
+                                 started=time.strftime("%Y-%m-%d %H:%M:%S"))
             if self.room:
                 self._log.record("event", self.room)
             if self.runtime and self.runtime.windbot_log:
@@ -101,10 +124,14 @@ class DuelBrain:
         """The room's real rules when the bot reported them, else the configured ones."""
         return rules_from_flags((self.room or {}).get("duel_flags")) or self.cfg["duel"]["rules"]
 
+    def backend_meta(self):
+        meta = {k: self.backend_cfg[k] for k in META_KEYS if self.backend_cfg.get(k) not in (None, "")}
+        return {**meta, "label": self.label, "fallback": self.fallback}
+
     @property
     def system_prompt(self):
         if self._system_prompt is None:
-            self._system_prompt = self.profile.system_prompt(self.mode, self.rules_key)
+            self._system_prompt = self.profile.system_prompt(self.mode, self.rules_key, self.card_texts)
         return self._system_prompt
 
     def say(self, line):
@@ -136,6 +163,7 @@ class DuelBrain:
             return self.on_chat(ev)
         if e == "new_turn":
             self.turn = ev["turn"]
+            self.new_turn_memory(ev["turn"])
         if e == "retry":
             self.retry = True
         self.watch_for_big_plays(ev)
@@ -194,23 +222,43 @@ class DuelBrain:
 
     # ---- sessions ----
 
+    def new_turn_memory(self, turn):
+        if turn != self.memory_turn:
+            self.memory_turn, self.turn_log, self.turn_plan = turn, [], None
+
     def ensure_session(self, turn):
         s = self.session
-        limit = self.cfg["agent"]["max_messages_per_session"]
-        if s and (self.session_turn != turn or not s.alive or s.messages >= limit):
+        if s and (self.session_turn != turn or not s.alive or s.messages >= self.session_limit):
             s.close()
             self.session = None
         if self.session is None:
-            self.session = backends.open_session(self.backend, self.system_prompt, SCHEMA)
+            self.new_turn_memory(turn)
+            self.session = self.backend.open_session(self.system_prompt, SCHEMA)
             self.session_turn = turn
             self.session_seen = set(self.profile.ids)
+            self.stats.sessions += 1
         return self.session
+
+    def carry_over(self):
+        """For a session that starts mid-turn: the plan and the decisions so far, so the backend keeps its line."""
+        if not self.turn_log and not self.turn_plan:
+            return None
+        lines = ["Your previous session for this turn ended (message limit, crash or timeout). Where you were:"]
+        if self.turn_plan:
+            lines.append("Your plan for this turn: " + self.turn_plan)
+        if self.turn_log:
+            lines.append("Decisions already made this turn:\n" + "\n".join(self.turn_log[-30:]))
+        return "\n".join(lines)
 
     def build_message(self, d, question, options_text, first):
         parts = []
         if first:
-            history = self.history[-500:]
+            history = self.history[-self.history_lines:] if self.history_lines > 0 else []
             parts.append("A new session started for this turn. Duel log so far:\n" + "\n".join(history))
+            carry = self.carry_over()
+            if carry:
+                self.stats.rollovers += 1
+                parts.append(carry)
         elif self.pending:
             parts.append("What happened since your last decision:\n" + "\n".join(self.pending))
         self.pending = []
@@ -219,34 +267,47 @@ class DuelBrain:
         new = sorted(i for i in ids - self.session_seen if self.db.get(i))
         if new:
             self.session_seen |= set(new)
-            parts.append("Card texts (not shown to you yet this turn):\n" + "\n".join("- " + self.db.full_text(i) for i in new))
+            playbook = self.profile.playbook if self.card_texts == "compact" else None
+            parts.append("Card texts (not shown to you yet this turn):\n"
+                         + "\n".join("- " + self.profile.card_text(i, self.card_texts, playbook) for i in new))
         parts.append("CURRENT STATE\n" + self.describer.state(d["state"]))
         opts = "\n".join(f"[{i}] {t}" for i, t in enumerate(options_text))
         parts.append(f"DECISION #{d['id']}: {question}" + (f"\n{opts}" if opts else ""))
         return "\n\n".join(parts)
 
     def ask_model(self, d, question, options_text):
+        """(choice, why, plan, info): choice None when the backend gave no usable answer."""
         session = self.ensure_session(d["state"]["turn"])
         text = self.build_message(d, question, options_text, first=session.messages == 0)
         timeout = self.cfg["agent"]["decision_timeout_seconds"]
-        info = {}
-        for _ in range(2):
-            out, info = session.ask(text, timeout)
-            self.log.prompt(d["id"], text, out, info)
-            if out is None:
-                if not session.alive:
-                    self.session = None
-                return None, None, None, info
-            try:
-                choice = [int(x) for x in out.get("choice", [])]
-            except (TypeError, ValueError):
-                choice = None
-            err = "choice must be a list of integers" if choice is None else self.validate(d, choice)
-            if not err:
-                return choice, out.get("why", ""), out.get("plan"), info
-            info["error"] = f"invalid reply {out.get('choice')}: {err}"
-            text = f"That reply is invalid: {err}. Answer DECISION #{d['id']} again with a valid choice."
-        return None, None, None, info
+        info, error, seconds = {}, None, 0.0
+        try:
+            for _ in range(2):
+                out, info = session.ask(Request(text, d, SCHEMA, timeout, error))
+                seconds += info.get("seconds") or 0
+                if out is not None:
+                    try:
+                        choice = [int(x) for x in out.get("choice", [])]
+                    except (TypeError, ValueError):
+                        choice = None
+                    error = "choice must be a list of integers" if choice is None else self.validate(d, choice)
+                    if error:
+                        info["invalid"] = info.get("invalid", 0) + 1
+                        info["error"] = f"invalid reply {out.get('choice')}: {error}"
+                self.stats.ask(info)
+                self.log.prompt(d["id"], text, out, info)
+                if out is None:
+                    if not session.alive:
+                        self.session = None
+                    return None, None, None, info
+                if not error:
+                    if out.get("plan"):
+                        self.turn_plan = out["plan"]
+                    return choice, out.get("why", ""), out.get("plan"), info
+                text = f"That reply is invalid: {error}. Answer DECISION #{d['id']} again with a valid choice."
+            return None, None, None, info
+        finally:
+            self.stats.latencies.append(round(seconds, 2))
 
     # ---- decisions ----
 
@@ -292,61 +353,91 @@ class DuelBrain:
 
         if self.retry:
             self.retry = False
-            self.stats["fallback"] += 1
-            self.log.decision(d["id"], question, options_text, [], None, None, "fallback", label=self.label,
-                              note="the engine rejected the previous answer, so the built-in AI answers this prompt")
-            return self.reply(d, None, "fallback")
+            # The engine refused the last answer: don't repeat that policy; a random legal answer gets unstuck.
+            choice = self.fallback_choice(d, "random")
+            self.decided(d, question, options_text, choice or [], None, None, "fallback",
+                         note="the engine rejected the previous answer, so "
+                              f"{self.fallback_label('random')} answers this prompt")
+            return self.reply(d, choice, "fallback")
 
         if kind == "select_unselect" and self.plan:
             k = self.next_planned(d)
             if k is not None:
-                self.log.decision(d["id"], question, options_text, [k], "continuing the selection planned above",
-                                  None, "auto", label=self.label)
+                self.decided(d, question, options_text, [k], "continuing the selection planned above", None, "auto")
                 return self.reply(d, [k], "auto")
             if d.get("finishable") or d.get("cancelable"):
-                self.log.decision(d["id"], question, options_text, [], "planned selection complete", None, "auto",
-                                  label=self.label)
+                self.decided(d, question, options_text, [], "planned selection complete", None, "auto")
                 return self.reply(d, [], "auto")
 
         decided, source = self.rules.decide(Context(d, self.db, self.describer, self.profile))
         if decided is not None:
-            self.stats["rule" if source.startswith("rule") else "auto"] += 1
             choice = decided.choice
-            if decided.choice is not None or kind != "place":
+            if choice is None and self.fallback != "bot":
+                choice, source = self.fallback_choice(d), "fallback"  # e.g. zone placement in a native seat
+            if kind != "place":
                 if source.startswith("rule"):
                     choice = self.conclude(d, question, options_text, choice, decided.why, None, source)
                 else:
-                    self.log.decision(d["id"], question, options_text, choice or [], decided.why, None, source,
-                                      label=self.label)
+                    self.decided(d, question, options_text, choice or [], decided.why, None, source)
             return self.finish(d, choice, source)
 
         choice, why, plan, info = self.ask_model(d, question, options_text)
+        seconds = self.stats.latencies[-1] if self.stats.latencies else None
         if choice is None:
-            self.stats["fallback"] += 1
-            note = f"{self.label} gave no usable answer ({info.get('error', 'unknown error')})"
-            choice = self.conclude(d, question, options_text, None, None, None, "fallback", note=note)
-            return self.finish(d, choice, "fallback" if choice is None else "pilot")
-        self.stats["llm"] += 1
-        self.seconds += info.get("seconds", 0)
-        choice = self.conclude(d, question, options_text, choice, why, plan, "llm", info.get("seconds"),
+            note = f"{self.label} gave no usable answer ({info.get('error') or 'unknown error'})"
+            fallback = self.fallback_choice(d)
+            if fallback is not None:
+                note += f"; {self.fallback_label()} answered"
+            choice = self.conclude(d, question, options_text, fallback, None, None, "fallback", seconds, note=note)
+            return self.finish(d, choice, "fallback" if self.suggested is None and choice == fallback else "pilot")
+        choice = self.conclude(d, question, options_text, choice, why, plan, "backend", seconds,
                                note=info.get("error"))
-        return self.finish(d, choice, "llm" if self.suggested is None else "pilot")
+        return self.finish(d, choice, "backend" if self.suggested is None else "pilot")
+
+    def fallback_choice(self, d, policy="heuristic"):
+        """What the fallback answers: None (WindBot's own AI) with fallback = "bot", else a policy's legal choice."""
+        if self.fallback == "bot":
+            return None
+        if policy not in self._fallback_policies:
+            self._fallback_policies[policy] = backends.create({"name": policy, "type": policy}, db=self.db).policy
+        return self._fallback_policies[policy].choose(d)
+
+    def fallback_label(self, policy="heuristic"):
+        return "the built-in AI" if self.fallback == "bot" else f"the {policy} policy"
+
+    def decided(self, d, question, options_text, chosen, why, plan, source, seconds=None, note=None, **kw):
+        """Log a decision (terminal + game.md) and remember it for this turn's carry-over."""
+        self.log.decision(d["id"], question, options_text, chosen, why, plan, source, seconds, note,
+                          label=self.label, fallback=self.fallback_label(), **kw)
+        if kw.get("write", True):
+            picked = ", ".join(options_text[k] for k in chosen if 0 <= k < len(options_text)) if options_text else (
+                {(1,): "yes", (0,): "no"}.get(tuple(chosen), str(chosen)))
+            self.turn_log.append(f"- #{d['id']} {self.short_question(d, question)}: {picked or 'pass / none'} "
+                                 f"[{self.tag(source)}]" + (f" — {why}" if why else ""))
+
+    def short_question(self, d, question):
+        if d["kind"] in ("select_card", "tribute", "select_unselect", "select_sum"):
+            return self.describer.hint(d)
+        return question.split(":")[0].split(". ")[0][:80]
+
+    def tag(self, source):
+        return {"backend": self.label, "fallback": "fallback"}.get(source, source)
 
     def conclude(self, d, question, options_text, suggested, why, plan, source, seconds=None, note=None):
         """Log the decision and return the choice to send. In copilot mode the human makes the call first, with the
         suggestion as the default, and game.md records what they actually did."""
-        args = (d["id"], question, options_text)
+        args = (d, question, options_text)
         if not self.copilot or d["kind"] in ("place", "go_first"):
-            self.log.decision(*args, suggested or [], why, plan, source, seconds, note, label=self.label)
+            self.decided(*args, suggested or [], why, plan, source, seconds, note)
             return suggested
-        self.log.decision(*args, suggested or [], why, plan, source, seconds, note, label=self.label, write=False)
+        self.decided(*args, suggested or [], why, plan, source, seconds, note, write=False)
         taken = self.pilot(d, options_text, suggested)
         if taken != suggested:
             self.suggested = suggested
             chose = f"The pilot chose {taken}" + (f" instead of the suggestion {suggested}." if suggested is not None
                                                   else " (there was no suggestion).")
             note = f"{note}; {chose}" if note else chose
-        self.log.decision(*args, taken or [], why, plan, source, seconds, note, label=self.label, echo=False)
+        self.decided(*args, taken or [], why, plan, source, seconds, note, echo=False)
         return taken
 
     def pilot(self, d, options_text, suggested):
@@ -378,7 +469,7 @@ class DuelBrain:
                 print(paint(RED, f"    {err}"))
                 continue
             if pick != suggested:
-                self.stats["overridden"] += 1
+                self.overridden += 1
                 chosen = ", ".join(options_text[k] for k in pick) if options_text else ("yes" if pick == [1] else "no")
                 text = f"The pilot chose {chosen or 'to pass'} instead of your suggestion."
                 self.history.append(text)
@@ -398,6 +489,8 @@ class DuelBrain:
         say = "\n".join(self.say_queue) or None
         self.say_queue = []
         record = {"id": d["id"], "choice": choice, "source": source}
+        if source != "game_over":
+            self.stats.decision(source or "fallback")
         if self.suggested is not None:
             record["suggested"] = self.suggested
         if say:
@@ -406,17 +499,18 @@ class DuelBrain:
         return {"id": d["id"], "choice": choice, "say": say}
 
     def summary(self):
-        n = self.stats["llm"]
-        avg = f", avg {self.seconds / n:.1f}s" if n else ""
-        print(paint(BOLD, f"\n  Decisions: {n} by {self.label}{avg}, {self.stats['rule']} by rules, "
-                          f"{self.stats['auto']} automatic, {self.stats['fallback']} fallbacks."
-                          + (f" You overrode {self.label} {self.stats['overridden']} time(s)." if self.copilot else "")))
+        self.log.write_meta(stats=self.stats.summary())
+        print(paint(BOLD, "\n  " + self.stats.line(self.label)
+                    + (f" You overrode {self.label} {self.overridden} time(s)." if self.copilot else "")))
         print(paint(BOLD + ";" + YELLOW, f"  Game log: {self.log.dir}/game.md"))
-        print(paint(YELLOW, "  Give your feedback to Claude Code in this repo's folder to update the playbook/rules.\n"))
+        print(paint(YELLOW, "  Give your feedback to your coding agent (e.g. Claude Code) in this repo's folder to "
+                            "update the playbook/rules.\n"))
 
     def close(self):
         if self.session:
             self.session.close()
             self.session = None
         if self._log:
+            if not self.over:
+                self._log.write_meta(stats=self.stats.summary())  # a game cut short still records its numbers
             self._log.close()

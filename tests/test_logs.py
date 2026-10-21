@@ -3,7 +3,7 @@ import os
 
 import pytest
 
-from conftest import CASES
+from helpers import CASES
 from ygo_agent import paths
 from ygo_agent.agent import replay
 from ygo_agent.agent.gamelog import GameLog, slug

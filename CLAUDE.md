@@ -11,7 +11,9 @@ See README.md for the architecture and `docs/plan.md` for where the project is g
 1. Read `games/latest/game.md` (or the game the user names). If it exists, also read `games/latest/feedback.md`:
    notes the user typed as `!...` in duel chat, each tagged with the decision number it followed.
    Decisions are numbered (`Decision #N`). `game.jsonl` has the raw state for each one and the reply that was sent,
-   `prompts.jsonl` has the exact prompt Claude saw and its reply, and `meta.json` says which deck and model played.
+   `prompts.jsonl` has the exact prompt the model saw and its reply, and `meta.json` says which deck and backend
+   played (with the game's stats). The default backend is Claude Code (`claude -p`); `--backend NAME` picks
+   another profile from the config (docs/backends.md).
 2. For each mistake, find the decision and work out why it happened:
    - Bad strategy or judgment → add a lesson to the **Coaching lessons** section at the top of
      `decks/saffira/playbook.md`. Newest first, dated, and naming the game. State it as a concrete
@@ -57,7 +59,10 @@ For `decks/blackwing` the user is learning the deck and can't spot mistakes, so 
   `bridge_server.py`: the TCP server; one `Match` per bot connection, a fresh `DuelBrain` and log for each game.
 - `ygo_agent/agent/prompts.py`: the system prompt (mode, rules in force, `playbooks/general.md`, deck, playbook).
 - `ygo_agent/agent/describe.py`: all text Claude sees (state, options, events). `carddb.py`: EDOPro cdb + strings.
-- `ygo_agent/backends/claude_code.py`: persistent `claude -p` stream-json session, one per game turn. No API key.
+- `ygo_agent/backends/`: decision backends, one session per game turn (docs/backends.md): `claude_code.py`
+  (persistent `claude -p` stream-json session, no API key), `anthropic_api.py`, `openai_compat.py` (Ollama, vLLM,
+  llama.cpp, LM Studio, OpenRouter), `heuristic.py`, `random_.py`, `scripted.py` (tests); `parse.py` reads sloppy
+  model output. `ygo_agent/agent/stats.py`: the per-game stats in `meta.json`.
 - `docs/decision-protocol.md`: the bot ⇄ agent message schema. Keep it in sync with any change to either side.
 - `windbot-src/`: WindBot fork, its own git repo, branch `brain-bridge` (`ExecutorBase/Game/BrainBridge.cs`, the
   `Brain` hooks in `ExecutorBase/Game/GameAI.cs` and `Game/GameBehavior.cs`, `Game/AI/Decks/AgentExecutor.cs`).

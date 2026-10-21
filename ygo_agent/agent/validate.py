@@ -8,6 +8,9 @@ def validate(d, choice):
     distinct = len(set(choice)) == len(choice)
     if kind in ("effect_yn", "yesno", "go_first"):
         return None if choice in ([0], [1]) else "reply [1] for yes or [0] for no"
+    if kind == "place":  # a zone bit mask, not an index
+        ok = len(choice) == 1 and isinstance(choice[0], int) and choice[0] & d.get("available", 0)
+        return None if ok else "reply [mask] with at least one free zone's bit"
     if not in_range or not distinct:
         return f"indices must be distinct and between 0 and {n - 1}"
     if kind in ("idle", "battle", "option", "position", "announce_card", "announce_number"):

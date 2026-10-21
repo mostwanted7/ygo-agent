@@ -1,49 +1,52 @@
-"""Decision backends. A backend profile (a [backends.NAME] table in the config) opens sessions; a session answers
-one decision message at a time:
+"""Decision backends. A backend profile (a [backends.NAME] table in the config, with a `type`) becomes a Backend,
+which opens one session per game turn; a session answers one decision at a time (see base.py and
+docs/backends.md):
 
-    session = open_session(profile, system_prompt, schema)
-    reply, info = session.ask(text, timeout)   # reply: dict matching `schema`, or None (info["error"] says why)
-    session.alive, session.messages, session.close()
-
-Only "claude-code" exists so far; other types (API, OpenAI-compatible, heuristic) plug in here.
+    backend = create(profile, db=card_db)
+    session = backend.open_session(system_prompt, schema)
+    reply, info = session.ask(Request(text, decision, schema, timeout))
 """
 
-import shutil
+from .base import Backend, BackendError, Request, Session, estimate_tokens, new_info  # noqa: F401
 
-TYPES = ("claude-code",)
+TYPES = {
+    "claude-code": ("claude_code", "ClaudeCodeBackend"),
+    "anthropic": ("anthropic_api", "AnthropicBackend"),
+    "openai": ("openai_compat", "OpenAIBackend"),
+    "heuristic": ("heuristic", "HeuristicBackend"),
+    "random": ("random_", "RandomBackend"),
+    "scripted": ("scripted", "ScriptedBackend"),
+}
 
 
-class BackendError(Exception):
-    pass
+def backend_class(kind):
+    if kind not in TYPES:
+        raise BackendError(f"unknown backend type {kind!r}; supported: {', '.join(TYPES)}")
+    import importlib
+    module, cls = TYPES[kind]
+    return getattr(importlib.import_module(f"{__name__}.{module}"), cls)
+
+
+def create(profile, db=None):
+    """A Backend for a profile dict ({"name": ..., "type": ..., ...}); a Backend passes through unchanged."""
+    if isinstance(profile, Backend):
+        return profile
+    return backend_class(profile.get("type"))(profile, db)
 
 
 def check(profile):
     """Raise BackendError if this profile can't run on this machine."""
-    kind = profile.get("type")
-    if kind not in TYPES:
-        raise BackendError(f"backend {profile.get('name')!r} has type {kind!r}; supported: {', '.join(TYPES)}")
-    if kind == "claude-code" and not shutil.which("claude"):
-        raise BackendError("The `claude` CLI is not on PATH; the claude-code backend uses it to talk to Claude.")
+    create(profile).check()
 
 
 def label(profile):
-    """How decisions by this backend are tagged in the terminal and game.md."""
-    if profile.get("type") == "claude-code":
-        from .claude_code import LABEL
-        return LABEL
-    return profile.get("name", "AI")
+    """How decisions by this backend are tagged in the terminal and game.md, e.g. "opus (claude-code)"."""
+    return create(profile).label
 
 
 def describe(profile):
-    bits = [f"model: {profile['model']}"] if profile.get("model") else []
-    if profile.get("effort"):
-        bits.append(f"effort: {profile['effort']}")
-    return ", ".join(bits)
+    return create(profile).describe()
 
 
-def open_session(profile, system_prompt, schema):
-    kind = profile.get("type")
-    if kind == "claude-code":
-        from .claude_code import ClaudeCodeSession
-        return ClaudeCodeSession(system_prompt, schema, profile["model"], profile.get("effort") or None)
-    raise BackendError(f"unsupported backend type {kind!r}")
+def open_session(profile, system_prompt, schema, db=None):
+    return create(profile, db).open_session(system_prompt, schema)

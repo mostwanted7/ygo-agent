@@ -132,8 +132,10 @@ acknowledges it in chat.
 
 - `id` must echo the decision's id; the bot ignores lines with any other id.
 - `choice: null` (or a missing/invalid choice) = **fallback**: WindBot's own AI answers this one prompt. The agent
-  falls back when the model gives no usable answer, after the engine rejected a response (`retry`), and for prompts
-  it leaves to WindBot (`place`, `announce_card` with more than 150 names).
+  falls back when the backend gives no usable answer, after the engine rejected a response (`retry`), and for
+  prompts it leaves to WindBot (`place`, `announce_card` with more than 150 names). With `agent.fallback =
+  "heuristic"` (native seats) the agent answers those itself instead, with the heuristic policy (a random legal
+  answer after a `retry`), so `choice` is never null; see docs/backends.md.
 - `choice: []` = pass / cancel / finish, where the kind allows it (below). Otherwise it is treated as a fallback.
 - `say`: optional chat text, sent to the room right away. `\n` separates lines; lines longer than 240 characters are
   split. The agent uses it for its rare banter and to acknowledge `!notes`, never for explanations.
@@ -178,9 +180,12 @@ Notes per kind:
 
 ### Agent-side validation
 
-`ygo_agent/agent/validate.py` checks a model's reply before sending it: in-range distinct indices, the count per
-kind above, the sum for `select_sum`, `[]` only where allowed. An invalid reply gets one retry with the error; a
-second failure becomes a fallback.
+`ygo_agent/agent/validate.py` checks a backend's reply before sending it: in-range distinct indices, the count per
+kind above, the sum for `select_sum`, `[]` only where allowed, and for `place` a mask with at least one available
+bit. An invalid reply gets one retry with the error; a second failure becomes a fallback.
+
+Backends get each decision as a `Request` carrying both the prompt text (`describe.py`) and the raw decision dict
+above, so non-LLM backends (heuristic, random) decide from the same JSON. See docs/backends.md.
 
 ## Message flow of a match
 
@@ -203,5 +208,7 @@ Each game's `games/<time>_<deck>-vs-<opponent>/game.jsonl` holds one JSON object
 `{"ts": unix time, "kind": "event" | "decide" | "reply", "msg": ...}`. `event` and `decide` are the messages above,
 exactly as received (the `room` event comes first). `reply` records what was sent back:
 `{"id", "choice", "source"}`, plus `suggested` when a copilot pilot overrode the agent and `say` when chat was
-sent. `source` is `llm`, `rule:<name>`, `auto`, `fallback`, `pilot` (the copilot's human chose) or `game_over`.
+sent. `source` is `backend` (the configured backend answered; logs before Stage 1 say `llm`), `rule:<name>`,
+`auto`, `fallback`, `pilot` (the copilot's human chose) or `game_over`. `meta.json` names the backend profile and
+holds the game's stats (docs/backends.md).
 `ygo-agent replay` and the saved test cases replay the `event` and `decide` records.

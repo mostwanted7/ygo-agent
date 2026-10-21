@@ -5,7 +5,7 @@ import os
 
 import pytest
 
-from conftest import CASES, case_id, load_case
+from helpers import CASES, case_id, load_case
 from ygo_agent.agent.bridge_server import Match, Runtime
 from ygo_agent.agent.brain import DuelBrain
 from ygo_agent.agent.profile import Profile
