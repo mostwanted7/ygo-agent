@@ -98,13 +98,13 @@ def write(trainer) -> str:
 
     lessons = st.get("lessons") or []
     if lessons:
-        out += ["## Lessons added", ""]
+        out += ["## Pitfalls added", ""]
         for x in lessons:
             out.append(f"- ({x.get('source')}, {x.get('severity') or ''}) {x['text']}")
         out.append("")
     rejected = st.get("rejected_lessons") or []
     if rejected:
-        out += ["## Lessons rejected (their evidence didn't check out against the scripts or logs)", ""]
+        out += ["## Pitfalls rejected (their evidence didn't check out against the scripts or logs)", ""]
         for x in rejected:
             out.append(f"- ({x.get('source')}) {x['text']}  \n  evidence: {'; '.join(x.get('notes') or ['none'])}")
         out.append("")
@@ -117,7 +117,41 @@ def write(trainer) -> str:
                        f"reject {t['reject']}")
         if final:
             out.append(f"\nFinal run against the trained playbook: {final.get('passed', 0)}/{final.get('cases', 0)} "
-                       f"cases passed every one of {final.get('repeat', 0)} runs (`train/tests-final.txt`).")
+                       f"cases passed every one of {final.get('repeat', 0)} runs (`train/tests-final.txt`)"
+                       + (f"; failed: {', '.join(final['failed'])}" if final.get("failed") else "") + ".")
+        out.append("")
+
+    gates = [(k, v["result"]["gate"]) for k, v in steps.items() if isinstance(v.get("result"), dict)
+             and v["result"].get("gate")]
+    if gates:
+        out += ["## Edits checked against the regression cases", "",
+                "Each condense and section rewrite was replayed against the saved cases with the player's backend "
+                "(runs passed, before → after); a rewrite that made them fail more often got one fix-up try, else the "
+                "previous text was kept.", "", "| step | edit | before | after | fix-up | kept |", "|---|---|---|---|---|---|"]
+        for k, gt in gates:
+            out.append(f"| {k} | {gt.get('what')} | {gt.get('before')} | {gt.get('after')} | {gt.get('revised', '–')} | "
+                       f"{gt.get('kept')}{' (' + ', '.join(gt['failures']) + ')' if gt.get('failures') else ''} |")
+        out.append("")
+
+    mistakes = st.get("mistakes") or []
+    if mistakes:
+        out += ["## Mistakes by model", "", "| player | mistakes | major | no judgment | already covered by the playbook |",
+                "|---|---|---|---|---|"]
+        for player in sorted({m.get("player") for m in mistakes}):
+            ms = [m for m in mistakes if m.get("player") == player]
+            out.append(f"| {player} | {len(ms)} | {sum(m.get('severity') == 'major' for m in ms)} | "
+                       f"{sum(bool(m.get('no_judgment')) for m in ms)} | {sum(bool(m.get('covered')) for m in ms)} |")
+        out.append("")
+    proposals = st.get("rule_proposals") or []
+    if proposals:
+        written = [p for p in proposals if p.get("written")]
+        good = [p for p in proposals if p.get("qualifies")]
+        out += ["## Rule proposals", "",
+                f"{len(proposals)} proposed, {len(good)} qualify (no judgment, made by the play model "
+                f"{trainer.play_model()} although the playbook covered it, proven by a saved case), {len(written)} "
+                "written to rules.py. Details and the code: `train/rule-proposals.md`.", ""]
+        out += [f"- {'written' if p.get('written') else 'qualifies' if p.get('qualifies') else 'not a rule'}: "
+                f"{p.get('rule')}" + (f" — {'; '.join(p['reasons'])}" if p.get("reasons") else "") for p in proposals]
         out.append("")
 
     out += ["## Cost and time by phase", "", "| kind | calls | cost | time |", "|---|---|---|---|"]
@@ -131,13 +165,20 @@ def write(trainer) -> str:
         out.append(f"| {kind} | {n} | {money(cost)} | {minutes(secs)} |")
     out.append("")
 
-    questions = list(dict.fromkeys((study or {}).get("open_questions", []) + (st.get("open_questions") or [])))
+    settled = {x["question"] for x in st.get("settled_questions") or []}
+    questions = [q for q in dict.fromkeys((study or {}).get("open_questions", []) + (st.get("open_questions") or []))
+                 if q not in settled]
     out += ["## For a human to check", ""]
+    if settled:
+        out.append(f"- {len(settled)} open question(s) were settled by later labs and games (`state.json`, "
+                   "settled_questions).")
     out.append("- Read the playbook against the card scripts; the lines still marked *(unverified)* haven't been "
                "seen working in the engine.")
     if os.path.isfile(os.path.join(ws.dir, "general-proposals.md")):
         out.append("- `train/general-proposals.md`: proposed lessons for every deck (not applied).")
-    out += [f"- {q}" for q in questions[:25]]
+    if os.path.isfile(os.path.join(ws.dir, "rule-proposals.md")):
+        out.append("- `train/rule-proposals.md`: proposed hard rules and whether they qualify.")
+    out += [f"- {q}" for q in questions[-15:]]
     out.append("")
     path = os.path.join(ws.dir, "train-report.md")
     with open(path, "w", encoding="utf-8") as f:

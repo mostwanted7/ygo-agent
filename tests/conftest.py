@@ -23,6 +23,18 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(pytest.mark.skip(reason=f"EDOPro install not found at {EDOPRO}"))
 
 
+@pytest.fixture(autouse=True, scope="session")
+def _no_user_decks(tmp_path_factory):
+    """An empty user decks dir ($XDG_DATA_HOME/ygo-agent/decks), so decks you trained can't change the tests."""
+    old = os.environ.get("XDG_DATA_HOME")
+    os.environ["XDG_DATA_HOME"] = str(tmp_path_factory.mktemp("xdg-data"))
+    yield
+    if old is None:
+        os.environ.pop("XDG_DATA_HOME", None)
+    else:
+        os.environ["XDG_DATA_HOME"] = old
+
+
 @pytest.fixture(scope="session")
 def db():
     """Card data for the saved cases without an EDOPro install (tests/fixtures/make_cards.py makes it)."""

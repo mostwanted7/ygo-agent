@@ -61,7 +61,7 @@ class DuelBrain:
         self.db = db
         self.profile = profile
         self.rules = Rules(profile.dir)
-        self.describer = Describer(db)
+        self.describer = Describer(db, attack_note=cfg["agent"].get("attack_note", True))
         self._log = log
         self.game_id = game_id  # the web panel's ids for this game and seat (several seats can share a game)
         self.seat = seat
@@ -182,11 +182,8 @@ class DuelBrain:
             self.retry = True
         self.watch_for_big_plays(ev)
         self.pending_ids |= event_ids(ev)
-        line = self.describer.event(ev)
-        if line:
-            self.history.append(line)
-            self.pending.append(line)
-            self.log.event(line)
+        for line in self.describer.lines(ev):
+            self.add_line(line)
         if e == "new_turn" and self.prewarm:
             self.ensure_session(ev["turn"])  # start the next turn's session while the engine keeps going
         if e == "win":
@@ -217,7 +214,19 @@ class DuelBrain:
                 if self.wiped == 3:
                     self.say(self.banter.line("wipe"))
 
+    def add_line(self, line):
+        """A duel-log line: the history, what the backend hasn't seen yet, game.md."""
+        self.history.append(line)
+        self.pending.append(line)
+        self.log.event(line)
+
+    def flush_lines(self, decision=None):
+        """A Summon's line the describer holds back until it knows whether the Summon went through at once."""
+        for line in self.describer.flush(decision):
+            self.add_line(line)
+
     def on_chat(self, ev):
+        self.flush_lines()
         msg = ev.get("message", "").strip()
         source = chat_source(ev)
         if not msg or source == "system" or (source == "duelist" and ev.get("player") == ev.get("position")):
@@ -229,10 +238,7 @@ class DuelBrain:
             self.log.feedback(msg[1:].strip(), context, who="Spectator" if source == "spectator" else "Opponent")
             self.say_queue.append(f"Noted feedback #{self.feedback}.")
         else:
-            line = f'{who} says in chat: "{msg}"'
-            self.history.append(line)
-            self.pending.append(line)
-            self.log.event(line)
+            self.add_line(f'{who} says in chat: "{msg}"')
 
     def panel_note(self, text, decision=None, turn=None):
         """A note typed in the web panel, saved like a `!note` from the duel chat. `decision`/`turn`: the decision
@@ -366,6 +372,7 @@ class DuelBrain:
         state["me"]["extra"] = [{"id": i, "c": 0, "l": 0x40, "s": k} for k, i in enumerate(ids)]
 
     def on_decide(self, d):
+        self.flush_lines(d)
         self.log.record("decide", d)
         kind = d["kind"]
         if kind == "game_over":

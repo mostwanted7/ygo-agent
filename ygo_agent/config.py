@@ -56,6 +56,9 @@ def check(cfg):
     agent = cfg["agent"]
     if agent.get("fallback", "bot") not in FALLBACKS:
         raise ConfigError(f'agent.fallback must be one of {", ".join(FALLBACKS)} (got {agent.get("fallback")!r})')
+    prefer = (cfg.get("decks") or {}).get("prefer") or ""
+    if prefer not in ("", "user", "repo"):
+        raise ConfigError(f'decks.prefer must be "user", "repo" or "" (got {prefer!r})')
     profile = backend(cfg)
     texts = profile.get("card_texts", agent.get("card_texts", "full"))
     if texts not in CARD_TEXTS:
@@ -76,5 +79,7 @@ def backend(cfg, name=None):
 
 
 def deck_overrides(cfg, key):
-    """Per-machine deck settings from [decks.<key>] (e.g. ydk = the EDOPro copy of the deck file)."""
-    return cfg.get("decks", {}).get(key, {})
+    """Per-machine deck settings from [decks.<key>] (e.g. ydk = the EDOPro copy of the deck file). The [decks] table's
+    own keys (user_dir, prefer) aren't decks."""
+    value = (cfg.get("decks") or {}).get(key)
+    return value if isinstance(value, dict) else {}

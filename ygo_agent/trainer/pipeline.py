@@ -8,6 +8,7 @@ import concurrent.futures
 import contextlib
 import copy
 import glob
+import hashlib
 import io
 import json
 import os
@@ -15,25 +16,27 @@ import shutil
 import time
 from dataclasses import asdict, dataclass, field
 
-from .. import paths
+from .. import decks, paths
 from ..agent.gamelog import GREEN, slug
 from ..match import MatchError, SeatSpec
 from . import dossier as dossier_mod
 from . import games as games_mod
-from . import goldfish, lab, logs, prompts, report, review, schemas
+from . import goldfish, lab, logs, prompts, report, review, rulepolicy, schemas
 from . import playbook as pb
 from .llm import Reviewer
 from .workspace import BudgetExhausted, TrainerError, Workspace
 
-EXAMPLE_DECKS = ("saffira", "blackwing")
+EXAMPLE_DECKS = ("geargia", "saffira", "blackwing")  # the first is in the current house style
+MAX_EXAMPLES = 2
 RULES_TEMPLATE = '''"""Hard rules for the {name} deck, checked before the model is asked.
 
-Add a rule when a playbook lesson wasn't enough and the same mistake keeps happening, or for a fixed instruction with
-no judgment in it. Each rule gets a ygo_agent.agent.rules.Context and returns None (let the model decide) or
-Decide(choice, why).
+A rule is only for a mistake with no judgment in it that the play model keeps making even with a playbook lesson.
+Mark it with the regression cases that prove it (@cases("case-name")); `ygo-agent test --deck <deck> --ablate-rules`
+replays them without the rule to find the rules a model no longer needs. Each rule gets a
+ygo_agent.agent.rules.Context and returns None (let the model decide) or Decide(choice, why).
 """
 
-from ygo_agent.agent.rules import Decide  # noqa: F401
+from ygo_agent.agent.rules import Decide, cases  # noqa: F401
 
 RULES = []
 '''
@@ -57,10 +60,13 @@ class Options:
     parallel: int = 2                  # games at a time
     lab_parallel: int = 3
     test_repeat: int = 3
-    out: str | None = None             # the deck folder (default decks/<name>)
+    out: str | None = None             # the deck folder (default <user decks dir>/<name>; ygo_agent/decks.py)
     echo: str = "key"
     agentic: bool | None = None
     deck_name: str | None = None       # the display name (default: the .ydk's name)
+    gate_repeat: int = 2               # runs per saved case when an edit is checked against them (0: no gate)
+    write_rules: bool = False          # write qualifying rule proposals into rules.py (else train/rule-proposals.md)
+    play_model: str | None = None      # the backend rules are calibrated to (default: config agent.backend)
 
 
 class Trainer:
@@ -69,7 +75,7 @@ class Trainer:
         self.cfg = cfg
         self._db, self._engine = db, engine
         self.resume = resume
-        self.deck_dir = os.path.abspath(opts.out or os.path.join(paths.DECKS, opts.name))
+        self.deck_dir = os.path.abspath(opts.out or os.path.join(decks.user_dir(cfg), opts.name))
         self.quiet = quiet
         self.ws: Workspace | None = None
         self.started = time.monotonic()
@@ -107,8 +113,8 @@ class Trainer:
 
     def profile(self):
         from ..agent.profile import Profile
-        if os.path.dirname(self.deck_dir) == os.path.abspath(paths.DECKS):
-            return Profile(self.o.name, self.db, self.cfg)
+        if decks.location_of(self.deck_dir, self.cfg):  # decks/<name> or the user decks dir
+            return Profile(self.o.name, self.db, self.cfg, folder=self.deck_dir)
         return Profile(self.o.name, self.db, self.cfg, ydk=os.path.join(self.deck_dir, "deck.ydk"),
                        playbook=self.playbook_path)
 
@@ -190,8 +196,9 @@ class Trainer:
                 raise TrainerError(f"{self.deck_dir} is an existing deck with a playbook; train into a new --name")
         if self.resume and not os.path.isfile(state_file):
             raise TrainerError(f"nothing to resume in {self.deck_dir}")
-        if o.out and os.path.dirname(self.deck_dir) != os.path.abspath(paths.DECKS) and set(o.phases) - {"study"}:
-            raise TrainerError("--out (a deck folder outside decks/) only works with --phases study")
+        if o.out and not decks.location_of(self.deck_dir, self.cfg) and set(o.phases) - {"study"}:
+            raise TrainerError("--out (a deck folder outside decks/ and the user decks dir) only works with --phases "
+                               "study")
         os.makedirs(os.path.join(self.deck_dir, "tests"), exist_ok=True)
         self.ws = ws = Workspace(self.deck_dir, o.budget, quiet=self.quiet)
         if self.resume:
@@ -292,6 +299,8 @@ class Trainer:
                 continue
             with open(os.path.join(folder, "playbook.md"), encoding="utf-8") as f:
                 out[key] = f.read()
+            if len(out) == MAX_EXAMPLES:
+                break
         return out
 
     def dossier(self):
@@ -332,6 +341,7 @@ class Trainer:
         self.write_playbook(text, "study/playbook-draft.md")
         self.set_go_first(out.get("go_first"), out.get("go_first_reason"))
         ws.set("lines", lines)
+        self.add_questions(out.get("open_questions") or [], "study")
         ws.finish("study", {"size_kb": pb.size_kb(text), "problems": problems, "lines": len(lines),
                             "card_checks": checks, "open_questions": out.get("open_questions") or [],
                             "go_first": out.get("go_first"), "go_first_reason": out.get("go_first_reason")})
@@ -485,16 +495,12 @@ class Trainer:
                 for c in self.dossier().cards:
                     if f'"{c.name}"' in line:
                         names.add(c.name)
+        questions = self.questions()
         prompt = prompts.lab_review(self.deck_display(), self.playbook(), results_md, under_test, r,
                                     self.o.player_backend, goldfish.COMMON_BOARD_TEXT, rv.agentic,
                                     None if rv.agentic else dossier_mod.scripts_text(self.dossier(), names),
-                                    hands_dir=f"round-{r}/lab/")
+                                    hands_dir=f"round-{r}/lab/", open_questions=questions)
         out = self.ask(step, "lab-review", prompt, schemas.LAB_REVIEW, sync=[f"round-{r}/lab"])
-        text = self.playbook()
-        text, changes = review.apply_sections(text, out.get("sections"))
-        logs_ = {x["id"]: os.path.join(ws.dir, x["log"], "game.md") for x in results if x.get("log")}
-        text, accepted, rejected = review.apply_lessons(text, out.get("lessons"), f"{time.strftime('%Y-%m-%d')} "
-                                                        f"lab round {r}", self.evidence(logs_))
         status = dict(ws.state.get("verification") or {})
         by_key = {x["id"]: x for x in lines} | {x["name"].lower(): x for x in lines}
         verified_names = []
@@ -505,7 +511,19 @@ class Trainer:
                            "reason": v.get("reason"), "name": line["name"] if line else v.get("line")}
             if v.get("status") == "verified" and line:
                 verified_names.append(line["name"])
-        text, marked = pb.mark_verified(text, verified_names, "verified in lab")
+        logs_ = {x["id"]: os.path.join(ws.dir, x["log"], "game.md") for x in results if x.get("log")}
+        evidence = self.evidence(logs_)
+
+        def finish_text(t):
+            t, acc, rej = review.apply_lessons(t, out.get("lessons"), f"{time.strftime('%Y-%m-%d')}, lab round {r}",
+                                               evidence)
+            t, mk = pb.mark_verified(t, verified_names, "verified in lab")
+            return t, acc, rej, mk
+        before = self.playbook()
+        base, accepted, rejected, marked = finish_text(before)
+        edited, changes = review.apply_sections(before, out.get("sections"))
+        edited = finish_text(edited)[0]
+        text, gate = self.gate(step, base, edited, "section edits") if changes else (base, None)
         new = [normal_line(x, len(lines) + i) for i, x in enumerate(out.get("new_lines") or [], 1)]
         merged = {x["id"]: x for x in lines}
         for x in new:
@@ -517,11 +535,11 @@ class Trainer:
         self.write_playbook(text, f"round-{r}/playbook-after-lab.md")
         ws.state.setdefault("lessons", []).extend({"round": r, "source": "lab", **a} for a in accepted)
         ws.state.setdefault("rejected_lessons", []).extend({"round": r, "source": "lab", **a} for a in rejected)
-        ws.state.setdefault("open_questions", []).extend(out.get("open_questions") or [])
-        ws.save()
+        self.settle(out.get("settled_questions"), questions, f"lab round {r}")
+        self.add_questions(out.get("open_questions") or [], f"lab round {r}")
         result = {"verification": out.get("verification") or [], "changes": changes, "marked": marked,
                   "new_lines": [x["id"] for x in new], "player_errors": out.get("player_errors") or [],
-                  "accepted": len(accepted), "rejected": len(rejected)}
+                  "accepted": len(accepted), "rejected": len(rejected), "gate": gate}
         ws.finish(step, result)
         counts = {}
         for v in out.get("verification") or []:
@@ -549,6 +567,8 @@ class Trainer:
             ws.set("pool", ok)
         slots = self.schedule(r)
         todo = [s for s in slots if not ws.done(f"r{r}.game.{s['id']}")]
+        if ws.read(f"round-{r}/playbook-before-games.md") is None:  # what the games are played with
+            ws.write(f"round-{r}/playbook-before-games.md", self.playbook())
         ws.log(f"Games round {r}: {len(slots)} ({len(todo)} to play) with {self.o.player_backend} against "
                f"{', '.join(sorted({s['opponent'] for s in slots}))}.")
         cfg = copy.deepcopy(self.cfg)
@@ -606,29 +626,39 @@ class Trainer:
                       f"```\n{condensed[:60000]}\n```"
         names = {c.name for c in self.dossier().cards if f'"{c.name}"' in md}
         recent = [x["text"] for x in (ws.state.get("lessons") or [])[-8:]]
+        questions = self.questions()
         prompt = prompts.game_review(self.deck_display(), self.playbook(), {**g, "backend": self.o.player_backend},
                                      log_ref, logs.problems(md), rv.agentic,
                                      None if rv.agentic else dossier_mod.scripts_text(self.dossier(), names),
-                                     recent)
+                                     recent, questions)
         out = self.ask(step, "review", prompt, schemas.GAME_REVIEW, sync=[g["log"], cond_rel])
-        text = self.playbook()
         evidence = self.evidence({g["id"]: os.path.join(game_dir, "game.md"), g["log"]: os.path.join(game_dir,
                                                                                                    "game.md")})
-        header = (f"{time.strftime('%Y-%m-%d')} game {g['id']} (vs {g.get('opponent_text')}, going "
-                  f"{'first' if g.get('first') else 'second'}) — {g.get('result')}")
-        text, accepted, rejected = review.apply_lessons(text, out.get("lessons"), header, evidence)
-        text, changes = review.apply_sections(text, out.get("sections"))
-        text, marked = pb.mark_verified(text, out.get("confirmed_lines") or [], "verified in game")
-        self.write_playbook(text, f"round-{r}/playbook-after-{g['id']}.md")
+        before = self.playbook()
+        tag = f"{time.strftime('%Y-%m-%d')}, {g['id']} vs {g.get('opponent_text') or g.get('opponent')}"
+        base, accepted, rejected = review.apply_lessons(before, out.get("lessons"), tag, evidence)
+        base, marked = pb.mark_verified(base, out.get("confirmed_lines") or [], "verified in game")
+        edited, changes = review.apply_sections(base, out.get("sections"))
         saved, case_problems = review.save_cases(self.profile(), game_dir, out.get("test_cases"))
         for p in case_problems:
             ws.warn(p)
+        text, gate = self.gate(step, base, edited, "section edits") if changes else (base, None)
+        self.write_playbook(text, f"round-{r}/playbook-after-{g['id']}.md")
         mistakes = out.get("mistakes") or []
         majors = [m for m in mistakes if m.get("severity") == "major"]
         major_ok = sum(1 for m in majors if m.get("verified") and evidence.verify(m.get("evidence") or [])[0])
         significant = min(int(out.get("significant_mistakes") or 0), len(majors)) if majors else 0
         if major_ok < significant:
             ws.note(f"{g['id']}: {significant - major_ok} major mistake(s) without checkable evidence")
+        played_with = ws.read(f"round-{r}/playbook-before-games.md") or before
+        ws.state.setdefault("mistakes", []).extend(
+            {"round": r, "game": g["id"], "decision": m.get("decision"), "player": self.o.player_backend,
+             "severity": m.get("severity"), "kind": m.get("kind"), "what": m.get("what"),
+             "no_judgment": bool(m.get("no_judgment")),
+             "covered": bool(m.get("playbook_had")) and pb.quote_found(m["playbook_had"], played_with)}
+            for m in mistakes if m.get("verified"))
+        self.rule_proposals(g, out.get("rule_proposals") or [], [m for m in mistakes if m.get("verified")],
+                            played_with)
         general = []
         for item in out.get("general") or []:
             ok, notes = evidence.verify(item.get("evidence") or [])
@@ -637,18 +667,42 @@ class Trainer:
         ws.state.setdefault("lessons", []).extend({"round": r, "source": g["id"], **a} for a in accepted)
         ws.state.setdefault("rejected_lessons", []).extend({"round": r, "source": g["id"], **a} for a in rejected)
         ws.state.setdefault("tests_saved", []).extend({"round": r, "game": g["id"], **s} for s in saved)
-        ws.state.setdefault("open_questions", []).extend(
-            [f"rule proposal ({g['id']}): {x}" for x in out.get("rule_proposals") or []] +
-            [f"repeated mistake ({g['id']}): {x}" for x in out.get("repeated") or []])
+        self.settle(out.get("settled_questions"), questions, g["id"])
         ws.save()
         ws.write_json(f"round-{r}/reviews/{g['id']}.json", out)
         result = {"significant": significant, "major_with_evidence": major_ok, "mistakes": len(mistakes),
                   "accepted": accepted, "rejected": len(rejected), "changes": changes, "marked": marked,
-                  "tests": [s["name"] for s in saved], "summary": out.get("summary")}
+                  "tests": [s["name"] for s in saved], "summary": out.get("summary"), "gate": gate}
         ws.finish(step, result)
-        ws.log(f"Review {g['id']}: {len(mistakes)} mistake(s), {significant} major; {len(accepted)} lesson(s) added, "
-               f"{len(rejected)} rejected for evidence; {len(saved)} test case(s); {len(changes)} section edit(s).")
+        ws.log(f"Review {g['id']}: {len(mistakes)} mistake(s), {significant} major; {len(accepted)} pitfall(s) added, "
+               f"{len(rejected)} rejected for evidence; {len(saved)} test case(s); {len(changes)} section edit(s)"
+               + (f" ({gate['kept']} kept after the case check)" if gate else "") + ".")
         return result
+
+    def rule_proposals(self, g: dict, proposals: list[dict], mistakes: list[dict], played_with: str) -> None:
+        """Assess each proposal against the rules policy (rulepolicy.py); write the ones that qualify into rules.py
+        with --write-rules, and log every one in train/rule-proposals.md."""
+        if not proposals:
+            return
+        names = {os.path.splitext(os.path.basename(p))[0] for p in self.case_files()}
+        entries = []
+        for p in proposals:
+            e = rulepolicy.assess(p, mistakes, player=self.o.player_backend, play_model=self.play_model(),
+                                  playbook=played_with, cases=names)
+            e.update(game=g["id"], player=self.o.player_backend)
+            if e["qualifies"] and self.o.write_rules and e["code"]:
+                e["written"] = rulepolicy.write_rule(os.path.join(self.deck_dir, "rules.py"), e["code"], e["case"])
+                if e["written"]:
+                    self.ws.log(f"Rule {e['written']} written to rules.py (case {e['case']}).", GREEN)
+            entries.append(e)
+        path = self.ws.path("rule-proposals.md")
+        new = not os.path.isfile(path)
+        with open(path, "a", encoding="utf-8") as f:
+            if new:
+                f.write(rulepolicy.HEADER.format(play_model=self.play_model(), deck=self.o.name))
+            for e in entries:
+                f.write(rulepolicy.entry_markdown(e))
+        self.ws.state.setdefault("rule_proposals", []).extend(entries)
 
     def append_general(self, items: list[dict]) -> None:
         if not items:
@@ -662,9 +716,130 @@ class Trainer:
             for x in items:
                 f.write(f"- ({x['game']}, evidence {'checked' if x['verified'] else 'NOT checked'}) {x['text']}\n")
 
+    # ---- open questions ----
+
+    def questions(self) -> list[str]:
+        """The open questions still unanswered (the study's, the lab's, the reviews'), oldest first."""
+        settled = {x["question"] for x in self.ws.state.get("settled_questions") or []}
+        return [q for q in dict.fromkeys(self.ws.state.get("open_questions") or []) if q not in settled]
+
+    def add_questions(self, items: list[str], source: str) -> None:
+        have = set(self.ws.state.get("open_questions") or [])
+        self.ws.state.setdefault("open_questions", []).extend(q for q in items if q and q not in have)
+        self.ws.save()
+
+    def settle(self, answers: list[dict] | None, asked: list[str], source: str) -> None:
+        """Drop the open questions a review answered ({"question": its number in `asked`, "answer"})."""
+        for a in answers or []:
+            n = a.get("question")
+            if isinstance(n, int) and 1 <= n <= len(asked):
+                self.ws.state.setdefault("settled_questions", []).append(
+                    {"question": asked[n - 1], "answer": a.get("answer") or "", "source": source})
+        self.ws.save()
+
+    # ---- the regression-case gate ----
+
+    def play_model(self) -> str:
+        return self.o.play_model or self.cfg["agent"]["backend"]
+
+    def case_files(self) -> list[str]:
+        return sorted(glob.glob(os.path.join(self.deck_dir, "tests", "*.json")))
+
+    def case_score(self, text: str, label: str, allow_last: bool = False) -> dict | None:
+        """Replay every saved case with `text` as the playbook (the player's backend, gate_repeat runs each):
+        {"hash", "cases": {name: {"good", "repeat", "choices"}}, "good", "total"}; None without cases or with the
+        gate off. Cached by text. allow_last: an unmeasured text may use the last accepted score instead (the text
+        it grew from), which saves a measurement per gate."""
+        files = self.case_files()
+        if not files or self.o.gate_repeat <= 0:
+            return None
+        ws = self.ws
+        h = hashlib.sha1(text.encode()).hexdigest()[:12]
+        cache = ws.state.setdefault("case_scores", {})
+        names = {os.path.splitext(os.path.basename(f))[0] for f in files}
+        if h in cache and names <= set(cache[h]["cases"]):
+            return cache[h]
+        if allow_last and ws.state.get("gate_last"):
+            return ws.state["gate_last"]
+        from ..agent import replay
+        repeat = self.o.gate_repeat
+        ws.check_budget("test", len(files) * repeat)
+        path = ws.write(f"gates/{label}.md", text)
+        profile = self.profile()
+        profile.playbook_path = path
+        cfg = copy.deepcopy(self.cfg)
+        cfg["agent"]["backend"] = self.o.player_backend
+        cfg["chat"] = "off"
+        cfg["games_dir"] = ws.folder("gates", label)
+        results, t0 = [], time.monotonic()
+        with contextlib.redirect_stdout(io.StringIO()):
+            replay.run_tests(files, cfg, self.db, lambda key: profile, repeat, results=results)
+        ws.spend(f"{label}.cases", "test", replay_cost(cfg["games_dir"]), time.monotonic() - t0,
+                 runs=len(files) * repeat)
+        score = {"hash": h, "label": label, "good": sum(x["good"] for x in results),
+                 "total": sum(x["repeat"] for x in results),
+                 "cases": {x["name"]: {"good": x["good"], "repeat": x["repeat"], "choices": x["choices"]}
+                           for x in results}}
+        cache[h] = score
+        ws.save()
+        return score
+
+    def gate(self, step: str, before: str, after: str, what: str) -> tuple[str, dict | None]:
+        """(the text to keep, a record). `after` is kept unless the saved cases pass less often with it than with
+        `before`; then the reviewer gets one retry with the failing cases as feedback, and if that doesn't hold
+        either, `before` is kept."""
+        if after == before:
+            return after, None
+        ws = self.ws
+        base = self.case_score(before, f"{step}.before", allow_last=True)
+        if base is None:
+            return after, None
+        new = self.case_score(after, f"{step}.after")
+        record = {"what": what, "before": score_text(base), "after": score_text(new)}
+        lost = case_losses(base, new)
+        if not lost:
+            ws.set("gate_last", new)
+            return after, {**record, "kept": "after"}
+        ws.warn(f"{step}: the {what} made saved cases fail more often ({score_text(base)} → {score_text(new)}: "
+                f"{', '.join(lost)}); asking the reviewer to fix it")
+        failures = self.failure_details(lost, base, new)
+        out = self.ask(f"{step}.revise", "condense", prompts.revise(before, after, failures, pb.TARGET_KB[1], what),
+                       schemas.CONDENSE)
+        revised = pb.ensure_lessons((out.get("playbook") or "").strip() + "\n")
+        if out.get("playbook") and not [p for p in pb.problems(revised) if "KB" not in p]:
+            again = self.case_score(revised, f"{step}.revised")
+            record["revised"] = score_text(again)
+            if not case_losses(base, again):
+                ws.set("gate_last", again)
+                return revised, {**record, "kept": "revised"}
+        ws.warn(f"{step}: keeping the previous text")
+        return before, {**record, "kept": "before", "failures": lost}
+
+    def failure_details(self, names: list[str], base: dict, new: dict) -> list[dict]:
+        """What the revise prompt shows for each case that got worse: the decision, the right and wrong options,
+        and what the player chose."""
+        from ..agent import replay
+        from ..agent.describe import Describer
+        describer = Describer(self.db)
+        out = []
+        for name in names:
+            case = replay.load_case(os.path.join(self.deck_dir, "tests", f"{name}.json"))
+            d = case["messages"][-1]
+            options = describer.options(d)
+
+            def say(choice):
+                return " + ".join(options[i] for i in choice if 0 <= i < len(options)) or "pass"
+            b, n = base["cases"].get(name, {}), new["cases"][name]
+            out.append({"name": name, "note": case.get("note"), "question": describer.question(d)[:300],
+                        "expected": [say(c) for c in case.get("expect") or []][:6],
+                        "rejected": [say(c) for c in case.get("reject") or []][:4],
+                        "chose": [say(c) for c in n["choices"] if isinstance(c, list)],
+                        "before": f"{b.get('good', '?')}/{b.get('repeat', '?')}", "after": f"{n['good']}/{n['repeat']}"})
+        return out
+
     def condense(self, tag: str):
         """Tighten the playbook when it's over the limit (after the study, each round, and at the end). Two tries;
-        the smaller result is kept as long as it lost no section."""
+        the smaller result is kept as long as it lost no section and the saved cases still pass as often (gate)."""
         ws = self.ws
         step = f"{tag}.condense"
         text = self.playbook()
@@ -686,11 +861,16 @@ class Trainer:
             ws.warn(f"condense rejected ({tries}); keeping the longer playbook")
             ws.finish(step, {"accepted": False, "tries": tries})
             return
+        kept, gate = self.gate(step, text, best, "condense")
+        if kept is text:
+            ws.finish(step, {"accepted": False, "tries": tries, "gate": gate})
+            return
         folder = {"study": "study", "final": "final"}.get(tag, f"round-{tag.lstrip('r')}")
-        self.write_playbook(best, f"{folder}/playbook-condensed.md")
-        ws.finish(step, {"accepted": True, "from_kb": pb.size_kb(text), "to_kb": pb.size_kb(best), "tries": tries,
-                         "removed": removed})
-        ws.log(f"Condensed the playbook from {pb.size_kb(text)} to {pb.size_kb(best)} KB.")
+        self.write_playbook(kept, f"{folder}/playbook-condensed.md")
+        ws.finish(step, {"accepted": True, "from_kb": pb.size_kb(text), "to_kb": pb.size_kb(kept), "tries": tries,
+                         "removed": removed, "gate": gate})
+        ws.log(f"Condensed the playbook from {pb.size_kb(text)} to {pb.size_kb(kept)} KB"
+               + (f" (cases {gate['before']} → {gate.get('revised') or gate['after']})" if gate else "") + ".")
 
     # ---- final ----
 
@@ -700,7 +880,7 @@ class Trainer:
         if ws.done("final.tests"):
             return
         from ..agent import replay
-        cases = sorted(glob.glob(os.path.join(self.deck_dir, "tests", "*.json")))
+        cases = self.case_files()
         if not cases:
             ws.finish("final.tests", {"cases": 0})
             return
@@ -715,22 +895,39 @@ class Trainer:
         cfg["games_dir"] = ws.folder("final-tests")
         profile = self.profile()
         ws.log(f"Re-running {len(cases)} saved case(s) x{repeat} with {self.o.player_backend}…")
-        buf = io.StringIO()
+        buf, results = io.StringIO(), []
         t0 = time.monotonic()
         with contextlib.redirect_stdout(buf):
-            code = replay.run_tests(cases, cfg, self.db, lambda key: profile, repeat)
-        text = strip_ansi(buf.getvalue())
-        ws.write("tests-final.txt", text)
-        cost = 0.0
-        for path in glob.glob(os.path.join(cfg["games_dir"], "replays", "*", "prompts.jsonl")):
-            with open(path, encoding="utf-8") as f:
-                for line in f:
-                    cost += (json.loads(line).get("info") or {}).get("cost_usd") or 0
+            code = replay.run_tests(cases, cfg, self.db, lambda key: profile, repeat, results=results)
+        ws.write("tests-final.txt", strip_ansi(buf.getvalue()))
+        cost = replay_cost(cfg["games_dir"])
         ws.spend("final.tests", "tests", cost, time.monotonic() - t0, runs=len(cases) * repeat)
-        passed = text.count("\nPASS ") + text.startswith("PASS ")
+        passed = sum(x["passed"] for x in results)
         ws.finish("final.tests", {"cases": len(cases), "repeat": repeat, "passed": passed, "exit": code,
-                                  "cost": round(cost, 4)})
+                                  "cost": round(cost, 4), "failed": [x["name"] for x in results if not x["passed"]]})
         ws.log(f"Regression cases: {passed}/{len(cases)} passed every run.")
+
+
+def score_text(score: dict | None) -> str:
+    return f"{score['good']}/{score['total']}" if score else "–"
+
+
+def case_losses(base: dict, new: dict) -> list[str]:
+    """The cases that pass less often in `new`, if the pass count over the cases both measured dropped; else []."""
+    common = [k for k in new["cases"] if k in base["cases"]]
+    if sum(new["cases"][k]["good"] for k in common) >= sum(base["cases"][k]["good"] for k in common):
+        return []
+    return [k for k in common if new["cases"][k]["good"] < base["cases"][k]["good"]]
+
+
+def replay_cost(folder: str) -> float:
+    """What the replayed decisions under `folder` cost (prompts.jsonl of each replay)."""
+    cost = 0.0
+    for path in glob.glob(os.path.join(folder, "replays", "*", "prompts.jsonl")):
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                cost += (json.loads(line).get("info") or {}).get("cost_usd") or 0
+    return cost
 
 
 def normal_line(x: dict, n: int) -> dict:

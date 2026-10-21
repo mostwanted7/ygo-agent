@@ -46,7 +46,7 @@ def test_system_prompt_modes(db, cfg):
         assert text.startswith("You are an expert Yu-Gi-Oh! duelist")
         assert "Master Rule 3" in text and "Master Rule 5" not in text and "Claude" not in text.split("# Your deck")[0]
         assert "# General strategy" in text and p.general_playbook.strip() in text
-        assert "# Playbook (coaching notes — follow these)" in text and p.playbook in text
+        assert "# Playbook (coaching notes — your default guide)" in text and p.playbook in text
         assert "choice: option indices" in text
     assert "human who is coaching you" in play and "# Teaching mode" not in play
     assert "spectator seat" in teach and "# Teaching mode" in teach and "# Coaching mode" not in teach

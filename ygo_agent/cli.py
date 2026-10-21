@@ -8,6 +8,7 @@
     ygo-agent coach [--deck saffira] [--web]   # you play in EDOPro, the agent coaches you live and reviews the game
     ygo-agent replay games/latest 14 [--save NAME --expect '[[2]]' --note "..."]
     ygo-agent test [NAME ...]      # re-run saved regression cases
+    ygo-agent decks                # every deck profile: where it lives, playbook, rules, saved cases, .ydk
     ygo-agent web [--demo games/<dir> --speed 2]   # the web panel: recorded games, or one replayed live
 """
 
@@ -20,7 +21,8 @@ from .config import ConfigError, load_config, backend
 
 
 def add_common(p):
-    p.add_argument("--deck", help="deck profile: a folder under decks/ (default from the config)")
+    p.add_argument("--deck", help="deck profile: a deck in decks/ or your decks dir (`ygo-agent decks`), a .ydk file "
+                                  "or a deck in EDOPro's deck folder (default from the config)")
     p.add_argument("--backend", help="backend profile: a [backends.NAME] table in the config (e.g. opus, sonnet, "
                                      "api-opus, local, heuristic, random)")
     p.add_argument("--model", help="override the backend's model (e.g. opus, sonnet, qwen3:14b)")
@@ -97,7 +99,8 @@ def parser():
     p.add_argument("--spectate", action="store_true",
                    help="host the room on --port and wait for you to join as a spectator (or Enter) before each match")
     p.add_argument("--quiet", action="store_true", help="print only the key plays and the results")
-    p.add_argument("--first", choices=("a", "b"), help="who goes first in game 1 (AI vs AI only; default: RPS)")
+    p.add_argument("--first", choices=("a", "b"), help="who goes first in game 1 of each match (default: the RPS "
+                                                       "winner chooses)")
     p.add_argument("--stack-a", metavar="CARDS", help="comma-separated card names/codes put on top of A's Deck "
                                                        "(the first 5 are its opening hand)")
     p.add_argument("--stack-b", metavar="CARDS", help="same for B")
@@ -133,10 +136,16 @@ def parser():
     p.add_argument("--repeat", type=int, default=3, help="runs per saved case (the model isn't deterministic)")
     add_common(p)
 
-    p = sub.add_parser("test", help="re-run saved regression cases (decks/<deck>/tests)")
+    p = sub.add_parser("test", help="re-run saved regression cases (<deck folder>/tests)")
     p.add_argument("names", nargs="*", metavar="NAME", help="case names (default: every case of the deck)")
     p.add_argument("--repeat", type=int, default=3, help="runs per case (the model isn't deterministic)")
+    p.add_argument("--ablate-rules", action="store_true",
+                   help="replay each deck rule's cases with that rule disabled, to find rules the model no longer needs")
     add_common(p)
+
+    p = sub.add_parser("decks", help="list the deck profiles: decks/ in the repo, then your decks dir "
+                                     "([decks] user_dir; `train` puts new decks there)")
+    p.add_argument("--config", metavar="FILE", help="use FILE instead of config.local.toml")
 
     p = sub.add_parser("web", help="the web panel on its own: browse and replay recorded games, or a live demo")
     p.add_argument("--demo", metavar="GAME_DIR", help="replay a recorded game (games/<dir>) live, as if it were "
@@ -280,6 +289,36 @@ def start_panel(cfg, db):
         import webbrowser
         webbrowser.open(srv.url)
     return srv
+
+
+def cmd_decks(args, cfg):
+    from . import decks
+    from .agent.gamelog import paint, BOLD, DIM, RED, YELLOW
+    rows = decks.listing(cfg)
+    print(paint(BOLD, "Deck profiles") + paint(DIM, f"  (repo: {decks.short(decks.repo_dir())}, "
+                                                    f"user: {decks.short(decks.user_dir(cfg))})"))
+    if not rows:
+        print("  none")
+        return 0
+    head = f"  {'deck':<14} {'where':<5} {'playbook':>9} {'rules':>5} {'tests':>5}  ydk"
+    print(paint(DIM, head))
+    for r in rows:
+        size = f"{r['playbook_bytes'] / 1024:.1f} KB" if r["playbook_bytes"] else "none"
+        rules = "?" if r["rules"] is None else str(r["rules"])
+        ydk = decks.short(r["ydk"]) if r["ydk"] else r.get("error", "?")
+        if r["ydk"] and not r["ydk_ok"]:
+            ydk += " (missing)"
+        name = r["key"] + (f" ({r['name']})" if r["name"].lower() != r["key"].lower() else "")
+        line = f"  {name:<14} {r['location']:<5} {size:>9} {rules:>5} {r['tests']:>5}  {ydk}"
+        clash = r.get("clash")
+        if clash == "clash":
+            line = paint(RED, line + "  ← in both deck dirs: rename one, or set [decks] prefer")
+        elif clash == "shadowed":
+            line = paint(DIM, line + "  (shadowed: [decks] prefer)")
+        elif not r["ydk_ok"]:
+            line = paint(YELLOW, line)
+        print(line)
+    return 0
 
 
 def cmd_web(args, cfg):
@@ -428,7 +467,7 @@ def cmd_replay(args, cfg):
         return run_tests(args, cfg, args.tests)
     if not args.game_dir or args.decision is None:
         sys.exit("give a game folder and a decision number, or --tests")
-    deck = args.deck or replay.game_deck(args.game_dir)
+    deck = args.deck or replay.game_deck(args.game_dir, cfg)
     db, profile = load_deck(cfg, deck)
     replay.replay_one(args.game_dir, args.decision, cfg, db, profile, save=args.save,
                       expect=json.loads(args.expect) if args.expect else None,
@@ -438,12 +477,15 @@ def cmd_replay(args, cfg):
 
 def run_tests(args, cfg, names):
     """Cases of --deck (or the configured deck); named cases are looked up in every deck unless --deck is given."""
+    from . import decks as deck_dirs
     from .agent import replay
-    from .agent.profile import deck_keys
     cfg["chat"] = "off"
     check_backend(cfg)
-    decks = [args.deck] if args.deck else (deck_keys() if names else [cfg["deck"]])
-    cases = replay.case_paths(decks, names)
+    decks = [args.deck] if args.deck else (deck_dirs.keys(cfg) if names else [cfg["deck"]])
+    try:
+        cases = replay.case_paths(decks, names, cfg)
+    except deck_dirs.DeckError as e:
+        sys.exit(str(e))
     db = load_db(cfg)
     profiles = {}
 
@@ -451,6 +493,11 @@ def run_tests(args, cfg, names):
         if key not in profiles:
             profiles[key] = load_profile(cfg, db, key)
         return profiles[key]
+    if args.ablate_rules:
+        from .agent import ablation
+        for key in decks:
+            ablation.ablate(profile_for(key), cfg, db, args.repeat)
+        return 0
     return replay.run_tests(cases, cfg, db, profile_for, args.repeat)
 
 
@@ -475,6 +522,8 @@ def main(argv=None):
         sys.exit(run_tests(args, cfg, args.names))
     if args.cmd == "web":
         return cmd_web(args, cfg)
+    if args.cmd == "decks":
+        sys.exit(cmd_decks(args, cfg))
     if getattr(args, "handler", None):  # subcommands that register themselves (bench)
         return args.handler(args, cfg)
 

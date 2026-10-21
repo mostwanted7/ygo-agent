@@ -12,34 +12,31 @@ from ygo_agent.trainer.workspace import TrainerError
 
 pytestmark = pytest.mark.integration
 
-PLAYBOOK = """## Lessons from games (newest first; these override everything below)
+PLAYBOOK = """## How to use this playbook
 
-None yet: lessons from reviewed games go here.
-
-## Status of this playbook
-
-Built from the texts and scripts.
+Principles, not scripts: deviate when the board calls for it.
 
 ## Game plan
 
 Make Rank 4s.
 
-## Engine cards
+## Card roles
 
 - **Geargiarsenal**: Tribute it to Special Summon a Geargia from the Deck (script: Cost.SelfTribute).
-
-## Extra Deck
-
 - **Gear Gigant X**: 2 Level 4 Machines.
 
-## Main lines
+## Situational considerations
+
+- **Consider Gear Gigant X when a Geargiano is in the GY**, because its float then has a target.
+
+## Example sequences
 
 **Line 1: Geargiarsenal + any Geargia** *(unverified)*
 1. Normal Summon Geargiarsenal, Tribute it for Geargiarmor.
 
-## General principles
+## Known pitfalls (from reviewed games, newest first)
 
-- Keep Solemn Strike for their best monster.
+None yet: specific mistakes from reviewed games go here, one or two lines each.
 """
 QUOTE = {"source": "script", "file": "c73428497.lua", "decision": 0, "quote": "e2:SetCost(Cost.SelfTribute)"}
 
@@ -122,7 +119,7 @@ def test_dry_run_of_the_whole_pipeline(tmp_path, decks_dir, engine, agent_db, ge
     assert len(state["rejected_lessons"]) >= 2 and not state.get("tests_saved")
     assert state["status"] == "done" and abs(state["ledger"][0]["cost"] - 0.5) < 1e-9
     report = (train / "train-report.md").read_text()
-    for want in ("| 1 | 3 | 1 | 1 |", "Lines (lab verification)", "Lessons rejected", "does Geargiarmor"):
+    for want in ("| 1 | 3 | 1 | 1 |", "Lines (lab verification)", "Pitfalls rejected", "does Geargiarmor"):
         assert want in report, want
     assert pb.problems(text) == []
 

@@ -38,8 +38,8 @@ LINE = obj(
 )
 
 LESSON = obj(
-    text={"type": "string", "description": "one concrete instruction in the playbook's voice: '**When X, do Y** "
-                                           "because Z.' (Markdown, one paragraph)"},
+    text={"type": "string", "description": "a Known pitfall in the playbook's voice, generalised, one or two "
+                                           "sentences: '**When X, do Y** because Z.' (Markdown)"},
     decisions=arr(INT),
     severity={"type": "string", "enum": ["major", "minor"]},
     evidence=EVIDENCE,
@@ -62,6 +62,17 @@ STUDY = obj(
     open_questions=arr(STR),
 )
 
+SETTLED = arr(obj(question=INT, answer={"type": "string", "description": "one line: what the logs or scripts showed"}))
+
+RULE_PROPOSAL = obj(
+    rule={"type": "string", "description": "the rule in plain words"},
+    decisions=arr(INT),
+    case={"type": "string", "description": "the regression case that proves it: a name from test_cases or an "
+                                           "existing case"},
+    code={"type": "string", "description": "optional: the rule as one Python function 'def name(ctx):' returning "
+                                           "None or Decide(choice, why); empty if none"},
+)
+
 LAB_REVIEW = obj(
     verification=arr(obj(
         line={"type": "string", "description": "the line id (L1...) or its name"},
@@ -75,6 +86,7 @@ LAB_REVIEW = obj(
     lessons=arr(LESSON),
     player_errors=arr({"type": "string", "description": "places where the line was right but the player didn't "
                                                         "follow it (and the wording that would fix it)"}),
+    settled_questions=SETTLED,
     open_questions=arr(STR),
 )
 
@@ -86,17 +98,20 @@ GAME_REVIEW = obj(
         better={"type": "string", "description": "what it should have done"},
         severity={"type": "string", "enum": ["major", "minor"]},
         kind={"type": "string", "enum": ["strategy", "rules", "sequencing", "resource", "presentation", "engine"]},
+        no_judgment={"type": "boolean", "description": "one answer was clearly right whatever the rest of the game"},
+        playbook_had={"type": "string", "description": "the playbook line that already covered it, quoted verbatim; "
+                                                       "empty if none"},
         verified=BOOL,
         evidence=EVIDENCE,
     )),
     significant_mistakes=INT,
     lessons=arr(LESSON),
-    repeated=arr({"type": "string", "description": "a playbook instruction the player had and still broke"}),
     sections=arr(SECTION),
-    confirmed_lines=arr({"type": "string", "description": "names of playbook lines this game showed working"}),
+    confirmed_lines=arr({"type": "string", "description": "names of Example sequences this game showed working"}),
     test_cases=arr(TEST_CASE),
     general=arr(obj(text=STR, evidence=EVIDENCE)),
-    rule_proposals=arr(STR),
+    rule_proposals=arr(RULE_PROPOSAL),
+    settled_questions=SETTLED,
 )
 
 CONDENSE = obj(

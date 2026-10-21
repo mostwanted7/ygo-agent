@@ -5,7 +5,7 @@ for every backend. It reports win rates with confidence intervals, a rating, gam
 tokens, cost, and how often the model's replies were unusable.
 
 ```sh
-ygo-agent bench smoke                       # no LLM, about a minute: checks the whole pipeline
+ygo-agent bench smoke                       # no LLM, about a minute: checks the whole pipeline (games/bench-smoke/)
 ygo-agent bench readme                      # the README benchmark (bench/configs/readme.toml)
 ygo-agent bench readme --resume             # continue its newest run; finished games are skipped
 ygo-agent bench --decks saffira --backends sonnet,haiku,heuristic --opponents windbot:Blue-Eyes --games 6
@@ -31,8 +31,10 @@ A plan is a TOML file in `bench/configs/` (pass its name or a path), or flags. F
 | `budget_usd` / `--budget-usd` | none | start no more games once the finished ones cost this much |
 | `timeout` / `--timeout` | 5400 | seconds before a WindBot game is given up |
 | `note` | | a line shown at the top of the report |
+| `scratch` / `--scratch` | false | a test run: its folder goes under `games/bench-smoke/` (git-ignored) instead of `bench/results/`, so only deliberate runs land in the repo. `smoke` sets it |
 
-`--dry-run` prints the plan, `--out DIR` picks the run folder, and `--no-probe` skips the check below.
+`--dry-run` prints the plan, `--out DIR` picks the run folder (over `bench/results/` and `scratch`), and `--no-probe`
+skips the check below.
 
 **Same deals for everyone.** Game *i* (0-based) of every pairing uses seed `seed + i`, and the AI seat goes first
 in game 1, 3, 5, … and second in game 2, 4, 6, …. The seed fixes the shuffle of both decks, so every backend gets
@@ -55,7 +57,8 @@ bad deck) stop the run.
 
 ## What a run writes
 
-`bench/results/<time>_<name>/`:
+`bench/results/<time>_<name>/` (a `scratch` run such as `smoke`: `games/bench-smoke/<time>_<name>/`; `--out DIR`
+anywhere):
 
 - `results.jsonl`: one line per game attempt. `status` is `done`, `aborted` (out of usage) or `error`; the last
   `done` line of a game counts. A line has the deck, backend, opponent, game number, seed, who went first, the
@@ -149,14 +152,90 @@ Burn, Horus and Normal Monster Mash are legal too (not scanned). Lightsworn Shad
 Ritual and most newer decks run Link monsters. The README benchmark uses Blue-Eyes (strong,
 fast) and Time Thief (mid-strength, longer games).
 
+## Decision exam: comparing models without the luck of the draw
+
+A handful of games per model mostly measures the opening hands. `ygo-agent bench exam` compares models on the same
+decisions instead: real decision points from logged games, each re-asked of every candidate, then graded by a blind
+judge (Opus by default) that can read the card scripts.
+
+```sh
+ygo-agent bench exam --select                     # sample 40 positions into bench/exams/main.json (no LLM, seconds)
+ygo-agent bench exam --dry-run                    # list them, with a cost and time estimate
+ygo-agent bench exam                              # opus, sonnet and haiku answer; opus judges; report.md
+ygo-agent bench exam --judge opus,sonnet --games 4   # plus a second judge and a review of 4 whole games per model
+ygo-agent bench exam --resume                     # continue the newest run of `main`
+ygo-agent bench exam report bench/exams/results/<run>
+```
+
+**The positions.** `--select` scans every LLM-played game log under the games folder (`--sources`) for Saffira and
+Blackwing (`--decks`) and keeps the decisions the model itself made, with a real choice: not the automatic answers,
+not the ones a deck rule answers (today's rules), not the decision after an engine retry, and not a lone option. The
+sample is stratified: the decks share the positions equally, and each deck's share goes 30% Main Phase, 20% chain
+windows, 20% card selections (searches, targets, costs, materials), 12.5% Battle Phase (attacks and attack targets),
+10% optional triggers and 7.5% the rest. Within a stratum the picks rotate over the models whose games they come from
+and favour decisions where the answer matters: replies to an opponent's activation, summon or attack, searches and
+targets, a Main Phase with many plays, and above all decisions where the heuristic policy disagrees with what the
+model did. At most 3 positions come from one game, 3 decisions apart. The selection (game folder, decision number,
+a hash of the decision) is saved in `bench/exams/<name>.json` and reproduces from `--seed`; `--resample` replaces it.
+
+**The answers.** Each position is re-asked exactly as `ygo-agent replay` does: a fresh brain replays the game's
+events up to the decision (with the current playbook, rules and describe.py), and a fresh session of the candidate
+answers it. Every candidate sees the same prompt (checked per answer). A position that a rule answers now is
+excluded. `--parallel` asks run at a time, and every answer (choice, why, plan, seconds, tokens, cost) is appended
+to `answers.jsonl` as it lands, so `--resume` asks only what is missing or failed. When a candidate hits a usage
+limit it stops and the others carry on.
+
+**The judge.** For each position the judge gets what the player saw (the same message text), the deck's decklist,
+`playbooks/general.md` and the playbook, the texts of the deck's cards in the position, and the distinct answers
+labelled A, B, C… in a per-position random order, each as option text plus the player's reason (model names
+scrubbed). It grades each answer `best | good | acceptable | mistake | blunder` with a reason, and says what it would
+play itself and which answers are as good. Answers that make the same move (another copy of the same card, the same
+cards in a different order) share one label, so identical choices always get the same grade. The judge is the
+trainer's reviewer (`trainer/llm.py`): agentic `claude -p` with only Read/Grep/Glob in a sandbox of the card scripts,
+so it can check rulings (`--inline-judge` turns the tools off). It grades `--judge-batch` positions per call (3, one
+deck per call). Its prompts and tool transcripts are kept in the run's `judge/` folder.
+
+**Checking the judge.** The report flags self-preference: the judge's own model graded best far more often than the
+others when its answer differs from every other candidate's. In a share of the positions (`--probe`, 15%) where two
+candidates made the same move with different reasons, the judge sees that move twice under two labels. How often the
+two copies get the same grade measures its noise; the duplicate's grade is never scored. Replies that contradict
+themselves (its own pick not graded best) are counted. A second judge (`--judge opus,sonnet`) grades the same
+answers independently, and the report shows how often the two agree.
+
+**Whole games (`--games K`).** A lighter version of the trainer's game review: the judge reads K logged games per
+model from the benchmark run (`--games-from`, default the newest) and lists the verified mistakes (`blunder`,
+`major`, `minor`). The model's name, its timing and its seat name are removed from the log first. It takes deals
+that every model played (the same deck, opponent and seed), so the games are like-for-like.
+
+**The report** (`bench/exams/results/<time>_<name>/report.md`, numbers in `summary.json`) has:
+- the recommendation, and how sure it is;
+- per model: the mean grade (best 4 … blunder 0, bootstrap 95% CI), the best and best-or-good rates, the mistake
+  and blunder rates (Wilson CIs), agreement with the judge's own pick, and latency, cost and tokens per decision;
+- paired per-position comparisons with a sign test;
+- the results by decision kind and by deck;
+- the judge checks;
+- the five most instructive disagreements, quoted;
+- the whole-game reviews, and every position's grades.
+
+The recommendation is the cheapest model the exam can't tell apart from the best one: a paired difference whose 95%
+interval reaches within a quarter grade of zero, and a mistake rate within 10 points. Its confidence is low under 20
+graded positions or with a self-preference flag, and high when it is separated from every other candidate over 30
+or more positions.
+
+Every exam decision is a turn's first message (the whole duel log) in a fresh session. So its cost and latency per
+decision are higher than in a game, where most decisions continue a session and pre-warming hides the start-up.
+
 ## Code and tests
 
 `ygo_agent/bench/`: `spec.py` (the plan, seeds), `runner.py` (games through `match.run_games()`, results.jsonl,
 resume, probes, versions), `metrics.py` (Wilson, percentiles, aggregation, Bradley-Terry), `report.py` and
 `chart.py`. `tests/bench/` covers the statistics, aggregation and reports from synthetic results, the plan and seed
 pairing, resume, budget and usage-limit stops with a fake game player, and one tiny real run (heuristic and
-random against an in-process heuristic, no LLM) through the whole pipeline.
+random against an in-process heuristic, no LLM) through the whole pipeline. The exam is `exam.py` (sampling, the
+runs, aggregation, the report) and `judge.py` (blind labels, the judge's prompt and reply checks, its sandbox, the
+whole-game review); `tests/bench/test_exam.py` covers sampling and filtering, labels, identical-choice grades,
+aggregation and the self-preference flag, and a scripted run of the whole pipeline with resume, on game logs built
+from the saved regression cases.
 
-In WindBot rooms the benchmark decides who goes first through `run_games(on_room=...)`: it replaces the room's
-first-player choice after the rock-paper-scissors (`runner.force_first`), since an arena room otherwise leaves it
-to the RPS winner.
+Who goes first is `run_games(first=...)`, in-process and in WindBot rooms alike (`RoomConfig.first`: the room
+still runs the rock-paper-scissors, then starts game 1 with that seat instead of asking the RPS winner).

@@ -1,127 +1,101 @@
-## Lessons from games (newest first; these override everything below)
+## How to use this playbook
 
-### 2026-10-21 game r1-g2 (vs WindBot Dragunity, going second) — loss
-1. **Use Dark Rebellion Xyz Dragon's effect the turn you Xyz Summon it, while the opponent's negater is in the GY if you can** (e.g. Stardust Dragon/Assault Mode after it Tributed itself). Halving a 2100 attacker makes Dark Rebellion 3550, which walls a 3000 boss. At 2500 it just dies to that boss.
-2. **If your field is empty and they have attackers, Set any monster in hand as a blocker, even Ash Blossom (DEF 1800)**, unless you can name a specific search it will stop next turn. Holding Ash cost 5100 LP in one turn.
-3. **Against Stardust Dragon/Assault Mode, or any monster that Tributes itself to negate, feed it your least important activation first.** It negates one thing and returns only in the End Phase, so make the real plays (removal, searches) while it is in the GY. Here it ate Maxx "C", Monster Reborn, Arsenal's Tribute and the Gear Gigant X float.
-
-## Status of this playbook
-
-Built from the card texts and scripts, then checked in lab rounds 1-2 and four games (r1-g1 win vs Blue-Eyes, r1-g2 loss vs Dragunity, r2-g1 loss vs Blue-Eyes, r2-g2 win vs Dragunity). Anything not marked *(verified ...)* is unverified: if the engine offers something different, trust its options.
+These are principles, not scripts: read the board, and when you see a better play than the one described here, make
+it and say why in `why`. Trust the engine's options over this text. Known pitfalls (at the bottom) are real mistakes
+from past games.
 
 ## Game plan
 
-Rank 4 stun/beatdown. Turn small Geargia combos into one Rank 4 Xyz, usually **Gear Gigant X**, behind Solemn Strike, Solemn Judgment, Fiendish Chain, Imperial Iron Wall and Geargiagear.
-- **Ideal turn 1:** Gear Gigant X + 3-4 Set Traps, Ash Blossom / Maxx "C" in hand.
-- **Grind:** a new Rank 4 each turn, Gear Gigant X searches, Accelerator / Gear Gigant X floats.
-- **Close:** Limiter Removal, or Harpie's Feather Duster on their backrow.
+Rank 4 stun-beatdown. Each turn, turn a couple of Geargia into the bodies or Rank 4 Xyz the board needs, keep traps
+Set behind them, and grind with monsters that replace themselves. Win by attacking every turn and with sudden OTKs:
+Limiter Removal (one or two) on your Machines, finished with Gagaga Cowboy's burn.
 
-## Engine cards
+## Card roles
 
-- **Geargiarsenal** (3): Tribute → non-Arsenal Geargia from Deck in Defense, no limit (script: no SetCountLimit). Targets: **Geargiano** (revives Arsenal), **Geargiarmor** (flips to search later), **Geargiaccelerator** (Lv4 body). Mk-II summoned this way does nothing. 200 ATK per face-up Geargia, itself included.
-- **Geargiaccelerator** (3): summoning procedure from hand in Defense while you control a face-up Geargia (**Gear Gigant X is NOT a Geargia**). It doesn't chain, can't be negated as an effect, no limit: two in a row is fine. Its GY add triggers only when sent from the field (destroyed, Limiter Removal), NOT as Xyz Material/detached (script: `IsPreviousLocation(LOCATION_ONFIELD)`). It is an optional "when" trigger that can miss timing: **not offered** when sent as Forbidden Droplet's cost *(verified in game r2-g2)*. From your next turn on it can switch to Attack (1400).
-- **Geargiarmor** (3): once per turn turns itself face-down; flipped face-up (Flip Summon, attacked, Photon Papilloperative) → add a non-Armor Geargia *(verified in game, also when attacked)*. Face-down it can't be Xyz Material: Flip Summon first (1100 attacker).
-- **Geargiano Mk-II** (2, Lv3): only on Normal/Flip Summon → Geargia from hand or GY in Defense *(verified in game, reviving Arsenal/Armor)*. Prefer a GY target; Accelerator in hand summons itself anyway.
-- **Geargiano** (2, Lv3): Tribute → Lv4 Machine from GY, negated. No limit; works at Lv4 via Geargiagear. Loop: Arsenal → Geargiano → Arsenal back, leaving Geargiano in GY for the float. The revived Arsenal is negated and can't Tribute again.
-- **Geargiagear** (3): 2 Geargiano-type monsters from Deck, Lv4 on field. 1 per turn (script: oath limit); needs **2 Geargiano-type cards in Deck and 2 free zones**. Set turn 1, flip in their End Phase (or Battle Phase for blockers) *(verified in game)*.
+- **Geargiarsenal**: Tribute it → a non-Arsenal Geargia from the Deck in Defense. No once-per-turn, so a revived
+  Arsenal that isn't negated can do it again. +200 ATK per face-up Geargia, itself included.
+- **Geargiaccelerator**: summons itself from hand in Defense while you control a face-up Geargia (Gear Gigant X is
+  not a Geargia). Sent from the field to the GY (destroyed, Limiter Removal) → add a Geargia from your GY. Not as Xyz
+  Material, and it misses timing when sent as a cost (script: a "when" trigger).
+- **Geargiarmor**: turns itself face-down once per turn; flipped face-up (attacked, Flip Summoned) → search a
+  non-Armor Geargia. Face-down it is a 1900-DEF wall that replaces itself, but it can't be Xyz Material. On your turn,
+  Flip Summon it (a search and an attacker) and turn it face-down again in Main Phase 2 *(offered in game r1-g1)*.
+- **Geargiano Mk-II**: Normal or Flip Summon → a Geargia from hand or GY in Defense. **Geargiano**: Tribute it → a
+  Lv4 Machine from your GY, negated. Both are Lv3 Geargia: the targets of Gear Gigant X's float.
+- **Geargiagear** (Normal Trap, 1 per turn): two Geargiano-type monsters from the Deck at Lv4. Needs 2 of them still
+  in the Deck and 2 free Monster Zones.
+- **Gear Gigant X**: detach → a Lv4-or-lower Machine from Deck or GY (once per turn per copy). When it leaves the
+  field face-up, any way → revive a Lv3-or-lower Geargia from your GY.
+- **Other Rank 4s.** Answers: Dark Rebellion (its materials have no other use: halve their best monster the turn
+  you make it; both changes last), Castel, Number 101, Tornado Dragon, Photon Papilloperative, Ouroboros. Walls:
+  Cairngorgon, Steelswarm Roach, Abyss Dweller, Shock Master (locks the declared type for BOTH players: never Trap
+  while you rely on Solemns).
+- **Traps**: Solemn Strike and Solemn Judgment for their starter or boss (neither answers a summon made inside a
+  chain). Fiendish Chain and Forbidden Droplet need face-up **Effect** monsters: useless against Normal Blue-Eyes.
+  Droplet also negates the chosen monsters' effects already on the chain. Imperial Iron Wall stops banishing for
+  both players.
 
-## Support cards
+## Situational considerations
 
-- **Solemn Strike** (1500 LP): monster effect or Special Summon; spend on their starter or boss *(verified in game r2-g2, on a summon and on Crystal Wing's effect)*. **Solemn Judgment** (half LP): any Summon or Spell/Trap; spend on a wipe or a boss.
-  - Neither answers a summon made inside a chain (script: `Duel.GetCurrentChain(true)==0`). Below ~3000 LP prefer Fiendish Chain / Droplet.
-  - **Summon window:** a window right after "Opponent Special Summons X" that offers Solemn Strike but not your other Quick cards means the summon has NOT happened yet (script: `EVENT_SPSUMMON`). Negate the boss there; in r2-g2 the player passed on Crystal Wing thinking it had resolved.
-- **Fiendish Chain:** face-up **Effect** monsters only (script: `IsType(TYPE_EFFECT)`), useless on Blue-Eyes White Dragon. Their turn: stop an attacker; your turn: chain to their boss before attacking.
-- **Imperial Iron Wall:** stops banishing for BOTH players, including Ouroboros's GY mode. Activate in response to a banish.
-- **Forbidden Droplet** (1 per turn): only if they control a face-up Effect monster; send up to N cards, N = their face-up Effect monsters (script: `TYPE_EFFECT` count). Negates the activation already on the chain *(verified in game r2-g1)*, works after an attack declaration *(verified in game r2-g2)*.
-  - **Their turn, before attacks, send the maximum.** A weak Attack Position monster of yours (Mk-II 1000) is a good cost: Defense-only fields take no damage. In r2-g1, sending only 2 left Azure-Eyes at 2500 for exact lethal over Mk-II.
-  - **After an attack declaration, if your monster beats the halved attacker, pay only with hand cards or Spells/Traps:** a monster leaving replays the attack. In r2-g2, sending Accelerator let a halved Crystal Wing switch from Gear Gigant X to Mk-II.
-  - Good costs: dead hand cards, a spent Continuous Trap, a monster Limiter Removal will destroy.
-- **Limiter Removal** (3): doubles your face-up Machines (Geargia, Gear Gigant X, Zenmaines; NOT Castel/Dark Rebellion), destroys them in the End Phase (triggers floats/adds). Only for lethal or a must-win battle; values in Going second.
-- **Harpie's Feather Duster:** going second, before committing monsters *(verified in game r2-g2: 3 Set cards)*.
-- **Monster Reborn:** their best monster or a Lv4 material. A revived Arsenal keeps its Tribute (Line 4).
-- **Pot of Greed / Graceful Charity:** before the Normal Summon *(Charity → Harpie's verified in game)*. Charity: discard revivable Lv4 Geargia (Armor) before Traps.
-- **Maxx "C":** chain to their first Spell/effect of the main phase *(verified in game r2-g1: 5 draws)*. **Ash:** Rank 3 material only if that wins.
+- **Gear Gigant X or not.** It turns two bodies into one 2300 body plus a search, and gives a body back only if a Lv3
+  Geargia (Geargiano, Mk-II) is in your GY when it leaves. Consider it when one is there, or a free loop puts one
+  there (Arsenal → Geargiano → Tribute Geargiano → Arsenal back), or when you need its search or its ATK. When you
+  are ending your turn without a float target, two bodies that replace themselves (a face-down Armor next to another
+  Geargia) are often the better wall. When you can attack, attackers beat walls: run the lethal check first.
+- **Free value first.** Use searches, Arsenal's Tribute and Mk-II's revive before you Xyz or Set.
+- **Xyz for the job.** Make the Rank 4 the board needs: removal against a boss (Dark Rebellion, Castel, 101),
+  Tornado against backrow, a wall going first, Gear Gigant X when its search or float matters. Use a new Xyz's effect
+  before you end the turn if it improves the board.
+- **Geargiagear** usually in the opponent's End Phase, so the two bodies survive into your turn as Xyz Material or
+  Geargiano Tributes. Exceptions: their Battle Phase when you need blockers, in response to removal aimed at it, or
+  your own turn when two Lv4s now win the game.
+- **Fiendish Chain**: on their turn to stop an attacker, on yours to remove a blocker or negater before attacking.
+- **Searches.** Take what the next turn needs: Accelerator (an instant second Lv4), Mk-II (Normal Summon revives a
+  Lv4), Armor (a wall).
+- **Blockers.** With an empty field against attackers, Set a monster, even a hand trap, unless it must stop
+  something specific next turn.
 
-## Extra Deck
+## Lethal check
 
-- **Gear Gigant X** (2 Lv4 Machines), default. Once per turn per copy: detach → Lv4- Machine from Deck **or GY** (take from GY when possible). Order: Accelerator > Mk-II > Arsenal. Leaving the field face-up → revive a Lv3- Geargia, also when banished *(verified in game r1-g2)*: have Geargiano/Mk-II in the GY first.
-- **3 Lv4s, spare body only:** **Number 16: Shock Master** locks the declared type for BOTH players (script: `SetTargetRange(1,1)`): declare Monster, never Trap while relying on Solemns. **Evilswarm Ouroboros**: bounce / random discard / GY banish, each once.
-- **Removal:** **Castel** (1 mat: face-down; 2 mats: shuffle a face-up card; 1 per turn). **Dark Rebellion** (detach 2): any face-up monster; halves it and gains that, while both stay (script `RESETS_STANDARD`). **Number 101** (detach 2): attaches a Special Summoned Attack monster. **Tornado Dragon**: Quick Spell/Trap pop. **Photon Papilloperative**: Defense → Attack at -600, or flips your own face-down Armor to search.
-- **Protection:** **Cairngorgon** redirects; **Steelswarm Roach** negates Lv5+ Special Summon; **Abyss Dweller** (Quick) stops GY effects, incl. Stardust/Assault Mode's return; **Gagaga Cowboy** burns 800.
-- **Rank 3** (Mk-II + Geargiano at Lv3): **Wind-Up Zenmaines** (first destruction costs a material, then destroys a card that End Phase); **Break Sword** (destroy one of yours + one of theirs; its revive never works here).
-
-## Main lines
-
-**Rules:** Check the Deck still holds what you summon/search. Summon every Accelerator in hand while a Geargia is face-up. While holding Geargiagear keep 2 Geargiano-types in Deck (starts with 2 Geargiano + 2 Mk-II). Finish to the Xyz before Setting. **Never Xyz Gear Gigant X while a non-negated Arsenal could still loop for Geargiano.**
-
-**Line 1: Arsenal + Accelerator** *(verified in lab)*
-1. Normal Summon **Arsenal**, Special Summon **Accelerator**.
-2. Tribute Arsenal → **Geargiano** (none left: **Armor**, go to step 4 with Accelerator + Armor).
-3. Tribute Geargiano → revive Arsenal.
-4. Xyz **Gear Gigant X**; detach Arsenal → **Accelerator** (already in hand: **Mk-II**).
-5. Set Traps.
-- **1R, + Monster Reborn** *(verified in lab)*: after step 4, Reborn Arsenal, summon Accelerator, Xyz Gear Gigant X #2, detach → **Arsenal from GY**.
-- **1+, second Accelerator** *(verified in lab)*: summon both; loop **first**; Xyz with the 2 Accelerators, detach one → take it back, summon it, Xyz #2 with Arsenal + Accelerator, detach Arsenal → **Mk-II**.
-
-**Line 2: Accelerator + Accelerator/Armor** *(verified in lab)*
-1. Normal Summon the other Lv4 Geargia face-up, Special Summon Accelerator.
-2. Xyz Gear Gigant X → Arsenal or Accelerator. Set Traps. A third Lv4: **Shock Master**, declare Monster.
-
-**Line 3: Mk-II + a Lv4 Geargia**
-1. Normal Summon **Mk-II** → Armor or Arsenal, from GY if there *(verified in game)*. Mk-II stays in Attack (1000), your weak point: use it as material or Droplet cost.
-2. With **Accelerator**: summon it → Gear Gigant X *(verified in lab and game)*.
-3. No Accelerator, Armor: Set Traps, Armor face-down; next turn Flip Summon → Accelerator → Rank 4 *(verified in game r1-g1)*.
-4. No Accelerator, Arsenal *(unverified)*: Tribute Arsenal → Geargiano; Xyz **Wind-Up Zenmaines** with Mk-II + Geargiano; Set Traps.
-
-**Line 4: lone Arsenal**
-- **With Monster Reborn** *(verified in game r2-g1 up to the Xyz; loop script-checked, unverified)*:
-  1. Normal Summon Arsenal → Tribute → **Accelerator**.
-  2. **Monster Reborn** Arsenal (not negated).
-  3. Tribute it → Geargiano → revive Arsenal. (Skipped in r2-g1: no float target, 5500 taken.)
-  4. Xyz Gear Gigant X → Mk-II or Accelerator. Set Traps.
-- **Without Reborn** *(verified in lab)*: Tribute Arsenal → **Armor**, turn it face-down, Set Traps; next turn Flip Summon → Accelerator → Rank 4. With another Lv4 Geargia for next turn, taking Accelerator is fine too, but face-down Armor blocks better (DEF 1900 vs 800).
-
-**Line 5: Geargiagear (any line)** *(verified in lab and game)*
-1. Set it; activate in their End Phase (Battle Phase for blockers).
-2. Your turn: Gear Gigant X (or Castel/Dark Rebellion) → Accelerator.
-3. Armor flip → Accelerator; two Accelerators → Gear Gigant X #2, detach an Accelerator and take it back. *(Reborn double Gear Gigant X verified in lab.)*
-
-**No starter:** Pot/Charity first, Normal Set a Lv4 Geargia (Armor/Mk-II trigger on flip), Set every Trap. Going first, keep Harpie's in hand.
+Before "Go to the Battle Phase" and before ending your turn, count the most damage you can deal:
+- Every attacker you can still have: Attack Position monsters, Xyz you can still make in Main Phase 1 (Gear Gigant X
+  2300, Dark Rebellion 2500 plus what it takes), the Normal Summon on an Attack body, a face-down Armor Flip Summoned
+  (1100, and it searches), and monsters from earlier turns switched to Attack (neither needs a free Monster Zone).
+  Self-summoned Accelerators come in Defense: materials, not attackers. Bodies made in Main Phase 2 deal no battle
+  damage.
+- **Limiter Removal** doubles the ATK every face-up Machine you control has when it resolves (Geargia, Gear Gigant X,
+  Zenmaines; not Dark Rebellion, Castel or Gagaga). A second one doubles again (x4). It works in the Damage Step up to
+  damage calculation. Every monster it doubled is destroyed in that End Phase, so play it for lethal or a battle you
+  must win, after the summons it should boost.
+- **Gagaga Cowboy** in **Defense Position**: detach → 800 damage (script: `IsDefensePos()`; in Attack Position it
+  only gains 1000 ATK when it battles a monster). The finisher: in Main Phase 2, overlay two Lv4 monsters that
+  already attacked into Gagaga Cowboy in Defense and burn. With the opponent at 800 or less, any two Lv4s are lethal
+  however many blockers they have. *(script-checked, not yet seen in a game)*
+- Nothing attacks directly until their last monster is destroyed, so each blocker costs one attack that surely
+  destroys it (a face-down one's DEF is unknown: use a big attacker), unless Castel, Dark Rebellion, Droplet or
+  Fiendish Chain removes it first. If the rest reaches their LP, make the summons and position changes in Main
+  Phase 1, then attack: Special Summons and Xyz first, the Normal Summon last, on the best attacker a search gave you.
+- The hidden 2300: a face-up Lv4 Geargia plus an Accelerator from hand make another Gear Gigant X, whose search
+  adds the Normal Summon's attacker. With Gear Gigant X and Mk-II already out, search Arsenal (1900 next to Mk-II):
+  2300 + 2300 + 1000 + 1900 = 7500.
 
 ## Going second / breaking boards
 
-1. **Harpie's Feather Duster first vs 2+ Set cards** *(verified in game r2-g2)*; otherwise bait Solemns with a small summon.
-2. **Vs a Normal boss (Blue-Eyes):** Dark Rebellion (4000 vs 1500, *verified in lab*), Castel (also answers Call of the Haunted), Limiter Removal, Number 101, Ouroboros, Break Sword with a spare card of yours.
-3. Make Gear Gigant X first when you need its search; search Accelerator while a Geargia is face-up.
-4. **Lethal check before "Go to the Battle Phase":** add every Xyz still makeable (2300 each), the Normal Summon on an Attack body (Accelerator 1400, Armor 1100, Mk-II 1000), a Flip Summoned Armor (1100, searches), older Defense monsters switched to Attack. If it reaches their LP, do it all in Main Phase 1. In r2-g2 lethal was missed twice (2300+2300+1000+1400 = 7000 vs 7000; Armor/Accelerator left in Defense, opponent at 400).
-5. **Limiter Removal:** Gear Gigant X 4600, Arsenal (3 Geargia) 4200, Mk-II 2000, Armor 2200. Activate after the attack declaration; in the Damage Step before damage calculation it is the only card offered and boosts the attack in progress *(verified in game r1-g1)*.
-6. **Main phase ends with "Go to the Battle Phase", never "End your turn".** Summon attackers in Attack beforehand; Main Phase 2 is for Setting Traps and turning Armor face-down. Never Set Limiter Removal. Normal Summon Accelerator if it must attack. Check face-down DEF (Giant Soldier of Stone 2000: Gear Gigant X wins, Armor doesn't).
-7. Can't break through: one Rank 4, Set Traps, grind.
+- Harpie's Feather Duster first against two or more Set cards, before committing monsters.
+- Against one big boss: Dark Rebellion (4000 into Blue-Eyes), Castel's shuffle, a Limiter Removal battle, or Number
+  101 if it was Special Summoned.
+- If you can't break through, build instead: a Rank 4 or a face-down Armor, traps Set, and grind.
 
-**Line G1: Line 1 + Limiter Removal** *(Damage Step Limiter verified in game; vs Blue-Eyes unverified)*
-1. Line 1 (or 1+ for two Gear Gigant X) with Gear Gigant X in Attack.
-2. First Gear Gigant X attacks the face-down (2300 vs DEF 2000); the other attacks Blue-Eyes, Limiter in the Damage Step → 4600.
-3. Main Phase 2: Set Traps. End Phase: each float needs its own Lv3 Geargia in the GY.
+## Known pitfalls (from reviewed games, newest first)
 
-**Line G2: Armor/Accelerator + Accelerator vs a big Normal**
-- **Dark Rebellion** *(verified in lab)*: Normal Summon Armor face-up, summon both Accelerators, Xyz Dark Rebellion, detach 2 → halve Blue-Eyes → attack (2500). Main Phase 2: Armor face-down.
-- **Castel** *(unverified)*: Castel with Armor + Accelerator, detach 2 → shuffle the boss; Set Geargiagear + Fiendish Chain.
-
-**Line G3: Mk-II + Accelerator + Armor, empty opposing board** *(verified in game r2-g2)*
-1. Normal Summon Mk-II → Armor (GY or hand).
-2. Accelerator; Gear Gigant X in Attack with Armor + Accelerator; detach → Accelerator → summon it.
-3. Attack with Gear Gigant X + Mk-II.
-4. Next turn, Main Phase 1: detach → Accelerator from GY → Gear Gigant X #2; again → **Normal Summon it in Attack**; attack with everything.
-
-## Locks and once-per-turn rules to respect
-
-- **Accelerator:** needs a face-up Geargia; no add as Xyz Material.
-- **Geargiagear:** 1 per turn, Set a turn earlier, 2 Geargiano-types in Deck, 2 free zones.
-- **Mk-II:** Normal/Flip Summon only.
-- **Gear Gigant X:** one search per copy per turn; float needs a Lv3- Geargia in GY.
-- **Shock Master** locks you too; **Iron Wall** blocks Ouroboros's banish; **Droplet** 1 per turn; **Castel** 1 effect per turn.
-
-## General principles
-
-- Set Traps every turn and keep a Solemn up for their boss.
-- Leave a Geargiano or Mk-II in the GY before Gear Gigant X can leave the field.
+- **Negating a summon.** When Solemn Strike or Judgment is offered while an opponent's monster is being Special
+  Summoned, the summon hasn't happened yet: that is the window to negate it. *(2026-10-21, r2-g2)*
+- **Forbidden Droplet after an attack is declared.** If your monster already beats the halved attacker, pay the cost
+  from the hand or the Spell/Trap Zone: a monster leaving your field replays the attack. *(2026-10-21, r2-g2)*
+- **Forbidden Droplet facing a big attack.** Count every monster that can still attack you this turn (one in Defense
+  can switch to Attack unless it was summoned this turn) against your blockers, and halve as many as you need to
+  survive, usually the maximum: two cards left exact lethal on board. *(2026-10-21, r2-g1)*
+- **Monster Reborn on Arsenal.** A revived Arsenal keeps its effect: Tribute it for Geargiano and loop back before
+  you Xyz, so Gear Gigant X has a float target. *(2026-10-21, r2-g1)*
+- **Monsters that Tribute themselves to negate.** Stardust Dragon/Assault Mode negates one thing and returns only in
+  the End Phase: feed it your least important activation, then make your real plays. *(2026-10-21, r1-g2)*

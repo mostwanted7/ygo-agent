@@ -58,6 +58,7 @@ class BenchSpec:
     budget_usd: float | None = None                        # stop starting games past this (CLI cost estimate)
     timeout: float = 5400                                  # seconds per game in a WindBot room
     note: str = ""                                         # shown at the top of the report (e.g. "a pilot")
+    scratch: bool = False                                  # a test run: <games_dir>/bench-smoke/, not bench/results/
 
     def games_of(self, backend: str) -> int:
         return int(self.games_for.get(backend, self.games))

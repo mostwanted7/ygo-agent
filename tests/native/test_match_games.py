@@ -78,6 +78,22 @@ def test_a_room_with_a_windbot_deck_ai(engine, agent_db, agent_cfg, quiet):
     assert g.winner in (0, 1) and os.path.isfile(g.replay)
 
 
+def test_first_decides_who_goes_first_in_process_and_in_rooms(engine, agent_db, agent_cfg, quiet):
+    """run_games(first=): the same option in-process and in a WindBot room (RoomConfig.first), no hooks."""
+    for first in (0, 1):
+        run = run_games("saffira:heuristic", "blackwing:random", games=2, seed=41, first=first,
+                        **kw(agent_cfg, agent_db, engine))
+        assert [g.first for g in run.games] == [first, first]
+    with pytest.raises(MatchError, match="first"):
+        run_games("saffira:heuristic", "blackwing:random", first=2, **kw(agent_cfg, agent_db, engine))
+    if not windbot_available(engine):
+        pytest.skip("mono or WindBot not available")
+    for first in (1, 0):
+        run = run_games("saffira:heuristic", "windbot:Blue-Eyes", games=1, seed=5, first=first, timeout=300,
+                        **kw(agent_cfg, agent_db, engine))
+        assert run.path == "arena" and [g.first for g in run.games] == [first]
+
+
 def test_spectate_waits_for_a_spectator(engine, agent_db, agent_cfg, quiet):
     port = free_port()
     out = {}

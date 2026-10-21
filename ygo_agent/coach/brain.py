@@ -36,6 +36,7 @@ class CoachBrain(DuelBrain):
 
     def begin(self, d):
         """A decision the human faces: logged (the panel shows it at once) and put into words."""
+        self.flush_lines(d)
         self.log.record("decide", d)
         if d.get("state", {}).get("me"):
             self.fill_extra(d["state"])

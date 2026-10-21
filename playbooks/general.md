@@ -1,3 +1,9 @@
+- The playbooks are guidance, not scripts. When the board clearly calls for a different play than they describe,
+  make it and say why in `why`.
+- Lethal check: before you go to the Battle Phase, and again before you end your turn, count the most damage you
+  can deal this turn: every attacker you can still summon or switch to Attack, ATK boosts, removal for their
+  blockers, and burn. Look for the non-obvious lethal (an extra Xyz or Synchro, the Normal Summon kept for an
+  attacker, a boost in the Damage Step, a burn effect after battle). If it is there, make the plays in Main Phase 1.
 - Before planning a line that needs a specific card from your Deck or Extra Deck, check the state to see it is still
   there; Extra Deck monsters that were used or banished are gone.
 - Spell/Trap timing: a Quick-Play Spell can be activated from the hand ONLY during your own turn. To use one on the

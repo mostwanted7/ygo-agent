@@ -66,18 +66,18 @@ def ruleset(rules):
 MODES = {
     "play": {
         "situation": "Your opponent is {opponent}. Your games are reviewed afterwards and the lessons are written into "
-                     "the playbook below. Play to win, and play the way the playbook says.",
+                     "the playbook below. Play to win. Follow the playbook by default, but when the board clearly calls for a better play, make it and say why.",
         "reader": "The human reads these in the terminal, during or after the game.",
     },
     "selfplay": {
         "situation": "This is a practice game: your opponent is {opponent}. Your games are reviewed afterwards and the "
-                     "lessons are written into the playbook below. Play to win, and play the way the playbook says.",
+                     "lessons are written into the playbook below. Play to win. Follow the playbook by default, but when the board clearly calls for a better play, make it and say why.",
         "reader": "They are read after the game, and live by anyone watching.",
     },
     "teach": {
         "situation": "A human is watching from the spectator seat to learn this deck from you; your opponent is "
                      "{opponent}. Your games are reviewed afterwards and the lessons are written into the playbook "
-                     "below. Play to win, and play the way the playbook says.",
+                     "below. Play to win. Follow the playbook by default, but when the board clearly calls for a better play, make it and say why.",
         "reader": "The human learning the deck reads these live.",
     },
     "coach": {
@@ -90,7 +90,7 @@ MODES = {
 }
 # play mode against a human (or against whoever joined the room the user hosts: play --join).
 COACHING_HUMAN = ("Your opponent is a human who is coaching you: after each game they review your decisions, and their "
-                  "lessons are written into the playbook below. Play to win, and play the way the playbook says.")
+                  "lessons are written into the playbook below. Play to win. Follow the playbook by default, but when the board clearly calls for a better play, make it and say why.")
 POLICIES = {"heuristic": "a simple rule-based bot", "random": "a bot that makes random legal moves"}
 
 
@@ -180,5 +180,5 @@ def system_prompt(profile, mode="play", rules="MR3", card_texts="full", opponent
     else:
         parts.append(f"\n\n# {deck}: {profile.name}\n{profile.decklist()}\n\n## Card texts\n"
                      f"{profile.card_texts(card_texts)}")
-    parts.append(f"\n\n# Playbook (coaching notes — follow these)\n{profile.playbook}\n")
+    parts.append(f"\n\n# Playbook (coaching notes — your default guide)\n{profile.playbook}\n")
     return "".join(parts)

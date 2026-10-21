@@ -1,5 +1,5 @@
-"""Applying a reviewer's reply: lessons that pass the evidence check, section rewrites, verified-line marks, and
-regression cases saved with the replay machinery (decks/<deck>/tests/<name>.json)."""
+"""Applying a reviewer's reply: lessons (Known pitfalls) that pass the evidence check, section rewrites, verified-line
+marks, and regression cases saved with the replay machinery (decks/<deck>/tests/<name>.json)."""
 
 from __future__ import annotations
 
@@ -41,9 +41,9 @@ def game_usage_limited(game_dir: str) -> str | None:
     return None
 
 
-def apply_lessons(text: str, lessons: list[dict], header: str, evidence: pb.Evidence) -> tuple[str, list, list]:
-    """Add the lessons whose evidence checks out under a "### header" block. Returns (text, accepted, rejected); each
-    entry is {"text", "severity", "notes"}."""
+def apply_lessons(text: str, lessons: list[dict], tag: str, evidence: pb.Evidence) -> tuple[str, list, list]:
+    """Add the lessons whose evidence checks out as Known pitfalls tagged *(tag)*. Returns (text, accepted, rejected);
+    each entry is {"text", "severity", "notes"}."""
     accepted, rejected = [], []
     for lesson in lessons or []:
         body = (lesson.get("text") or "").strip()
@@ -58,9 +58,7 @@ def apply_lessons(text: str, lessons: list[dict], header: str, evidence: pb.Evid
                  "decisions": lesson.get("decisions") or []}
         (accepted if ok else rejected).append(entry)
     if accepted:
-        text = pb.add_lessons(text, header, [e["text"] for e in accepted],
-                              intro="Your opponent can't coach this deck, so these come from reviewing your own games "
-                                    "against the card scripts and the engine log.")
+        text = pb.add_lessons(text, tag, [e["text"] for e in accepted])
     return text, accepted, rejected
 
 
@@ -68,7 +66,7 @@ def already_there(lesson: str, text: str) -> bool:
     """The same lesson (give or take wording) is already in the playbook: the reviewer repeated itself."""
     want = pb.norm(pb.clean_lesson(lesson))
     for line in text.splitlines():
-        have = pb.norm(pb.clean_lesson(line))
+        have = pb.norm(pb.clean_lesson(re.sub(r"\s*\*\(.*\)\*\s*$", "", line)))  # without its *(tag)*
         if have and (have == want or len(want) > 40 and difflib.SequenceMatcher(None, want, have).ratio() > 0.85):
             return True
     return False

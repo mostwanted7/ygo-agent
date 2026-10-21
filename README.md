@@ -59,7 +59,7 @@ After the game:
   CLAUDE.md), and the next game uses them.
 
 Options: `--backend sonnet` (faster, a bit weaker; also `haiku`, `api-opus`, `local`, `heuristic`, `random` or
-your own profile), `--model`/`--effort` to override the profile's, `--deck blackwing` (any folder under `decks/`, a
+your own profile), `--model`/`--effort` to override the profile's, `--deck blackwing` (any deck `ygo-agent decks` lists, a
 `.ydk` file, or a deck in EDOPro's deck folder), `--port`/`--password` for the room, `--chat off`, `--web` (the
 browser panel), `--games N` (close the room after N matches). With `--join`: `--host`, and `--brain-only` (run only
 the agent and print the bot command). `ygo-agent play --help` lists them all. At the end of a game the terminal
@@ -74,7 +74,7 @@ ygo-agent selfplay --a saffira:heuristic --b blackwing:random --games 50 --paral
 ygo-agent selfplay --a saffira:opus --b blackwing:opus --spectate --pace 2 --web   # watch it in EDOPro and the browser
 ```
 
-A seat is `<deck>[:<backend>]` (deck: a folder in `decks/`, a `.ydk` path, or a deck in EDOPro's deck folder;
+A seat is `<deck>[:<backend>]` (deck: a deck `ygo-agent decks` lists, a `.ydk` path, or a deck in EDOPro's deck folder;
 backend: a profile, default `agent.backend`), `heuristic`/`random` (no LLM; `heuristic:blackwing` picks the deck),
 `windbot:<deck AI>` (EDOPro's WindBot deck AIs, listed by `python -m ygo_agent.arena list-bots`) or `human`.
 
@@ -125,9 +125,13 @@ ygo-agent play --deck geargia
 The trainer reads every card and its Lua script, writes a playbook in the style of the Saffira and Blackwing ones,
 tests its lines in a lab (stacked opening hands against a dummy that never acts), plays games against WindBot deck
 AIs, reviews each game against the scripts and the engine log, and repeats until a round shows no significant
-mistakes. You get `decks/geargia/` (playbook, rules template, regression cases) and `decks/geargia/train/` with
-everything it did and a `train-report.md`. Opus reviews and Sonnet plays by default (`--backend`,
-`--player-backend`); `--resume` continues a stopped run. See [docs/training.md](docs/training.md).
+mistakes. You get a deck folder `geargia/` (playbook, rules template, regression cases) with a `train/` folder of
+everything it did and a `train-report.md`. It goes in your own decks dir, `~/.local/share/ygo-agent/decks/`
+(`[decks] user_dir` in the config), so training never touches the checkout; `--into repo` puts it in `decks/` instead,
+for a deck you mean to share. `ygo-agent decks` lists every deck with where it lives, its playbook size, rules,
+saved cases and `.ydk`. A deck name may exist in only one of the two places (or set `[decks] prefer = "user"`).
+Opus reviews and Sonnet plays by default (`--backend`, `--player-backend`); `--resume` continues a stopped run. See
+[docs/training.md](docs/training.md).
 
 ## Benchmark
 
@@ -203,7 +207,8 @@ play --join:  EDOPro room ⇄ WindBot fork (windbot-src, C#) ⇄ agent (Python, 
   is legal and logs everything. Each game turn gets one backend session, so the AI remembers its plan during the
   turn (and a session that restarts mid-turn is told the plan and the turn's decisions so far).
   `ygo_agent/backends/` holds the backends.
-- `playbooks/general.md`: strategy for every deck. `decks/<deck>/` holds what the AI learns about one deck:
+- `playbooks/general.md`: strategy for every deck. A deck folder (`decks/<deck>/` for the decks that ship with the
+  repo, your decks dir for the ones you train; `ygo_agent/decks.py` finds them) holds what the AI learns about it:
   - `playbook.md`: strategy and coaching lessons, given to the AI on every decision.
   - `rules.py`: hard rules that override the AI, for mistakes a lesson didn't fix.
   - `tests/`: past mistakes saved as test cases.
@@ -228,12 +233,13 @@ play --join:  EDOPro room ⇄ WindBot fork (windbot-src, C#) ⇄ agent (Python, 
   `--model sonnet` makes it quicker).
 - `tests/native/`: the arena's native agent seats (fairness, protocol conformance, parity with the WindBot bridge)
   and `run_games` (in-process and parallel games, a WindBot room, a spectator, the web panel, `selfplay` and `play`);
-  `python tests/native/parity.py --games 5` prints a parity report. The LAN test binds UDP 7920: while an arena with
-  LAN discovery runs, deselect it (`--deselect tests/arena/test_server.py::test_lan_discovery_reply`).
+  `python tests/native/parity.py --games 5` prints a parity report. The LAN test needs UDP 7920 and 7921, so it
+  skips itself while an arena with LAN discovery (or EDOPro) has them.
 - `tests/coach/`: coach mode (deck detection; the advice flow with a scripted coach and human; two arena games with
   the arena's Python client as the human).
 - `tests/bench/`: the benchmark's statistics, reports, seed pairing and resume logic, plus one tiny real run (no LLM);
-  `ygo-agent bench smoke` runs the whole pipeline against a WindBot in about a minute.
+  `ygo-agent bench smoke` runs the whole pipeline against a WindBot in about a minute (its runs go to
+  `games/bench-smoke/`, not `bench/results/`).
 
 ## License
 

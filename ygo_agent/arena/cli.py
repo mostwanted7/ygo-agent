@@ -34,7 +34,8 @@ def _engine(args) -> Engine:
 
 
 def _deck(engine: Engine, ref: str, rules: DeckRules, label: str) -> Deck:
-    dirs = [engine.install.deck_dir, os.path.join(REPO_ROOT, "decks")]
+    from ..decks import user_dir
+    dirs = [engine.install.deck_dir, os.path.join(REPO_ROOT, "decks"), user_dir()]
     try:
         path = find_deck(ref, dirs)
     except FileNotFoundError as e:

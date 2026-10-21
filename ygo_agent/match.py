@@ -7,9 +7,9 @@ bench after them).
         print(g.winner, g.turns, g.reason, g.seats[0].stats["invalid_rate"], g.seats[0].log_dir, g.replay)
 
 Seat specs (`SeatSpec.parse`):
-  <deck>[:<backend>]   an AI seat. The deck is a folder under decks/, a path to a .ydk (its playbook, if any, is
-                       <name>.md next to it) or a deck in EDOPro's deck folder; the backend is a [backends.NAME]
-                       profile (default: agent.backend).
+  <deck>[:<backend>]   an AI seat. The deck is a deck folder's name (in decks/ or the user decks dir, see
+                       ygo_agent/decks.py), a path to a .ydk (its playbook, if any, is <name>.md next to it) or a deck
+                       in EDOPro's deck folder; the backend is a [backends.NAME] profile (default: agent.backend).
   heuristic, random    the no-LLM baselines on the config's deck; heuristic:<deck> names the deck.
   windbot:<deck AI>    one of EDOPro's WindBot deck AIs (`python -m ygo_agent.arena list-bots`).
   human                someone who joins from EDOPro.
@@ -94,19 +94,20 @@ class SeatSpec:
         return (self.deck or "(default deck)") + (f":{self.backend}" if self.backend else "")
 
 
-SPEC_HELP = ("<deck>[:<backend>] (deck: a folder in decks/, a .ydk path or an EDOPro deck name), heuristic[:<deck>], "
-             "random[:<deck>], windbot:<deck AI> or human")
+SPEC_HELP = ("<deck>[:<backend>] (deck: a deck in decks/ or your decks dir, a .ydk path or an EDOPro deck name), "
+             "heuristic[:<deck>], random[:<deck>], windbot:<deck AI> or human")
 
 
 def load_profile(deck: str | None, db, cfg: dict, playbook: str | None = None):
-    """A deck Profile from a folder under decks/ (case-insensitive), a .ydk path, or a deck in EDOPro's deck folder."""
-    from .agent.profile import Profile, deck_keys
+    """A deck Profile: a deck folder in decks/ or the user decks dir (by name, any case: decks.find), a .ydk path, or
+    a deck in EDOPro's deck folder."""
+    from . import decks
+    from .agent.profile import Profile
     key = deck or cfg["deck"]
-    folders = {k.lower(): k for k in deck_keys()}
-    if key.lower() in folders:
+    if decks.matches(key, cfg):
         try:
-            return Profile(folders[key.lower()], db, cfg)
-        except FileNotFoundError as e:
+            return Profile(key, db, cfg)
+        except FileNotFoundError as e:  # also decks.DeckError: the name is in both deck dirs
             raise MatchError(str(e)) from None
     edopro_decks = os.path.join(paths.resolve(cfg.get("edopro_dir", "~/Games/ProjectIgnis")), "deck")
     candidates = [key, key + ".ydk"]
@@ -117,8 +118,8 @@ def load_profile(deck: str | None, db, cfg: dict, playbook: str | None = None):
         path = os.path.expanduser(path)
         if os.path.isfile(path) and path.lower().endswith(".ydk"):
             return Profile(slug(os.path.splitext(os.path.basename(path))[0]), db, cfg, ydk=path, playbook=playbook)
-    raise MatchError(f"no deck {key!r}: not a folder in decks/ ({', '.join(deck_keys())}), a .ydk file, or a deck in "
-                     f"{edopro_decks}")
+    raise MatchError(f"no deck {key!r}: not a deck in {decks.where(cfg)} ({', '.join(decks.keys(cfg)) or 'none'}), "
+                     f"a .ydk file, or a deck in {edopro_decks}")
 
 
 # --- results ------------------------------------------------------------------------------------------------------
@@ -388,6 +389,8 @@ class _Run:
             raise MatchError("best_of must be 1, 3 or 5")
         if games is not None and games < 1:
             raise MatchError("games must be at least 1")
+        if first not in (None, 0, 1):
+            raise MatchError("first must be 0 (seat A), 1 (seat B) or None (RPS)")
         if games is None and not self.network:
             raise MatchError("an open-ended run (games=None) needs a room: a human or WindBot seat, or spectate")
         if self.network and self.parallel > 1 and (spectate or any(s.kind == "human" for s in self.specs)):
@@ -737,7 +740,7 @@ class _Run:
                         time_limit=self.time_limit if human else 0, rematch=True,
                         max_matches=None if numbers is None else len(numbers),
                         seed=None if self.seed is None else self.seed + room_no, stack=dict(self.stack),
-                        reserved=reserved, lan_discovery=bool(self.lan and watched))
+                        first=self.first, reserved=reserved, lan_discovery=bool(self.lan and watched))
         room = Room(self.engine, rc)
         self._loops.append((asyncio.get_running_loop(), room))
         game_tag = f"r{room_no + 1}" if self.parallel > 1 else None
@@ -950,7 +953,8 @@ def run_games(seat_a: SeatSpec | str, seat_b: SeatSpec | str, games: int | None 
     quiet: only key plays and results in the terminal (`echo` sets it per seat: all/decisions/key/off; `tags`
     prefixes each AI seat's lines). games=None: open-ended (a room with a human: until Ctrl+C).
     port/bind/lan/password/time_limit/room_name: the room, when there is one (port None: a free port, unless a
-    human or spectator must find it: then pass it). first: who goes first in game 1 (in-process; else RPS).
+    human or spectator must find it: then pass it). first: the seat (0 = A, 1 = B) that goes first in game 1 of every
+    match, in-process and in rooms alike; None: the RPS winner chooses. Later games of a Bo3: the loser chooses.
     on_game(GameResult) runs after each game; on_room(Room) when a room is created (coach mode hooks in there)."""
     run = _Run(seat_a, seat_b, games=games, rules=rules, seed=seed, best_of=best_of, pace=pace, parallel=parallel,
                spectate=spectate, web=web, web_port=web_port, out=out, stack=stack, cfg=cfg, db=db, engine=engine,

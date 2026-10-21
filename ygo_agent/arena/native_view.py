@@ -456,7 +456,9 @@ class NativeView:
         return [{"e": "lp", "player": self.local(m.player), "lp": m.amount}]
 
     def _summoning(self, m, special: bool, flip: bool = False) -> list[dict]:
-        """MSG_SUMMONING, SPSUMMONING and FLIPSUMMONING (WindBot treats a Flip Summon as a Normal Summon here)."""
+        """MSG_SUMMONING, SPSUMMONING and FLIPSUMMONING (WindBot treats a Flip Summon as a Normal Summon here).
+        `window`: no chain is open, so the core gives a negation window before the Summon completes (ocgcore's
+        summon/special_summon_rule check current_chain); a Summon a resolving effect performs completes at once."""
         self.last_summoned = []
         card = self.at(m.location.controller, m.location.location, m.location.sequence)
         if card is not None:
@@ -464,14 +466,28 @@ class NativeView:
                 card.code = m.code
             self.summoning.append(card)
         self.summon_player = self.local(m.location.controller)
-        ev = {"e": "summoning", "id": m.code, "to": self.loc_dict(m.location), "special": special}
+        ev = {"e": "summoning", "id": m.code, "to": self.loc_dict(m.location), "special": special,
+              "window": not self.chain}
         if flip:
             ev["flip"] = True
         return [ev]
 
-    def _summoned(self, m) -> None:
-        self.last_summoned += self.summoning
-        self.summoning = []
+    def _summoned(self, m, special: bool, flip: bool = False) -> list[dict]:
+        """MSG_SUMMONED, SPSUMMONED, FLIPSUMMONED: the Summon went through (a negated one never gets here)."""
+        done, self.summoning = self.summoning, []
+        self.last_summoned += done
+        out = []
+        for card in done:
+            where = self.locate(card)
+            if where is None:
+                continue
+            p, loc, seq, pos = where
+            ev = {"e": "summoned", "id": card.code, "to": {"c": self.local(p), "l": loc, "s": seq, "p": pos},
+                  "special": special}
+            if flip:
+                ev["flip"] = True
+            out.append(ev)
+        return out
 
     def _chaining(self, m: M.Chaining) -> list[dict]:
         li = m.location
@@ -660,9 +676,9 @@ _HANDLERS = {
     M.Summoning: lambda v, m: v._summoning(m, False),
     M.SpSummoning: lambda v, m: v._summoning(m, True),
     M.FlipSummoning: lambda v, m: v._summoning(m, False, flip=True),
-    M.Summoned: NativeView._summoned,
-    M.FlipSummoned: NativeView._summoned,
-    M.SpSummoned: NativeView._summoned,
+    M.Summoned: lambda v, m: v._summoned(m, False),
+    M.FlipSummoned: lambda v, m: v._summoned(m, False, flip=True),
+    M.SpSummoned: lambda v, m: v._summoned(m, True),
     M.Chaining: NativeView._chaining,
     M.ChainSolved: lambda v, m: [{"e": "chain_solved", "link": m.chain_count}],
     M.ChainNegated: lambda v, m: [{"e": "chain_negated", "link": m.chain_count}],

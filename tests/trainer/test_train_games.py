@@ -23,22 +23,24 @@ def test_non_windbot_opponents_pass_and_humans_dont():
     assert ok == ["heuristic:saffira", "blackwing:sonnet"] and len(problems) == 2
 
 
-class FakeRoom:
-    def __init__(self, agent):
-        self.slots = [agent, SimpleNamespace(is_local=False, name="WindBot")]
-        self.chosen = None
+def test_the_schedule_decides_who_goes_first(monkeypatch):
+    """run_games' `first` (the agent is seat A), for a WindBot opponent as for an AI one: no room patching."""
+    from ygo_agent.match import GameResult, RunResult, SeatResult
+    calls = []
 
-    def _ask_first(self, chooser):
-        self.chosen = (chooser, chooser.seat.go_first())
-
-
-def test_force_first_makes_the_agent_choose():
-    for want in (True, False):
-        agent = SimpleNamespace(is_local=True, seat=SimpleNamespace(go_first=lambda: None))
-        room = FakeRoom(agent)
-        games.force_first(want)(room)
-        room._ask_first(room.slots[1])  # the WindBot won the RPS...
-        assert room.chosen == (agent, want)  # ...but the agent chooses, as scheduled
+    def fake_run_games(a, b, games, **kw):
+        calls.append((b.kind, kw.get("first"), kw.get("on_room")))
+        seats = [SeatResult("A", str(a), "agent", "me", "Deck", result="win", stats={}),
+                 SeatResult("B", str(b), b.kind, "them", "Them", result="loss")]
+        game = GameResult(1, 1, 0, "LP reached 0", 5, 1.0, kw.get("first") or 0, 1, seats)
+        return RunResult(specs=[str(a), str(b)], names=["A", "B"], games=[game])
+    monkeypatch.setattr(games, "run_games", fake_run_games)
+    player = games.SeatSpec.parse("saffira:heuristic")
+    for opponent in ("windbot:Blue-Eyes", "blackwing:heuristic"):
+        for first, want in ((True, 0), (False, 1), (None, None)):
+            record = games.play_game(player, opponent, seed=1, first=first, cfg={}, db=None, engine=None, out="x")
+            assert calls[-1] == (games.SeatSpec.parse(opponent).kind, want, None)
+            assert record["result"] == "win"
 
 
 def test_compare_report(tmp_path):

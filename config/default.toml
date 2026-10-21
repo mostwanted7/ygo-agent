@@ -4,13 +4,24 @@
 # only the keys you change; it is gitignored). CLI flags override both files.
 
 edopro_dir = "~/Games/ProjectIgnis"  # EDOPro install: card databases, strings and card scripts
-deck = "saffira"                     # deck profile: a folder under decks/
+deck = "saffira"                     # deck profile: a deck folder's name (see [decks]), or a .ydk file
 games_dir = "games"                  # game logs (relative paths are relative to the repo)
 
 # In-duel chat: "banter" = at most a few short joke lines per duel (start, a big play, the result);
 # "off" = none. The reasoning is never sent to chat; it's in the terminal and the game log.
 # Either way, a "!note" typed in the duel chat is saved and acknowledged.
 chat = "banter"
+
+[decks]
+# Deck profiles live in two places, searched in this order: decks/ in the repo (the curated decks that ship with
+# ygo-agent), then your own decks dir, where `ygo-agent train` puts the decks it trains (`--into repo`: decks/).
+# `ygo-agent decks` lists them all.
+user_dir = ""   # "" = $XDG_DATA_HOME/ygo-agent/decks, i.e. ~/.local/share/ygo-agent/decks
+prefer = ""     # a deck name in both places: "" = an error (rename one); "user" or "repo" = that one wins
+# Per-machine settings for one deck go in config.local.toml as [decks.<name>], e.g. to play the EDOPro copy of its
+# list so that edits made in EDOPro's deck editor carry over:
+#   [decks.saffira]
+#   ydk = "~/Games/ProjectIgnis/deck/Saffira.ydk"
 
 [duel]
 # The rules stated in the prompt. When the bot joins a room it reads the room's real rule flags and uses those
@@ -60,6 +71,9 @@ history_lines = 500              # duel-log lines replayed when a session starts
 # "full" = complete texts; "compact" = shortened (cards the playbook covers get a short excerpt);
 # "none" = names and type/stats lines only. See docs/backends.md for the sizes.
 card_texts = "full"
+# On the "Go to the Battle Phase" option, in your Main Phase 1, when the opponent controls no monster or your
+# Attack Position monsters' total ATK reaches their LP: the total ATK, their LP and monster count (facts, no advice).
+attack_note = true
 
 # ---- Backend profiles ----
 # Each [backends.NAME] table is one profile; `type` picks the implementation (docs/backends.md has them all):

@@ -4,8 +4,7 @@
     record = play_game(spec, opponent, seed=..., first=True, cfg=..., out=...)
 
 A WindBot deck AI is in the pool only if its bots.json entry allows the rules (Master Rule 3) and its deck has no Link
-monsters. Who goes first is forced through run_games' on_room hook: the agent seat is made the one that chooses, and it
-chooses what the schedule says.
+monsters. Who goes first is what the schedule says (run_games' `first`, in rooms with a WindBot as in-process).
 """
 
 from __future__ import annotations
@@ -78,36 +77,13 @@ def check_pool(specs: list[str], engine, db, rules: str = "mr3") -> tuple[list[s
     return ok, problems
 
 
-def force_first(agent_first: bool, agent_pos: int = 0):
-    """An on_room hook: the agent at lobby position `agent_pos` always makes the first-player choice, and makes
-    `agent_first`. (RPS is random otherwise, so a schedule couldn't alternate.)"""
-    def hook(room):
-        original = getattr(room, "_ask_first", None)
-        if original is None:
-            return
-
-        def ask_first(chooser):
-            agent = room.slots[agent_pos] if len(room.slots) > agent_pos else None
-            if agent is not None and getattr(agent, "is_local", False):
-                agent.seat.go_first = lambda: agent_first
-                return original(agent)
-            return original(chooser)
-        room._ask_first = ask_first
-    return hook
-
-
 def play_game(player: SeatSpec, opponent: str, *, seed: int, first: bool | None, cfg: dict, db, engine, out: str,
               rules: str = "mr3", echo: str = "key", timeout: float = 5400) -> dict:
     """One game; returns its record (result for the player, first, turns, the player's log folder and stats)."""
     opp = SeatSpec.parse(opponent)
-    kw = {}
-    if first is not None:
-        if opp.kind == "windbot":
-            kw["on_room"] = force_first(first)
-        else:
-            kw["first"] = 0 if first else 1
     run = run_games(player, opp, games=1, rules=rules, seed=seed, cfg=cfg, db=db, engine=engine, out=out,
-                    echo=(echo, "off"), tags=False, lan=False, port=None, bind="127.0.0.1", timeout=timeout, **kw)
+                    echo=(echo, "off"), tags=False, lan=False, port=None, bind="127.0.0.1", timeout=timeout,
+                    first=None if first is None else (0 if first else 1))
     if not run.games:
         raise MatchError("the game didn't finish" + (" (interrupted)" if run.interrupted else ""))
     g = run.games[0]

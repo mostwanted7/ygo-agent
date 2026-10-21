@@ -34,9 +34,13 @@ def quiet():
 
 @pytest.fixture
 def decks_dir(tmp_path, monkeypatch):
-    """decks/ points at a temporary folder, so a training run never touches the real decks."""
+    """decks/ and the user decks dir point at temporary folders, so a training run never touches the real decks.
+    Returns the user decks dir, where `train` puts a new deck."""
     from ygo_agent import paths
-    folder = tmp_path / "decks"
-    folder.mkdir()
-    monkeypatch.setattr(paths, "DECKS", str(folder))
+    repo = tmp_path / "decks"
+    repo.mkdir()
+    monkeypatch.setattr(paths, "DECKS", str(repo))
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "xdg"))
+    folder = tmp_path / "xdg" / "ygo-agent" / "decks"
+    folder.mkdir(parents=True)
     return folder

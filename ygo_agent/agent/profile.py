@@ -1,11 +1,10 @@
-"""A deck profile: decks/<key>/ with deck.json, the .ydk, the playbook, rules.py and saved test cases."""
+"""A deck profile: a deck folder (deck.json, the .ydk, the playbook, rules.py and saved test cases) in the repo's
+decks/ or the user decks dir (ygo_agent/decks.py finds it), or a loose .ydk file."""
 
 import collections
-import json
 import os
 
-from .. import paths
-from ..config import deck_overrides
+from .. import decks, paths
 from . import prompts
 
 CARD_TEXT_MODES = ("full", "compact", "none")
@@ -30,8 +29,9 @@ def parse_ydk(path):
     return main, extra, side
 
 
-def deck_keys():
-    return sorted(k for k in os.listdir(paths.DECKS) if os.path.exists(os.path.join(paths.DECKS, k, "deck.json")))
+def deck_keys(cfg=None):
+    """Every deck profile's name, in the repo's decks/ and the user decks dir."""
+    return decks.keys(cfg)
 
 
 def find_playbook(ydk):
@@ -43,13 +43,15 @@ def find_playbook(ydk):
 class Profile:
     """The deck being played: decklist, card texts and the coaching playbook.
 
-    Normally a folder decks/<key>/ (deck.json, the .ydk, playbook.md, rules.py, tests/). `ydk=` makes one from a
-    loose .ydk file instead (e.g. a deck in EDOPro's deck folder), with an optional `playbook` file; its rules.py
-    and tests/, if any, are looked up next to the .ydk."""
+    Normally a deck folder (deck.json, the .ydk, playbook.md, rules.py, tests/) found by name in decks/ or the user
+    decks dir (`location` says which), or the folder given as `folder`. `ydk=` makes one from a loose .ydk file
+    instead (e.g. a deck in EDOPro's deck folder), with an optional `playbook` file; its rules.py and tests/, if
+    any, are looked up next to the .ydk. A name that doesn't resolve raises decks.DeckError (a FileNotFoundError)."""
 
-    def __init__(self, deck_key, db, cfg=None, ydk=None, playbook=None):
+    def __init__(self, deck_key, db, cfg=None, ydk=None, playbook=None, folder=None):
         self.key = deck_key
         self.db = db
+        self.location = None
         if ydk is not None:
             self.ydk = os.path.abspath(os.path.expanduser(ydk))
             if not os.path.isfile(self.ydk):
@@ -59,24 +61,24 @@ class Profile:
             self.playbook_path = playbook if playbook is not None else find_playbook(self.ydk)
             self.adhoc = True
         else:
-            self._load_folder(deck_key, cfg)
-        self.name = self.settings.get("name", deck_key)
+            self._load_folder(deck_key, cfg, folder)
+        self.name = self.settings.get("name", self.key)
         self.main, self.extra, self.side = parse_ydk(self.ydk)
         self.ids = set(self.main) | set(self.extra) | set(self.side)
 
-    def _load_folder(self, deck_key, cfg):
-        self.dir = os.path.join(paths.DECKS, deck_key)
-        json_path = os.path.join(self.dir, "deck.json")
-        if not os.path.exists(json_path):
-            raise FileNotFoundError(f"no deck profile {deck_key!r}: {json_path} is missing "
-                                    f"(decks: {', '.join(deck_keys())})")
-        with open(json_path, encoding="utf-8") as f:
-            self.settings = json.load(f)
+    def _load_folder(self, deck_key, cfg, folder=None):
+        if folder is None:
+            found = decks.find(deck_key, cfg)
+            self.key, folder = found.key, found.dir
+        self.dir = os.path.abspath(folder)
+        self.location = decks.location_of(self.dir, cfg)
+        if not os.path.isfile(os.path.join(self.dir, "deck.json")):
+            raise decks.DeckError(f"no deck profile in {self.dir} (deck.json is missing)")
         # config.local.toml [decks.<key>] wins, e.g. to play the EDOPro copy of the .ydk so its edits carry over.
-        self.settings.update(deck_overrides(cfg or {}, deck_key))
+        self.settings = decks.deck_settings(self.dir, self.key, cfg)
         self.ydk = paths.resolve(self.settings.get("ydk", "deck.ydk"), self.dir)
         if not os.path.exists(self.ydk):
-            raise FileNotFoundError(f"deck file for {deck_key!r} not found: {self.ydk}")
+            raise FileNotFoundError(f"deck file for {self.key!r} not found: {self.ydk}")
         self.playbook_path = os.path.join(self.dir, "playbook.md")
         self.adhoc = False
 

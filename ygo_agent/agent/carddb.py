@@ -146,6 +146,14 @@ class CardDB:
                         continue
                     tables[parts[0]][key] = parts[2]
 
+    @property
+    def scripts(self):
+        """The card scripts (cardscripts.ScriptIndex), loaded on first use; none for a database built from_dict."""
+        if getattr(self, "_scripts", None) is None:
+            from .cardscripts import ScriptIndex
+            self._scripts = ScriptIndex(self.root)
+        return self._scripts
+
     def get(self, cid):
         return self.cards.get(cid)
 

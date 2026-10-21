@@ -103,7 +103,8 @@ Every decision carries `state`, the board as the bot sees it right now:
 | `new_turn` | `turn`, `player` | |
 | `new_phase` | `phase`, `player` (the turn player) | |
 | `move` | `id` (0 if hidden), `from` {c,l,s,p}, `to` {c,l,s,p}, `reason` (EDOPro `REASON_*` bits) | every card movement, including draws and hidden reorders |
-| `summoning` | `id`, `to` {c,l,s,p}, `special` (bool) | a Normal/Flip Summon (`special` false) or Special Summon (true) starts |
+| `summoning` | `id`, `to` {c,l,s,p}, `special` (bool); optional `window` (bool), `flip` (true) | a Normal/Flip Summon (`special` false) or Special Summon (true) starts; it isn't complete yet (see below) |
+| `summoned` | `id`, `to` {c,l,s,p} (where the card is now), `special` (bool); optional `flip` (true) | optional: that Summon went through (one per card of a `summoning`; none for a negated one) |
 | `chaining` | `id`, `card` (full card), `player`, `desc`, `link` (1-based chain link) | a card or effect is activated |
 | `chain_solved` | `link` | that link finished resolving |
 | `chain_negated`, `chain_disabled` | `link` | activation / effect negated |
@@ -123,7 +124,19 @@ Every decision carries `state`, the board as the bot sees it right now:
 | `coin`, `dice` | `player`, `results` [int] (coin: 1 heads, 0 tails) | *native*: a coin toss or a die roll |
 | `declared` | `player`, `kind` (`card`, `attribute`, `race`, `number`, `option`), `value` (code, bits, number or effect description) | *native*: what the opponent declared or chose (EDOPro shows it to the other player) |
 
-A Flip Summon is a `summoning` with `special` false, like a Normal Summon; native seats add `flip: true` to it.
+A Flip Summon is a `summoning` with `special` false, like a Normal Summon, with `flip: true`.
+
+**Summons and negation windows.** `summoning` comes when a Summon *starts* (MSG_SUMMONING, SPSUMMONING,
+FLIPSUMMONING). A Summon made outside a chain (a Normal, Flip or Tribute Summon, or a Special Summon by a monster's own
+procedure: Synchro, Xyz, an inherent Summon) then has a negation window, where Solemn Strike and the like can negate
+it; only afterwards does it complete (MSG_SUMMONED etc.). A Summon that a resolving effect performs completes at once.
+Bots that know this (the native seats and the WindBot fork since Stage 9) mark it with `window` (true: no chain was
+open, so there is a window) and send `summoned` when the Summon completes; a negated Summon never gets one, and its
+card leaves the field instead (destroyed by the negating effect, or sent to the GY by rule). `describe.py` words a
+Summon in its window as in progress ("Opponent is Special Summoning X … (not complete yet: it can still be negated)"),
+merges it with its `summoned` into the usual "Opponent Special Summons X" line when nothing happened in between, says
+"… succeeded" after a window that had a response or a decision in it, and marks the card's move out of the zone with
+"its Summon was negated". For logs without `window` it tracks the chain from the events itself.
 
 Chat details: `position` is the bot's own room seat. `player` is the sender's seat for duelists (so
 `player == position` is the bot's own echo, which the agent ignores), 7 for spectators and 8+ for system messages.

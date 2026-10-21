@@ -49,7 +49,11 @@ def variant_folder(ws: Workspace, deck_dir: str, variant: str, display: str) -> 
 def compare(cfg: dict, name: str, *, backend: str = "sonnet", opponent: str = "windbot:Blue-Eyes", games: int = 3,
             variants=("trained", "draft", "none"), seed: int = 7, parallel: int = 2, budget: float | None = None,
             db=None, engine=None) -> str:
-    deck_dir = os.path.join(paths.DECKS, name)
+    from .. import decks
+    try:
+        deck_dir = decks.find(name, cfg).dir
+    except decks.DeckError as e:
+        raise TrainerError(str(e)) from None
     if not os.path.isfile(os.path.join(deck_dir, "train", "state.json")):
         raise TrainerError(f"{deck_dir} has no training run to compare")
     ws = Workspace(deck_dir)

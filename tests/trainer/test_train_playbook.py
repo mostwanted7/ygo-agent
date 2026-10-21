@@ -5,23 +5,23 @@ import json
 from ygo_agent.trainer import playbook as pb
 from ygo_agent.trainer import review
 
-DRAFT = """## Lessons from games (newest first; these override everything below)
+DRAFT = """## How to use this playbook
 
-None yet: lessons from reviewed games go here.
+Principles, not scripts.
 
 ## Game plan
 
 Make Rank 4s.
 
-## Engine cards
+## Card roles
 
 - **Geargiarsenal**: Tribute it for a Geargia.
 
-## Extra Deck
+## Situational considerations
 
-- Gear Gigant X.
+- **Consider Gear Gigant X when a Geargiano is in the GY**, because it floats.
 
-## Main lines
+## Example sequences
 
 **Line 1: Geargiarsenal + any Geargia** *(unverified)*
 1. Normal Summon Geargiarsenal.
@@ -29,47 +29,71 @@ Make Rank 4s.
 **Line 2: Geargiano Mk-II** *(unverified)*
 1. Normal Summon Mk-II.
 
-## General principles
+## Known pitfalls (from reviewed games, newest first)
 
-- Keep traps Set.
+None yet: specific mistakes from reviewed games go here, one or two lines each.
+"""
+
+OLD_STYLE = """## Lessons from games (newest first; these override everything below)
+
+### 2026-10-21 game 1
+1. **Old lesson.**
+
+## Game plan
+
+Make Rank 4s.
 """
 
 
 def test_split_and_join_round_trip():
     assert pb.join(pb.split(DRAFT)) == DRAFT
-    assert [pb.key(h) for h, _ in pb.split(DRAFT)][:2] == ["lessons from games", "game plan"]
+    assert [pb.key(h) for h, _ in pb.split(DRAFT)][:2] == ["how to use this playbook", "game plan"]
 
 
 def test_apply_sections_replaces_adds_and_deletes():
     text, changes = pb.apply_sections(DRAFT, [
         {"heading": "## Game plan", "content": "## Game plan\n\nXyz beatdown with traps."},  # heading repeated
         {"heading": "Going second / breaking boards", "content": "- Harpie's Feather Duster first."},
-        {"heading": "## Extra Deck", "content": ""},
-        {"heading": "## Lessons from games", "content": "overwritten!"},
+        {"heading": "## Card roles", "content": ""},
+        {"heading": "## Known pitfalls", "content": "overwritten!"},
     ])
     sections = dict(pb.split(text))
     assert sections["## Game plan"] == "Xyz beatdown with traps."
     heads = [h for h, _ in pb.split(text)]
-    assert heads.index("## Going second / breaking boards") == heads.index("## General principles") - 1
-    assert "## Extra Deck" not in heads
+    assert heads.index("## Going second / breaking boards") == len(heads) - 2  # new sections go before the pitfalls
+    assert heads[-1] == pb.LESSONS_HEADING and "## Card roles" not in heads
     assert "None yet" in text and "overwritten!" not in text
     assert any("ignored" in c for c in changes) and len(changes) == 4
 
 
+def test_new_sections_in_an_old_style_playbook_go_at_the_end():
+    text, _ = pb.apply_sections(OLD_STYLE, [{"heading": "## Lethal check", "content": "- Count."}])
+    assert [h for h, _ in pb.split(text)][-1] == "## Lethal check"
+
+
 def test_prefix_heading_match():
-    text, _ = pb.apply_sections(DRAFT, [{"heading": "## Main lines", "content": "**Line 1** new"}])
+    text, _ = pb.apply_sections(DRAFT, [{"heading": "## Example sequences", "content": "**Line 1** new"}])
     assert "**Line 1** new" in text and "Line 2" not in text
 
 
-def test_add_lessons_newest_first_and_keeps_the_intro():
-    text = pb.add_lessons(DRAFT, "2026-10-21 game r1-g1 (vs X) — loss", ["**Do A** because B.", "2. **Do C.**"],
-                          intro="These come from reviews.")
-    text = pb.add_lessons(text, "2026-10-22 game r2-g1 (vs Y) — win", ["**Do D.**"])
+def test_pitfalls_newest_first_with_their_tag():
+    text = pb.add_lessons(DRAFT, "2026-10-21, r1-g1 vs X", ["**Do A** because B.", "2. **Do C.**"])
+    text = pb.add_lessons(text, "2026-10-22, r2-g1 vs Y", ["**Do D.**"])
     body = dict(pb.split(text))[pb.LESSONS_HEADING]
     assert "None yet" not in body
-    assert body.startswith("These come from reviews.")
-    assert body.index("r2-g1") < body.index("r1-g1")
-    assert "1. **Do A** because B.\n2. **Do C.**" in body
+    assert body.splitlines() == ["- **Do D.** *(2026-10-22, r2-g1 vs Y)*", "- **Do A** because B. *(2026-10-21, r1-g1 vs X)*",
+                                 "- **Do C.** *(2026-10-21, r1-g1 vs X)*"]
+    assert pb.split(text)[-1][0] == pb.LESSONS_HEADING and pb.problems(text) == []
+
+
+def test_pitfalls_keep_an_intro_line_and_old_style_lessons_sections():
+    intro = DRAFT.replace("None yet: specific mistakes from reviewed games go here, one or two lines each.",
+                          "From reviewed games.")
+    body = dict(pb.split(pb.add_lessons(intro, "t", ["**A.**"])))[pb.LESSONS_HEADING]
+    assert body.startswith("From reviewed games.\n\n- **A.** *(t)*")
+    old = pb.add_lessons(OLD_STYLE, "t", ["**New.**"])
+    lessons = pb.split(old)[0][1]
+    assert lessons.index("**New.**") < lessons.index("Old lesson")
 
 
 def test_mark_verified():
@@ -82,9 +106,11 @@ def test_mark_verified():
 def test_problems_and_ensure_lessons():
     assert pb.problems(DRAFT) == []
     bare = "## Game plan\n\nx\n"
-    assert "no lessons section" in pb.problems(bare) and "no 'engine cards' section" in pb.problems(bare)
-    assert pb.split(pb.ensure_lessons(bare))[0][0] == pb.LESSONS_HEADING
-    assert any("KB" in p for p in pb.problems(DRAFT + "x" * 15000))
+    assert "no known pitfalls section" in pb.problems(bare) and "no 'card roles' section" in pb.problems(bare)
+    assert pb.split(pb.ensure_lessons(bare))[-1][0] == pb.LESSONS_HEADING
+    moved = DRAFT + "\n## Lethal check\n\n- Count.\n"
+    assert "known pitfalls is not the last section" in pb.problems(moved)
+    assert any("KB" in p for p in pb.problems(DRAFT + "x" * 9000))
 
 
 def test_quote_matching_is_forgiving_but_not_blind():
@@ -121,7 +147,7 @@ def test_evidence_and_lessons(tmp_path):
                                                     ev)
     assert [a["text"] for a in accepted] == ["**Tribute Geargiarsenal first.**"]
     assert {r["text"] for r in rejected} == {"**Text only.**", "**Made up.**"}  # a card text alone isn't enough
-    assert "### 2026-10-21 game r1-g1\n1. **Tribute Geargiarsenal first.**" in text
+    assert "- **Tribute Geargiarsenal first.** *(2026-10-21 game r1-g1)*" in text
     again, accepted, rejected = review.apply_lessons(text, [good], "2026-10-22 game r2-g1", ev)
     assert not accepted and "already has" in rejected[0]["notes"][0] and again == text
 

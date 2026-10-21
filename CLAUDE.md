@@ -21,14 +21,22 @@ See README.md for the architecture and `docs/plan.md` for where the project is g
    played (with the game's stats). The default backend is Claude Code (`claude -p`); `--backend NAME` picks
    another profile from the config (docs/backends.md).
 2. For each mistake, find the decision and work out why it happened:
-   - Bad strategy or judgment → add a lesson to the **Coaching lessons** section at the top of
-     `decks/saffira/playbook.md`. Newest first, dated, and naming the game. State it as a concrete
-     instruction ("When X, do Y because Z"). Correct or remove any existing playbook text it contradicts,
-     and drop "(untested)" from lines a game has confirmed. Keep the playbook tight: Claude reads all of it on
-     every decision. A lesson that holds for every deck (timing rules, general play) goes in
-     `playbooks/general.md` instead.
-   - The same mistake again after a lesson, or a rule with no judgment in it → add a function to
-     `decks/saffira/rules.py` (see `ygo_agent/agent/rules.py` for the Context helpers) and list it in RULES.
+   - Bad strategy or judgment → fix the deck's playbook. **Playbook style** (`decks/geargia/playbook.md` is the
+     reference): principles first, phrased as conditions with their reason ("consider X when Y, because Z"), which
+     the player may override when the board calls for it; no step-by-step scripts. When a principle is missing or
+     wrong, fix that section, generalised beyond this game. A specific mistake that is significant and repeatable
+     (a misread ruling, an engine quirk) goes to **Known pitfalls** at the bottom: one or two lines, dated, naming
+     the game. Saffira's playbook keeps the user's own **Coaching lessons** on top (newest first, dated). Correct or
+     remove text a fix contradicts, and drop "(untested)"/"(unverified)" from what a game has confirmed. Keep it
+     tight (≤ 8 KB): the model reads all of it on every decision. A lesson that holds for every deck goes in
+     `playbooks/general.md`.
+   - **Hard rules** (`decks/<deck>/rules.py`, Context helpers in `ygo_agent/agent/rules.py`) are only for a mistake
+     with no judgment in it that the **play model** (the default backend, `agent.backend`) repeats even with a
+     playbook lesson. Rules are calibrated to that model: save the case that proves the rule, mark the rule with
+     `@cases("<case>")` (`@shortcut` for a rule that only skips prompts that never matter) and list it in RULES. If a
+     weaker model made the mistake, check the case with `--backend <play model>` before writing a rule. When the
+     play model changes, run `ygo-agent test --deck <deck> --ablate-rules`: it replays each rule's cases with that
+     rule disabled and reports the rules the model no longer needs (delete those after asking the user).
    - Claude misread the state or options → the presentation is wrong. Fix `ygo_agent/agent/describe.py`.
    - Wrong card data or engine behaviour → check the card script in `~/Games/ProjectIgnis/script/official/c<id>.lua`.
 3. Verify: `ygo-agent replay games/<game> <N>` re-asks decision N with the current playbook/rules (the deck comes
@@ -37,7 +45,9 @@ See README.md for the architecture and `docs/plan.md` for where the project is g
    `ygo-agent replay games/<game> <N> --save <short-name> --expect '[[2]]' --note "..."`
    (`--expect` takes a list of acceptable choices; `'[[]]'` means pass, `--reject` lists the wrong ones).
    `ygo-agent test` runs every case of the deck 3 times (`--deck`, case names, `--repeat N`). Claude isn't
-   deterministic, so a case that passes only sometimes needs a stronger playbook line or a rule.
+   deterministic, so a case that passes only sometimes needs a stronger playbook line (or, by the rule above, a
+   rule). List every acceptable choice in `--expect`, or only `--reject` the blunder: a case shouldn't force one
+   line where the board allows several (the order of a multi-card pick doesn't matter).
    `.venv/bin/python -m pytest` checks that describe/validate/rules still handle every saved case (no model calls).
 4. Tell the user what changed in one or two lines. They'll see it in the next game.
 
@@ -87,7 +97,9 @@ For `decks/blackwing` the user is learning the deck and can't spot mistakes, so 
   writes review.md after the game (`coach --review games/<dir>` again), `detect.py` recognises the human's deck.
 - `ygo_agent/trainer/`: `ygo-agent train` (docs/training.md): dossier → study → lab (goldfish turns with stacked
   hands) → games → reviews, checkpointed in `decks/<name>/train/state.json`. A trained deck's `train/` folder has the
-  scripts, logs and reviewer calls behind every lesson in its playbook.
+  scripts, logs and reviewer calls behind every lesson in its playbook, and `rule-proposals.md`. Every condense or
+  section rewrite is checked against the saved cases (`Trainer.gate`). `ygo_agent/agent/ablation.py`: `test
+  --ablate-rules`.
 - `windbot-src/`: WindBot fork, its own git repo, branch `brain-bridge` (`ExecutorBase/Game/BrainBridge.cs`, the
   `Brain` hooks in `ExecutorBase/Game/GameAI.cs` and `Game/GameBehavior.cs`, `Game/AI/Decks/AgentExecutor.cs`).
   Run `./build.sh` after editing C#, then `tests/run_bridge_test.sh` (real Claude calls, ~1 minute).

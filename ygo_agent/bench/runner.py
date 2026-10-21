@@ -1,7 +1,8 @@
 """Running a benchmark: every planned game through match.run_games(), K at a time, each result appended to
 results.jsonl the moment it ends, so a crash, Ctrl+C or a usage limit loses only the games in flight.
 
-A run folder (bench/results/<time>_<name>/) holds:
+A run folder (bench/results/<time>_<name>/, or <games_dir>/bench-smoke/<time>_<name>/ for a scratch run such as
+`bench smoke`, so only deliberate runs land in the repo) holds:
   spec.json       the plan (the latest invocation's settings, every invocation's command line)
   env.json        versions: core, scripts, card data, WindBot, decks, backends (with the model ids a probe saw)
   results.jsonl   one line per game (status done / aborted / error); the last "done" line of a game counts
@@ -143,30 +144,13 @@ def seat_record(seat) -> dict:
     return d
 
 
-def force_first(position: int, rooms: set | None = None, mine: list | None = None):
-    """An on_room hook: lobby `position` moves first in game 1 (a room otherwise lets the RPS winner choose, and
-    the benchmark alternates who goes first). The RPS still runs, so clients see the usual sequence."""
-    from ..arena.server import STATE_NONE, Client, Stage
-
+def track_room(rooms: set, mine: list):
+    """An on_room hook: remember the game's room (and its event loop), so Ctrl+C can close it."""
     def hook(room):
-        original = room._ask_first
-
-        def ask_first(chooser):
-            if room.match_results:  # a later game of a Bo3: the previous loser chooses, as usual
-                return original(chooser)
-            room.stage = Stage.CHOOSE_FIRST
-            room.chooser = chooser
-            for p in room.duelists():
-                if isinstance(p, Client):
-                    p.state = STATE_NONE
-            room._first_chosen(chooser, chooser.pos == position)
-        room._ask_first = ask_first
-        if rooms is not None:
-            import asyncio
-            room._bench_loop = asyncio.get_running_loop()  # on_room runs in the room's event loop (for Ctrl+C)
-            rooms.add(room)
-            if mine is not None:
-                mine.append(room)
+        import asyncio
+        room._bench_loop = asyncio.get_running_loop()  # on_room runs in the room's event loop
+        rooms.add(room)
+        mine.append(room)
     return hook
 
 
@@ -195,7 +179,7 @@ def play_one(job: Job, spec: BenchSpec, cfg: dict, db, engine, folder: str, room
         run = run_games(SeatSpec.parse(job.player_spec), SeatSpec.parse(job.opponent), games=1, rules=spec.rules,
                         seed=job.seed, first=first, out=logs, cfg=game_config(cfg, job, logs), db=db, engine=engine,
                         quiet=True, echo="off", tags=False, lan=False, port=None, time_limit=0,
-                        timeout=spec.timeout, on_room=force_first(first, rooms, mine))
+                        timeout=spec.timeout, on_room=track_room(rooms, mine))
     except MatchError as e:
         return {**record, "status": "error", "error": str(e), "wall_seconds": round(time.monotonic() - t0, 1),
                 "ended": now()}
@@ -361,21 +345,13 @@ def windbot_ydk(assets: str, deck: str) -> str | None:
 
 
 def deck_info(profile) -> dict:
-    import importlib.util
-    rules = None
-    path = os.path.join(profile.dir, "rules.py")
-    if os.path.isfile(path):
-        try:
-            spec = importlib.util.spec_from_file_location(f"_bench_rules_{profile.key}", path)
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
-            rules = len(getattr(module, "RULES", []))
-        except Exception:
-            rules = None
+    from ..decks import rules_count
+    rules = rules_count(profile.dir) if os.path.isfile(os.path.join(profile.dir, "rules.py")) else None
     playbook = profile.playbook_path if profile.playbook_path and os.path.isfile(profile.playbook_path) else None
     return {"name": profile.name, "ydk": rel(profile.ydk), "ydk_sha": _sha(profile.ydk), "main": len(profile.main),
             "extra": len(profile.extra), "playbook": rel(playbook), "playbook_sha": _sha(playbook) if playbook else None,
-            "playbook_chars": os.path.getsize(playbook) if playbook else 0, "rules": rules}
+            "playbook_chars": os.path.getsize(playbook) if playbook else 0, "rules": rules,
+            "location": getattr(profile, "location", None)}
 
 
 # --- the run ----------------------------------------------------------------------------------------------------
@@ -621,6 +597,11 @@ def write_json(path: str, data) -> None:
     os.replace(tmp, path)
 
 
+def scratch_root(cfg: dict) -> str:
+    """Where test and smoke runs go (games/ is git-ignored)."""
+    return os.path.join(paths.resolve(cfg.get("games_dir", "games")), "bench-smoke")
+
+
 def new_folder(name: str, root: str = RESULTS_ROOT) -> str:
     from ..agent.gamelog import slug
     stem = os.path.join(root, f"{time.strftime('%Y-%m-%d_%H%M%S')}_{slug(name, 40)}")
@@ -632,12 +613,15 @@ def new_folder(name: str, root: str = RESULTS_ROOT) -> str:
     return path
 
 
-def latest_folder(name: str | None, root: str = RESULTS_ROOT) -> str | None:
-    """The newest run folder (of this benchmark name, when given)."""
+def latest_folder(name: str | None, root: str | list[str] = RESULTS_ROOT) -> str | None:
+    """The newest run folder (of this benchmark name, when given) in `root` (or in any of a list of roots)."""
     from ..agent.gamelog import slug
-    if not os.path.isdir(root):
-        return None
-    folders = sorted(d for d in os.listdir(root) if os.path.isfile(os.path.join(root, d, "spec.json")))
-    if name:
-        folders = [d for d in folders if d.split("_", 2)[-1] == slug(name, 40)]
-    return os.path.join(root, folders[-1]) if folders else None
+    found = []
+    for folder in [root] if isinstance(root, str) else root:
+        if not os.path.isdir(folder):
+            continue
+        for d in os.listdir(folder):
+            if os.path.isfile(os.path.join(folder, d, "spec.json")) and (
+                    not name or d.split("_", 2)[-1] == slug(name, 40)):
+                found.append((d, os.path.join(folder, d)))
+    return max(found)[1] if found else None

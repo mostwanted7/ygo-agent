@@ -194,6 +194,7 @@ EVENTS = {
     "new_phase": {"phase": int, "player": int},
     "move": {"id": int, "from": dict, "to": dict, "reason": int},
     "summoning": {"id": int, "to": dict, "special": bool},
+    "summoned": {"id": int, "to": dict, "special": bool},
     "chaining": {"id": int, "card": dict, "player": int, "desc": int, "link": int},
     "chain_solved": {"link": int}, "chain_negated": {"link": int}, "chain_disabled": {"link": int},
     "chain_end": {}, "attack": {"attacker": dict},
@@ -230,4 +231,7 @@ def event_errors(ev: dict) -> list[str]:
             ck.ints(ev[key], f"{e}.{key}", "c", "l", "s", "p")
     if e == "attack" and "target" not in ev:
         ck.err(e, "missing target (null for a direct attack)")
+    for key in ("window", "flip"):  # optional flags of summoning/summoned
+        if key in ev and not isinstance(ev[key], bool):
+            ck.err(e, f"{key} must be bool ({ev[key]!r})")
     return ck.errors

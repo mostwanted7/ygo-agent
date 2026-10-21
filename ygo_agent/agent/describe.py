@@ -35,8 +35,17 @@ def zone_label(loc, seq):
 
 
 class Describer:
-    def __init__(self, db):
+    """All text the model sees. Events are described one at a time (event), and for a seat's duel log through lines(),
+    which also merges a Summon that went through at once into one line. It remembers a little of the event stream:
+    which Summons are still in their negation window, and (for logs that don't say) whether a chain is open.
+    `attack_note`: say on the "Go to the Battle Phase" option when an attack could matter (attack_summary)."""
+
+    def __init__(self, db, attack_note=True):
         self.db = db
+        self.attack_note = attack_note
+        self.chain_open = False   # between a `chaining` and its `chain_end`
+        self.summons = {}         # (controller, zone) -> the `summoning` of a Summon still in its negation window
+        self.held = None          # lines(): (event, line) of such a Summon, until the next event shows how it went
 
     # ---- cards ----
 
@@ -196,13 +205,40 @@ class Describer:
             text = text.replace("%ls", self.db.name(card_id))  # e.g. 'Use the effect of "%ls" to avoid destruction'
         return f' — effect: "{text}"' if text else ""
 
+    def label_note(self, desc, card):
+        """A factual qualifier for an effect label that the card's script makes ambiguous, else "". The label (a
+        card string the script's SetDescription picked) can be shared by several of the card's effects, or plainly
+        not fit where the card is ("Special Summon this card" for one already in the Monster Zone, as on Blackwing -
+        Vata's on-field effect). Then say so, and name the zone the effect works from when the script's SetRange
+        tells which effect it is. Clones of one effect (the same effect for another event or zone) don't count."""
+        code, loc = (card or {}).get("id"), (card or {}).get("l", 0)
+        text = self.db.desc(desc) if desc and desc >= (1 << 20) else None
+        if not text or not code or desc >> 20 != code:
+            return ""
+        effects = self.db.scripts.labelled(code, (code, desc & 0xFFFFF))
+        families = {e.family for e in effects}
+        misfit = loc == 0x4 and "special summon this card" in text.lower()
+        if len(families) < 2 and not misfit:
+            return ""
+        here = [e for e in effects if e.range is None or (loc and e.range & loc)]
+        zone = loc_name(loc) if loc and len({e.family for e in here}) == 1 and all(e.range for e in here) else None
+        if len(families) > 1:
+            note = f"this label is shared by {len(families)} of this card's effects" + (
+                f"; this one works from the {zone}" if zone else "")
+        elif zone:
+            note = f"the script's label for its {zone} effect, though this card is already on the field"
+        else:
+            note = "the script's label, though this card is already on the field"
+        return f" ({note}; see the card text)"
+
     def option_line(self, kind, opt):
         if kind in ("idle", "battle", "chain"):
             a = opt["a"]
             card = opt.get("card")
             if a == "activate":
+                desc = opt.get("desc")
                 return (f"Activate {self.card_line(card)} from {self.where(card)}"
-                        f"{self.effect_text(opt.get('desc'), (card or {}).get('id'))}")
+                        f"{self.effect_text(desc, (card or {}).get('id'))}{self.label_note(desc, card)}")
             if a == "summon":
                 return f"Normal Summon {self.name(card)} (from hand)"
             if a == "spsummon":
@@ -245,7 +281,31 @@ class Describer:
         lines = [self.option_line(d["kind"], o) for o in d.get("options", [])]
         if d["kind"] == "idle":
             self._number_repeats(d["options"], lines)
+            note = self.attack_summary(d) if self.attack_note else None
+            if note:
+                for i, o in enumerate(d["options"]):
+                    if o.get("a") == "to_battle":
+                        lines[i] += f" ({note})"
         return lines
+
+    @staticmethod
+    def attack_summary(d):
+        """Facts about a possible attack, or None. Only in your Main Phase 1 with the Battle Phase open to you, when
+        you have face-up Attack Position monsters that haven't attacked, and the opponent controls no monster or
+        their total ATK reaches the opponent's LP. Their total ATK, the opponent's LP and monster count, no advice."""
+        s = d.get("state") or {}
+        if s.get("turn_player") != 0 or s.get("phase") != 0x4 or not any(
+                o.get("a") == "to_battle" for o in d.get("options", [])):
+            return None
+        me, opp = s.get("me") or {}, s.get("opp") or {}
+        attackers = [c for c in me.get("mz") or [] if c and c.get("id") and c.get("p") == 0x1 and not c.get("att")]
+        total = sum(c.get("atk") or 0 for c in attackers)
+        theirs = sum(1 for c in opp.get("mz") or [] if c)
+        lp = opp.get("lp")
+        if total <= 0 or (theirs and (lp is None or total < lp)):
+            return None
+        return (f"attack available: your Attack Position monsters total {total} ATK; opponent LP {lp}; opponent has "
+                + ("no monsters" if not theirs else f"{theirs} monster{'s' if theirs > 1 else ''}"))
 
     @staticmethod
     def _number_repeats(options, lines):
@@ -282,7 +342,8 @@ class Describer:
             return q + ". Reply with [] to pass (do nothing), or one option index to activate."
         if kind == "effect_yn":
             return (f"Do you want to activate/use {self.card_line(d['card'])} ({self.where(d['card'])})"
-                    f"{self.effect_text(d.get('desc'), d['card'].get('id'))}? Reply [1] for yes or [0] for no.")
+                    f"{self.effect_text(d.get('desc'), d['card'].get('id'))}{self.label_note(d.get('desc'), d['card'])}"
+                    "? Reply [1] for yes or [0] for no.")
         if kind == "yesno":
             text = self.db.desc(d.get("desc")) or f"question #{d.get('desc')}"
             return f'Yes/no question from the game: "{text}". Reply [1] for yes or [0] for no.'
@@ -343,10 +404,86 @@ class Describer:
 
     # ---- events ----
 
+    def lines(self, ev):
+        """The duel-log lines for one event, for a history the model reads. Like event(), except that the line of a
+        Summon in its negation window waits for the next event: if that is the Summon succeeding, the two read as one
+        line ("Opponent Special Summons ..."); if not (a response, a negation), the in-progress line comes first.
+        Call flush(decision) before showing the history, so a held line is never lost."""
+        out = []
+        if self.held is not None:
+            held, line = self.held
+            self.held = None
+            if ev["e"] == "summoned" and self._spot(ev) == self._spot(held):
+                self.event(ev)
+                return [self._summon_text(held)]
+            out.append(line)
+        unknown = ev["e"] == "summoning" and "window" not in ev and not self.chain_open
+        line = self.event(ev)
+        if ev["e"] == "summoning" and (self._spot(ev) in self.summons or unknown):
+            self.held = (ev, line)
+        elif line:
+            out.append(line)
+        return out
+
+    def flush(self, decision=None):
+        """The line lines() holds back, if any, before `decision` is shown. A log without `window` (older bots) never
+        says when a Summon completed: one still held at a response window ("chain") is most likely in its negation
+        window, so it reads as in progress there; anywhere else it reads as done, as it always did."""
+        if self.held is None:
+            return []
+        (held, line), self.held = self.held, None
+        if "window" not in held and (decision or {}).get("kind") == "chain":
+            line = self._summon_text(held, pending=True)
+        return [line]
+
+    @staticmethod
+    def _spot(ev):
+        to = ev.get("to") or {}
+        return to.get("c"), to.get("s")
+
+    def _summon_kind(self, ev):
+        if ev.get("special"):
+            return "Special Summon"
+        if ev.get("flip"):
+            return "Flip Summon"
+        # Bots that report negation windows also mark Flip Summons; older logs don't tell the two apart.
+        return "Normal Summon" if "window" in ev else "Normal/Flip Summon"
+
+    def _summon_text(self, ev, pending=False):
+        to = ev["to"]
+        mine = to["c"] == 0
+        what, card = self._summon_kind(ev), f'"{self.db.name(ev["id"])}"'
+        zone, pos = zone_label(to["l"], to["s"]), POSITIONS.get(to["p"], "?")
+        if pending:
+            return (f"{'You are' if mine else 'Opponent is'} {what}ing {card} to {zone}, {pos} (not complete yet: it "
+                    "can still be negated).")
+        return f"{'You' if mine else 'Opponent'} {what}{'' if mine else 's'} {card} to {zone} ({pos})."
+
+    def _summoning(self, ev):
+        """A Summon starts. Outside a chain it has a negation window (Solemn Strike and the like): the core asks for
+        responses and only then completes it. Bots that report this mark the event with `window` and send `summoned`
+        when it completes (docs/decision-protocol.md); a Summon that a resolving effect performs has no window.
+        Without `window` (older logs) nothing says when it completed, so it reads as done (flush() has the one
+        exception)."""
+        if not ev.get("window"):
+            return self._summon_text(ev)
+        self.summons[self._spot(ev)] = ev
+        return self._summon_text(ev, pending=True)
+
+    def _summoned(self, ev):
+        """A Summon completed: worth a line only after a window that showed it in progress."""
+        pending = self.summons.pop(self._spot(ev), None)
+        if pending is None:
+            return None
+        who = "Your" if pending["to"]["c"] == 0 else "Opponent's"
+        return f'{who} {self._summon_kind(pending)} of "{self.db.name(pending["id"])}" succeeded.'
+
     def event(self, ev):
         """One line for the duel log, or None for noise."""
         e = ev["e"]
         db = self.db
+        if e in ("start", "new_turn", "new_phase"):
+            self.chain_open, self.summons = False, {}
         if e == "start":
             return f"DUEL START — you go {'first' if ev['first'] else 'second'}. LP {ev['lp'][0]} vs {ev['lp'][1]}."
         if e == "new_turn":
@@ -358,21 +495,22 @@ class Describer:
         if e == "move":
             return self._move(ev)
         if e == "summoning":
-            to = ev["to"]
-            mine = to["c"] == 0
-            how = ("Special Summon" if ev.get("special") else "Normal/Flip Summon") + ("" if mine else "s")
-            who = "You" if mine else "Opponent"
-            return f"{who} {how} \"{db.name(ev['id'])}\" to {zone_label(to['l'], to['s'])} ({POSITIONS.get(to['p'], '?')})."
+            return self._summoning(ev)
+        if e == "summoned":
+            return self._summoned(ev)
         if e == "chaining":
+            self.chain_open = True
             who = "You" if ev["player"] == 0 else "Opponent"
             card = ev.get("card") or {}
             return (f"CL{ev['link']}: {who} activate{'s' if who == 'Opponent' else ''} \"{db.name(ev['id'])}\""
-                    f" from {self.where(card) if card else '?'}{self.effect_text(ev.get('desc'), ev.get('id'))}")
+                    f" from {self.where(card) if card else '?'}{self.effect_text(ev.get('desc'), ev.get('id'))}"
+                    f"{self.label_note(ev.get('desc'), dict(card, id=ev.get('id')))}")
         if e == "chain_solved":
             return f"   CL{ev['link']} resolved."
         if e in ("chain_negated", "chain_disabled"):
             return f"   CL{ev['link']} was NEGATED."
         if e == "chain_end":
+            self.chain_open = False
             return None
         if e == "attack":
             target = ev.get("target")
@@ -453,4 +591,7 @@ class Describer:
         why = [w for bit, w in REASONS if reason & bit]
         src = f"{whose(f['c'])} {zone_label(fl, f['s']) if fl in (0x4, 0x8) else loc_name(fl)}" if fl else "outside the game"
         dst = f"{whose(t['c'])} {zone_label(tl, t['s']) if tl in (0x4, 0x8) else loc_name(tl)}" if tl else "removed from play"
-        return f"{name}: {src} → {dst}" + (f" ({', '.join(why)})" if why else "")
+        line = f"{name}: {src} → {dst}" + (f" ({', '.join(why)})" if why else "")
+        if fl == 0x4 and self.summons.pop((f["c"], f["s"]), None) is not None:
+            line += " — its Summon was negated."  # it left the field inside its window: no `summoned` will come
+        return line

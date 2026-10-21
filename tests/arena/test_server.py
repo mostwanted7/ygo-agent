@@ -202,6 +202,40 @@ def test_rematch_and_a_local_seat(engine, decks):
     assert ("Local AI", 1) in [P.parse_player_enter(p) for p in packets(a, P.STOC_HS_PLAYER_ENTER)]
 
 
+@pytest.mark.parametrize("first", [0, 1])
+def test_room_config_first_decides_game_one_of_every_match(engine, decks, first):
+    """RoomConfig.first: lobby position `first` goes first in game 1 of each match, whoever wins the RPS (the RPS
+    still runs); a Bo3's later games stay the previous loser's choice."""
+    async def scenario():
+        room, server = await start(engine, max_matches=2, rematch=True, first=first)
+        room.add_local(1, PolicySeat("Local AI", RandomPolicy(3)), decks["Blackwing"])
+        a = await ArenaClient("Alice", decks["Saffira"], client_policy(engine, 11), rematch=True).connect(
+            HOST, server.port)
+        await asyncio.wait_for(room.finished.wait(), 60)
+        await server.close()
+        return room, a
+    room, a = run(scenario())
+    names = ("Alice", "Local AI")
+    assert len(room.games) == 2 and [duel.names[0] for duel, _ in room.games] == [names[first]] * 2
+    assert packets(a, P.STOC_SELECT_HAND)  # the RPS ran anyway
+    assert not packets(a, P.STOC_SELECT_TP)  # but nobody was asked to choose
+
+
+def test_room_config_first_leaves_bo3_later_games_to_the_loser(engine, decks):
+    async def scenario():
+        room, server = await start(engine, best_of=3, max_matches=1, rematch=False, first=0)
+        room.add_local(1, PolicySeat("Local AI", RandomPolicy(5)), decks["Blackwing"])
+        a = await ArenaClient("Alice", decks["Saffira"], client_policy(engine, 13)).connect(HOST, server.port)
+        await asyncio.wait_for(room.finished.wait(), 90)
+        await server.close()
+        return room, a
+    room, a = run(scenario())
+    assert len(room.games) >= 2 and room.games[0][0].names[0] == "Alice"
+    # after game 1, Alice is asked exactly when she lost (or drew) the game before
+    lost = sum(1 for duel, result in room.games[:-1] if result.is_draw or duel.names[result.winner] != "Alice")
+    assert len(packets(a, P.STOC_SELECT_TP)) == lost
+
+
 def test_lobby_moves_and_kick(engine, decks):
     async def scenario():
         room, server = await start(engine, auto_start=False)
@@ -226,7 +260,23 @@ def guest_slot(room):
     return next((c for c in room.clients if c.name == "Guest"), None)
 
 
+def udp_port_busy(port):
+    """Someone (a running arena with LAN discovery, EDOPro) has this UDP port. Both bind with SO_REUSEADDR, so our
+    own bind would succeed and the datagrams would go to them: probe without it."""
+    probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        probe.bind(("0.0.0.0", port))
+        return False
+    except OSError:
+        return True
+    finally:
+        probe.close()
+
+
 def test_lan_discovery_reply(engine):
+    for port in (P.LAN_DISCOVERY_PORT, P.LAN_REPLY_PORT):
+        if udp_port_busy(port):
+            pytest.skip(f"UDP {port} is in use (an arena with LAN discovery, or EDOPro, is running)")
     try:
         listener = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)

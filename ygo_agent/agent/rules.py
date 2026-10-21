@@ -1,8 +1,10 @@
 """Hard-coded decisions that run before the model is asked.
 
 A deck's rules live in decks/<deck>/rules.py as plain functions listed in RULES. Each one receives a
-Context and returns None (no opinion) or Decide(choice, why). Use them for lessons that must never
-be forgotten again; softer advice belongs in the playbook instead.
+Context and returns None (no opinion) or Decide(choice, why). A rule is for a mistake with no judgment in
+it that the play model keeps making even with a playbook lesson; softer advice belongs in the playbook.
+Rules are calibrated to the play model: mark each with the regression cases that prove it (@cases), so
+`ygo-agent test --deck X --ablate-rules` can tell when a model no longer needs it.
 """
 
 import importlib.util
@@ -14,6 +16,21 @@ from dataclasses import dataclass
 class Decide:
     choice: list
     why: str
+
+
+def cases(*names):
+    """Decorator: the saved cases (decks/<deck>/tests/<name>.json) that show the play model needs this rule."""
+    def mark(fn):
+        fn.cases = tuple(names)
+        return fn
+    return mark
+
+
+def shortcut(fn):
+    """Decorator for a rule that only skips prompts that never matter (it saves model calls, not mistakes), so
+    ablation reports it but never calls it unneeded."""
+    fn.shortcut = True
+    return fn
 
 
 class Context:

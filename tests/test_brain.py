@@ -122,3 +122,36 @@ def test_match_starts_a_fresh_game_for_each_game_of_a_bo3(db, cfg, scripted):
     assert meta["rules"] == "MR3"
     latest = os.path.join(cfg["games_dir"], "latest")
     assert os.path.realpath(latest) == os.path.realpath(game2.log.dir)
+
+
+def test_summon_lines_in_the_history(db, cfg, scripted):
+    """A Summon that went through at once is one line; one with a decision in its window reads as in progress there,
+    then as succeeded; game.md gets the same lines."""
+    profile = Profile("saffira", db, cfg)
+    brain = DuelBrain(cfg, db, profile, prewarm=False)
+    code = profile.main[0]
+    name = db.name(code)
+    to = {"c": 1, "l": 4, "s": 2, "p": 1}
+    state = {"turn": 2, "turn_player": 1, "phase": 4, "chain": [],
+             "me": {"lp": 8000, "hand": [], "mz": [None] * 7, "sz": [None] * 8, "gy": [], "ban": [], "deck": 30,
+                    "extra": []},
+             "opp": {"lp": 8000, "hand": [], "mz": [None] * 7, "sz": [None] * 8, "gy": [], "ban": [], "deck": 30,
+                     "extra": []}}
+    brain.on_event(ev("start", first=True, lp=[8000, 8000], names=["Agent", "Rival"]))
+    brain.on_event(ev("summoning", id=code, to=to, special=True, window=True))
+    brain.on_event(ev("summoned", id=code, to=to, special=True))
+    assert brain.history[-1] == f'Opponent Special Summons "{name}" to M3 (face-up Attack).'
+    brain.on_event(ev("summoning", id=code, to=to, special=True, window=True))
+    d = {"t": "decide", "id": 1, "kind": "chain", "forced": False, "state": state,
+         "options": [{"a": "activate", "card": {"id": code, "c": 0, "l": 2, "s": -1, "p": 0}, "desc": 0}]}
+    scripted["decision"] = d
+    brain.on_decide(d)
+    prompt = scripted["sessions"][0].prompts[-1]
+    assert f'Opponent is Special Summoning "{name}" to M3, face-up Attack (not complete yet' in prompt
+    brain.on_event(ev("summoned", id=code, to=to, special=True))
+    assert brain.history[-1] == f'Opponent\'s Special Summon of "{name}" succeeded.'
+    brain.close()
+    with open(os.path.join(brain.log.dir, "game.md"), encoding="utf-8") as f:
+        md = f.read()
+    assert md.count("Special Summons") == 1 and md.index("is Special Summoning") < md.index("**Decision #1**") < \
+        md.index("succeeded")

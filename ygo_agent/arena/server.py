@@ -71,6 +71,9 @@ class RoomConfig:
     max_matches: int | None = None      # close the room after this many matches
     send_replay: bool = True            # send our .yrpX to clients at the end (EDOPro's STOC_NEW_REPLAY)
     seed: int | None = None             # games are reproducible from this seed (and the players' choices)
+    # Lobby position that goes first in game 1 of every match. None: the RPS winner chooses, as in EDOPro. Later games
+    # of a Bo3 are always the previous loser's choice. The RPS still runs, so clients see the usual sequence.
+    first: int | None = None
     stack: dict[int, list[int]] = field(default_factory=dict)   # lobby position -> codes on top of deck
     start_state: StartState | None = None
     reserved: dict[int, str] = field(default_factory=dict)      # lobby position -> client name it waits for
@@ -598,6 +601,9 @@ class Room:
         for p in self.duelists():
             if isinstance(p, Client):
                 p.state = STATE_NONE
+        if self.config.first is not None and not self.match_results:  # game 1: the room decides
+            self._first_chosen(chooser, chooser.pos == self.config.first)
+            return
         if isinstance(chooser, Client):
             chooser.state = P.CTOS_TP_RESULT
             chooser.send(P.STOC_SELECT_TP)

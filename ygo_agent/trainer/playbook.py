@@ -1,8 +1,10 @@
-"""Playbook edits from the reviewer's JSON: section replacements, dated lessons, verified-line markers, and the
+"""Playbook edits from the reviewer's JSON: section replacements, dated pitfalls, verified-line markers, and the
 evidence check that keeps unverified lessons out.
 
-A playbook is Markdown split by "## " headings. The lessons section comes first (newest lessons on top); the trainer
-adds lessons there itself, so a section replacement can never rewrite or drop them.
+A playbook is Markdown split by "## " headings, principles first (TEMPLATE). The last section, Known pitfalls, holds
+the specific mistakes from reviewed games (newest on top); the trainer adds them there itself, so a section
+replacement can never rewrite or drop them. Older playbooks (decks/saffira, decks/blackwing) keep their lessons
+section on top; it counts as the same section.
 """
 
 from __future__ import annotations
@@ -11,11 +13,15 @@ import difflib
 import os
 import re
 
-LESSONS_HEADING = "## Lessons from games (newest first; these override everything below)"
-NO_LESSONS = "None yet: lessons from reviewed games go here."
-REQUIRED = ("game plan", "engine cards", "extra deck", "main lines")
-TARGET_KB = (8, 13)
-LIMIT_BYTES = 14500  # above this the round ends with a condense pass
+LESSONS_HEADING = "## Known pitfalls (from reviewed games, newest first)"
+NO_LESSONS = "None yet: specific mistakes from reviewed games go here, one or two lines each."
+# The house style: (heading, required). Pitfalls always come last.
+TEMPLATE = (("## How to use this playbook", True), ("## Game plan", True), ("## Card roles", True),
+            ("## Situational considerations", True), ("## Lethal check", False),
+            ("## Going second / breaking boards", False), ("## Example sequences", False), (LESSONS_HEADING, True))
+REQUIRED = ("how to use", "game plan", "card roles", "situational considerations")
+TARGET_KB = (5, 8)
+LIMIT_BYTES = 8704  # above this (8.5 KB) a condense pass tightens it
 
 
 # ---- sections -------------------------------------------------------------------------------------------------
@@ -54,7 +60,7 @@ def key(heading: str | None) -> str:
 
 def is_lessons(heading: str | None) -> bool:
     k = key(heading)
-    return k.startswith("lessons") or k.startswith("coaching lessons")
+    return k.startswith(("lessons", "coaching lessons", "known pitfalls", "pitfalls"))
 
 
 def find(sections, heading) -> int | None:
@@ -70,7 +76,7 @@ def find(sections, heading) -> int | None:
 
 def apply_sections(text: str, replacements: list[dict]) -> tuple[str, list[str]]:
     """Apply [{"heading": "## X", "content": "..."}]: replace that section's body (matched by heading), add it
-    before "General principles" (or at the end) when it's new, delete it when content is empty. The lessons section
+    before Known pitfalls (or at the end) when it's new, delete it when content is empty. The pitfalls section
     can't be replaced here. Returns (new text, change descriptions)."""
     sections = split(text)
     changes = []
@@ -88,7 +94,8 @@ def apply_sections(text: str, replacements: list[dict]) -> tuple[str, list[str]]
         if i is None:
             if not content.strip():
                 continue
-            at = find(sections, "## General principles")
+            at = next((k for k, (h, _) in enumerate(sections) if is_lessons(h) and k > 0), None)
+            at = find(sections, "## General principles") if at is None else at
             at = len(sections) if at is None else at
             sections.insert(at, (heading, content))
             changes.append(f"added {heading}")
@@ -112,15 +119,16 @@ def strip_heading(content: str, heading: str) -> str:
 
 
 def ensure_lessons(text: str) -> str:
+    """The pitfalls section exists (added last when missing)."""
     sections = split(text)
     if not any(is_lessons(h) for h, _ in sections):
-        sections.insert(0 if sections and sections[0][0] is not None else 1 if sections else 0,
-                        (LESSONS_HEADING, NO_LESSONS))
+        sections.append((LESSONS_HEADING, NO_LESSONS))
     return join(sections)
 
 
-def add_lessons(text: str, header: str, lessons: list[str], intro: str | None = None) -> str:
-    """Put a dated "### header" block with numbered lessons at the top of the lessons section."""
+def add_lessons(text: str, tag: str, lessons: list[str], intro: str | None = None) -> str:
+    """Put each lesson as a bullet ending in *(tag)* (the date and the game) at the top of the pitfalls section,
+    below its intro line if it has one."""
     if not lessons:
         return text
     sections = split(ensure_lessons(text))
@@ -128,14 +136,14 @@ def add_lessons(text: str, header: str, lessons: list[str], intro: str | None = 
     heading, body = sections[i]
     body = body.replace(NO_LESSONS, "").strip("\n")
     lead, rest = [], body
-    if body and not body.lstrip().startswith("###"):
-        # keep the section's intro paragraph (before the first ### block) on top
-        parts = re.split(r"(?m)^(?=### )", body, maxsplit=1)
-        lead, rest = [parts[0].strip("\n")], parts[1] if len(parts) > 1 else ""
+    first = re.search(r"(?m)^(?:[-*] |\d+[.)] |### )", body)
+    if body and (first is None or first.start() > 0):
+        lead, rest = [body[:first.start() if first else len(body)].strip("\n")], body[first.start():] if first else ""
     elif intro and not body:
         lead = [intro]
-    block = f"### {header}\n" + "\n".join(f"{n}. {clean_lesson(t)}" for n, t in enumerate(lessons, 1))
-    sections[i] = (heading, "\n\n".join(p for p in lead + [block, rest.strip("\n")] if p))
+    block = "\n".join(f"- {clean_lesson(t)} *({tag})*" for t in lessons)
+    sections[i] = (heading, "\n\n".join(p for p in lead + [block + ("\n" + rest.strip("\n") if rest.strip() else "")]
+                                        if p))
     return join(sections)
 
 
@@ -160,14 +168,16 @@ def mark_verified(text: str, names: list[str], marker: str = "verified in lab") 
 
 
 def problems(text: str) -> list[str]:
-    """What a playbook in the house style must not lack."""
+    """What a playbook in the house style must not lack: the required sections, Known pitfalls last, the size."""
     out = []
     keys = [key(h) for h, _ in split(text) if h]
     for want in REQUIRED:
         if not any(k.startswith(want) or want in k for k in keys):
             out.append(f"no '{want}' section")
     if not any(is_lessons("## " + k) for k in keys):
-        out.append("no lessons section")
+        out.append("no known pitfalls section")
+    elif not is_lessons("## " + keys[-1]):
+        out.append("known pitfalls is not the last section")
     size = len(text.encode())
     if size > LIMIT_BYTES:
         out.append(f"{size / 1024:.1f} KB, over the {TARGET_KB[1]} KB target")

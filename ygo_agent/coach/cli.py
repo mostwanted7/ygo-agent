@@ -15,8 +15,8 @@ def register(sub):
     from ..cli import add_web, match_help, seconds
     p = sub.add_parser("coach", help="you play a deck in EDOPro, the agent coaches you live and reviews the game")
     p.add_argument("--deck", dest="coach_deck", metavar="DECK",
-                   help="the deck you play: a folder in decks/, a .ydk or an EDOPro deck name (default: recognised "
-                        "from the deck you submit in EDOPro)")
+                   help="the deck you play: one `ygo-agent decks` lists, a .ydk or an EDOPro deck name (default: "
+                        "recognised from the deck you submit in EDOPro)")
     p.add_argument("--backend", help="the coach's backend profile (e.g. opus, sonnet, haiku)")
     p.add_argument("--model", help="override the backend's model")
     p.add_argument("--effort", help="override the backend's effort level")
