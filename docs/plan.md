@@ -206,7 +206,7 @@ Status: ☐ todo · ◐ in progress · ☑ done (verified by the orchestrator)
   - `teach` (AI plays and explains for a spectator).
 - Reasoning goes to the terminal, cleanly per seat.
 
-### Stage 5: Coach mode ☐ (after 4)
+### Stage 5: Coach mode ☑ (after 4)
 - The human plays in EDOPro. The arena builds that seat's decision JSON (the human's own view) and asks the
   coach agent for advice asynchronously. Advice appears in the terminal and the panel, marked "late" if the
   human answered first.
@@ -235,7 +235,7 @@ Status: ☐ todo · ◐ in progress · ☑ done (verified by the orchestrator)
 - Run a real benchmark (e.g. claude-code opus/sonnet/haiku plus heuristic and random against WindBot decks)
   for the README table.
 
-### Stage 8: Web panel ◐ (8a done: panel, replay browser, demo; 8b: live self-play/coach wiring after 4/5)
+### Stage 8: Web panel ☑ (panel, replay browser, demo, live self-play and coach wiring)
 - `--web` serves a local page (stdlib/asyncio HTTP plus SSE, vanilla JS, no build step). It shows the board
   with card images from `~/Games/ProjectIgnis/pics`, a live decision stream with reasoning and plan, coach
   advice, both seats in self-play, and a feedback box that does the job of `!note`.
@@ -416,3 +416,39 @@ Status: ☐ todo · ◐ in progress · ☑ done (verified by the orchestrator)
      window.
   5. Gitignore `decks/*/train/` except `train-report.md`, per the agreed deck-storage layout.
   6. After the usage reset: `ygo-agent train-compare --name geargia --games 2 --opponent windbot:Blue-Eyes --parallel 3`.
+
+**Stage 5 (coach) and the web fix.**
+- `ygo_agent/coach/` (live, brain, review, detect, cli); `ygo-agent coach [--deck --backend --opponent --level --web]`
+  and `coach --review DIR`. Copilot is removed; old copilot logs still replay.
+- Web freeze root cause: clicking the newest decision card pinned the board while the header still said
+  LIVE. Now there's a not-live banner, PAUSED AT #N, per-message try/catch with an error chip, and a browser
+  regression test on the user's game (anonymised fixture).
+- Real check, with a scripted human vs Blue-Eyes: Sonnet advice arrives about 2 s after the decision, Haiku
+  about 5 s. The reviews are useful, but they had two hallucinated rulings (Sonnet: SDQ summons Idaten;
+  Haiku: Normal-Summoned monsters can't attack). The prompts were tightened, but no game was re-run
+  afterwards, so re-check after the usage reset.
+- Never played by a real human in EDOPro yet: that's the user test after the reset.
+
+## Remaining work (Stage 9 and follow-ups), as of 2026-10-21 22:40
+Usage window nearly exhausted, so this waits for the reset. Then:
+1. **Fixes:**
+   - trainer condense gated on regression cases;
+   - a Battle Phase rule or general.md line;
+   - prune stale open questions;
+   - describe "is being Special Summoned" before negation windows;
+   - a proper first-player option (`RoomConfig.first`) replacing the `_ask_first` patches in bench and
+     trainer;
+   - user decks dir (`~/.local/share/ygo-agent/decks/`, `train` writes there by default, `--into repo`).
+2. **Quality pass:** a code review of the whole repo for bugs, dead code, naming and duplication
+   (e.g. `agent/carddb.py` vs `core/cards.py`); keep the tests green.
+3. **`ygo-agent doctor`**, plus a first-run `setup` (build the fork, venv hints).
+4. **Docs:** `architecture.md` (with a diagram), adding a deck, adding a backend; a README overhaul (pitch,
+   GIF, quick start, features, bench table, how it works); compress the images.
+5. **CI:** GitHub Actions running the unit tests (no EDOPro), plus a mono build of the fork if feasible.
+6. **Real checks:**
+   - user coach-mode test in EDOPro;
+   - `train-compare --name geargia`;
+   - extend the bench (`bench readme --resume` with higher counts);
+   - re-run one real coach review.
+7. **Publish, with user confirmation:** fork windbot → `mostwanted7/windbot` branch `brain-bridge`;
+   `windbot-src` as a submodule; create `mostwanted7/ygo-agent` (visibility per the user) and push.
