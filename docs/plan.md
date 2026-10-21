@@ -452,3 +452,21 @@ Usage window nearly exhausted, so this waits for the reset. Then:
    - re-run one real coach review.
 7. **Publish, with user confirmation:** fork windbot → `mostwanted7/windbot` branch `brain-bridge`;
    `windbot-src` as a submodule; create `mostwanted7/ygo-agent` (visibility per the user) and push.
+
+## 2026-10-22: user feedback and the new sequence
+- The folder is renamed to `~/Projects/ygo-agent`. A symlink from `yugioh-claude` keeps old paths working.
+  The venv was rebuilt and the fork rebuilt.
+- **The user will do the polish (Stage 9 items 2-5) in a separate session.** Tell them when the codebase is
+  ready for review. Publishing still needs their confirmation.
+- Playbook style, agreed: principle-first and short, overridable by the bot. Specifics and pitfalls go in a
+  bottom section; no hard-coded lines. Hard rules are only for the play model's repeated no-judgment
+  mistakes, each backed by a regression case, with rule ablation when the model changes. The user's
+  Geargia insights go into decks/geargia (Gadget + Armor vs Gigant X, Gigant X with Geargianos in GY,
+  Geargiagear at the opponent's end of turn, Limiter Removal ×1–2 + Gagaga Cowboy lethal).
+- **Standardise on one Claude play model**, chosen by a proper comparison: equal games for opus, sonnet and
+  haiku, with win rate plus a reviewer-counted mistakes-per-game metric. Local models come later, on the
+  user's desktop (RX 9070).
+- Running now: (a) the playbook-style + rules-policy + Geargia rewrite; (b) functional fixes (describe
+  summon wording, `RoomConfig.first`, user decks dir, attack-available line, bench smoke output dir).
+  Next: (c) the model comparison, then the Geargia evaluation (new playbook vs none) with the chosen model,
+  then the user's coach-mode test with Geargia.
