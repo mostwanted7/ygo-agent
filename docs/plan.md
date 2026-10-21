@@ -235,7 +235,7 @@ Status: ☐ todo · ◐ in progress · ☑ done (verified by the orchestrator)
 - Run a real benchmark (e.g. claude-code opus/sonnet/haiku plus heuristic and random against WindBot decks)
   for the README table.
 
-### Stage 8: Web panel ☐ (after 4; coach integration after 5)
+### Stage 8: Web panel ◐ (8a done: panel, replay browser, demo; 8b: live self-play/coach wiring after 4/5)
 - `--web` serves a local page (stdlib/asyncio HTTP plus SSE, vanilla JS, no build step). It shows the board
   with card images from `~/Games/ProjectIgnis/pics`, a live decision stream with reasoning and plan, coach
   advice, both seats in self-play, and a feedback box that does the job of `!note`.
@@ -316,3 +316,15 @@ Status: ☐ todo · ◐ in progress · ☑ done (verified by the orchestrator)
   Still untested: spectator catch-up, and the Bo3 side flow.
 - Additions to the planned layout: `arena/{runner,deck,client,policies,gamelog,cli}.py`. CLI:
   `python -m ygo_agent.arena host|bots|selfplay-direct|list-bots|replay-info`.
+
+**Stage 8a (web panel, commit 79ca9ee).**
+- Code is in `ygo_agent/web/` (bus, render, server, recorded, pics, demo, static/); the message schema is in
+  `docs/web.md`. The only hook is in `GameLog`, so any seat that logs through it appears on the panel.
+  Publishing does nothing when the panel is off.
+- `play`/`teach`/`copilot --web` use port 7930. `ygo-agent web` browses recorded games, and
+  `ygo-agent web --demo games/<dir> --speed 2` replays one live.
+- Stage 4 must create each seat's `DuelBrain(..., game_id=G, seat=S)` with one shared `G` per duel; otherwise
+  two seats show up as two games. Stage 5 must publish `decision` → `advice` (with `late`) →
+  `human_choice` (with `matched`) for the human seat; copilot already sends this sequence.
+- Screenshots are in `docs/img/` (1.9 MB; compress them in Stage 9). `tests/web/shoot.mjs` takes them with
+  headless Firefox and Node.
