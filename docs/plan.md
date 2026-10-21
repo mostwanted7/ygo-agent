@@ -369,3 +369,12 @@ Status: ☐ todo · ◐ in progress · ☑ done (verified by the orchestrator)
   reply out of 351 and 0 fallbacks. The play looked sensible.
 - Gaps: spectating with the real EDOPro GUI is unchecked; the spectator gate holds only game 1 of a Bo3;
   WindBot seats can't be paced.
+
+**User GUI checks after Stage 4 (2026-10-21).**
+- `ygo-agent play --deck saffira --backend opus --web`: the user played Geargia against the AI and lost.
+  The user: "bot played perfectly".
+- `selfplay --spectate --pace 2`: spectating works in EDOPro, and leaving and rejoining mid-duel catches
+  the board up correctly.
+- Bug found: the web panel's board froze at decision #20 for the rest of the game, while the reasoning list
+  kept updating. Suspected cause: native `place` decisions answered with a zone mask, which the panel never
+  saw from the WindBot path. The Stage 5 agent is fixing it, together with clearer live/paused state.
