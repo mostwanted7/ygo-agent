@@ -16,3 +16,7 @@ dist/
 tests/build/
 *.exe
 *.dll
+
+# trainer workspaces (logs, prompts, copied scripts); only the report ships
+decks/*/train/*
+!decks/*/train/train-report.md
