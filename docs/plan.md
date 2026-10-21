@@ -170,7 +170,7 @@ Status: ☐ todo · ◐ in progress · ☑ done (verified by the orchestrator)
 - Tests: mock HTTP servers for the anthropic and openai backends; a real one-call smoke test for
   claude-code.
 
-### Stage 2: Arena ◐ (parallel with 0; touches only `ygo_agent/core`, `ygo_agent/arena`, `tests/arena`)
+### Stage 2: Arena ☑ (parallel with 0; touches only `ygo_agent/core`, `ygo_agent/arena`, `tests/arena`)
 - Turn the spike into production code:
   - core binding, card data, script loader;
   - duel driver with seed control, rules flags (mr1 to mr5), deck validation, stacked opening hands / custom
@@ -287,3 +287,29 @@ Status: ☐ todo · ◐ in progress · ☑ done (verified by the orchestrator)
 - Not run against a real Ollama/vLLM server (only the mock), and no real Anthropic API calls (no key).
 - Reply `source` is `backend`, not `llm`. The bot name defaults to `ygo-agent`. Shared test helpers are in
   `tests/helpers.py`.
+
+**Stage 2.**
+- Check: re-simulating the user's EDOPro-hosted `_LastReplay.yrpX` gives a message stream byte-identical
+  to EDOPro's.
+- Games run: 600 direct-core games, 40 over TCP with Python clients and a spectator, 30 WindBot-vs-WindBot.
+  All had 0 retries and 0 Lua errors.
+- Seats: subclass `arena.Seat` and implement `choose(prompt, retry) -> bytes | awaitable`; never block,
+  because that stalls the server. Optional hooks are `on_message`, `rps`, `go_first` and `on_end`.
+  `PolicySeat(name, policy)` wraps a callable.
+- `SeatView` (`location()`, `card()`, `snapshot()`, `field()`) is the fair view: opponent hidden cards have
+  no codes, and your own deck is a count only.
+- Observers: a `DuelObserver` gets `on_message(view, msg)`, `on_prompt`, `on_response` and `on_end`
+  (`Room.duel_observers`, `duel_observer_factory`). A `RoomObserver` gets join, leave, chat and end events.
+- Prompts are dataclasses (`messages.py`) built from `CardRef(code, controller, location, sequence,
+  position)`. SELECT_CARD, TRIBUTE and UNSELECT zero the codes of opponent cards, even face-up ones;
+  rebuild identity from `SeatView.card()`. Responses use `SelectIdleCmd.respond(IdleAction.X, i)` and
+  similar. Queries return `CardQuery` (counters, overlays, current level, scales, equip/target).
+- Stacking: `Duel(..., stack={team: [codes]})`, `run_match(stack=...)` or `--stack-hand0`. Custom boards use
+  `StartState([Placement(...)])`. In-process games: `run_duel(Engine.load(), DuelConfig(rules="mr3"),
+  decks, seats, seed=)`.
+- Replays: `.yrpX` files that match EDOPro field by field, and STOC_NEW_REPLAY is sent. Comparisons must use
+  `replay.streams_match`, because some hint-message order differs.
+- Not yet tested with a real human EDOPro client: lobby with host flag/auto-start, RPS popup, timer, rematch
+  and side flow, spectator catch-up rendering, LAN broadcast.
+- Additions to the planned layout: `arena/{runner,deck,client,policies,gamelog,cli}.py`. CLI:
+  `python -m ygo_agent.arena host|bots|selfplay-direct|list-bots|replay-info`.
