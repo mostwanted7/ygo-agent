@@ -79,24 +79,32 @@ def test_a_select_unselect_pick_shows_every_card_planned(cfg, db, scripted, bus)
     assert reply["id"] == target["id"] and reply["choice"] == [0, 1] and reply["sent"] == [0]
 
 
-def test_copilot_advice_then_the_humans_choice(cfg, db, scripted, bus, monkeypatch):
-    cfg["mode"] = "copilot"
-    case = load_case(next(p for p in CASES if p.endswith("main2-to-set-lance.json")))
-    brain = DuelBrain(cfg, db, Profile("saffira", db, cfg), prewarm=False)
-    for m in case["messages"][:-1]:
-        if m.get("t") == "event":
-            brain.on_event(json.loads(json.dumps(m)))
-    d = json.loads(json.dumps(case["messages"][-1]))
-    scripted["policy"] = lambda _: [2]
-    monkeypatch.setattr("builtins.input", lambda prompt="": "1")
-    brain.on_decide(d)
-    msgs = [m for m in bus.backlog(brain.log.web.game_id) if m.get("id") == d["id"]]
-    brain.close()
-    assert [m["type"] for m in msgs] == ["advice", "reply", "human_choice"]
-    advice, reply, human = msgs
-    assert advice["choice"] == [2] and advice["late"] is False and advice["why"] == "scripted"
-    assert reply["choice"] == [1] and reply["source"] == "pilot" and reply["suggested"] == [2]
-    assert human == {**human, "choice": [1], "advised": [2], "matched": False}
+def test_coach_advice_and_the_humans_move_in_either_order(cfg, db, bus):
+    """Coach mode: advice before the human's move, or after it (late); human_choice comes with whichever is second."""
+    from ygo_agent.agent.gamelog import GameLog
+    log = GameLog(cfg["games_dir"], "Saffira", game_id="coach-test")
+    log.record("decide", {"t": "decide", "id": 1, "kind": "idle", "options": [{"a": "to_end"}, {"a": "to_battle"}],
+                          "state": {}})
+    log.advice(1, [1], why="attack first", source="backend", late=False, kind="idle")
+    log.decision(1, "q", ["End", "Battle"], [1], "followed the coach", None, "human", 2.0, label="human", echo=False)
+    log.record("reply", {"id": 1, "choice": [1], "source": "human"})
+    log.record("decide", {"t": "decide", "id": 2, "kind": "select_unselect", "options": [{}, {}], "state": {}})
+    log.decision(2, "q", ["A", "B"], [0], "answered before the coach's advice", None, "human", 0.5, label="human",
+                 echo=False)
+    log.record("reply", {"id": 2, "choice": [0], "source": "human"})
+    log.advice(2, [0, 1], why="both", source="backend", late=True, kind="select_unselect")
+    log.record("decide", {"t": "decide", "id": 3, "kind": "place", "state": {}})
+    log.advice(3, None, why="nothing to advise", source="auto")
+    log.decision(3, "q", [], [4], "", None, "human", 0.1, label="human", echo=False)
+    log.record("reply", {"id": 3, "choice": [4], "source": "human", "trivial": True})
+    log.close()
+    msgs = [m for m in bus.backlog("coach-test") if m["type"] in ("advice", "reply", "human_choice")]
+    assert [(m["type"], m["id"]) for m in msgs] == [("advice", 1), ("reply", 1), ("human_choice", 1), ("reply", 2),
+                                                     ("advice", 2), ("human_choice", 2), ("advice", 3), ("reply", 3)]
+    h1, h2 = msgs[2], msgs[5]
+    assert h1 == {**h1, "choice": [1], "advised": [1], "matched": True}
+    assert h2 == {**h2, "choice": [0], "advised": [0, 1], "matched": True}  # the first pick of the advised selection
+    assert msgs[1]["source"] == "human" and msgs[4]["late"] is True and msgs[7]["trivial"] is True
 
 
 def test_a_note_from_the_panel_is_saved_like_a_chat_note(cfg, db, scripted, bus):

@@ -29,6 +29,7 @@
   <label id="god-toggle" class="switch hidden" title="Show both hands (self-play)">
     <input type="checkbox" id="god" checked><span class="track"><span class="knob"></span></span><span>God view</span>
   </label>
+  <span id="render-err" class="render-err hidden"></span>
   <span id="conn" class="conn" title="Connection"></span>
   <button id="theme-btn" class="icon-btn" title="Light / dark theme">
     <svg viewBox="0 0 20 20"><path d="M10 3.2a6.8 6.8 0 1 0 6.8 6.8A5.3 5.3 0 0 1 10 3.2z" fill="currentColor"/></svg>
@@ -44,12 +45,18 @@
       <svg id="fx" class="fx"></svg>
       <div id="banner" class="banner hidden"></div>
     </div>
+    <div id="pausebar" class="pausebar hidden" role="status">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.5v9M11 3.5v9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+      <span id="pause-text"></span>
+      <button id="pause-live" class="btn primary">Back to live</button><kbd>Esc</kbd>
+    </div>
   </section>
 
   <aside id="side">
     <div class="tabs">
       <button class="tab on" data-tab="stream">Reasoning <span class="count" id="count-stream"></span></button>
       <button class="tab" data-tab="log">Event log <span class="count" id="count-log"></span></button>
+      <button class="tab hidden" data-tab="review" id="tab-review" title="The coach's review of the game">Review</button>
       <div class="spacer"></div>
       <label class="switch small" title="Also show automatic decisions (only one choice, planned picks)">
         <input type="checkbox" id="show-auto"><span class="track"><span class="knob"></span></span><span>auto</span>
@@ -59,6 +66,7 @@
     <div class="panes">
       <div id="stream" class="pane scroll"></div>
       <div id="log" class="pane scroll hidden"></div>
+      <div id="review" class="pane scroll hidden"></div>
       <button id="jump" class="jump hidden">
         <svg viewBox="0 0 16 16"><path d="M8 3v9m-4-4 4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
         <span>Latest</span></button>

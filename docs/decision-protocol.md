@@ -266,10 +266,13 @@ event after a `win`. Chat that arrives between a `win` and the next game still b
 ## Logs
 
 Each game's `games/<time>_<deck>-vs-<opponent>/game.jsonl` holds one JSON object per line:
-`{"ts": unix time, "kind": "event" | "decide" | "reply", "msg": ...}`. `event` and `decide` are the messages above,
+`{"ts": unix time, "kind": "event" | "decide" | "reply" | "advice", "msg": ...}`. `event` and `decide` are the messages above,
 exactly as received (the `room` event comes first). `reply` records what was sent back:
-`{"id", "choice", "source"}`, plus `suggested` when a copilot pilot overrode the agent and `say` when chat was
-sent. `source` is `backend` (the configured backend answered; logs before Stage 1 say `llm`), `rule:<name>`,
-`auto`, `fallback`, `pilot` (the copilot's human chose) or `game_over`. `meta.json` names the backend profile and
+`{"id", "choice", "source"}`, plus `say` when chat was sent. `source` is `backend` (the configured backend
+answered; logs before Stage 1 say `llm`), `rule:<name>`, `auto`, `fallback`, `game_over`, or `human`: in a coach
+game (docs/coach.md) every reply is the human's own move, with `advised`, `matched`, `seconds` (their thinking time)
+and `trivial`, and the coach's recommendations are `advice` rows (`{"id", "choice", "why", "plan", "source", "late",
+"hindsight", "after", ...}`). Logs of the old copilot mode have `source: "pilot"` and `suggested` (the agent's
+suggestion the human overrode). `meta.json` names the backend profile and
 holds the game's stats (docs/backends.md).
 `ygo-agent replay` and the saved test cases replay the `event` and `decide` records.

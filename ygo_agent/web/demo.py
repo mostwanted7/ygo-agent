@@ -9,6 +9,7 @@ from .bus import BUS
 from .recorded import load_game
 
 QUIET_EVENTS = ("chain_end", "draw", "chat", "room")
+FINAL_META = ("result", "ended", "stats")
 
 
 def pace(prev, msg):
@@ -27,7 +28,7 @@ def pace(prev, msg):
     if kind == "reply":
         if prev and prev.get("type") == "decision" and (prev.get("decision") or {}).get("kind") == "place":
             return 0.05
-        if msg.get("source") in ("backend", "pilot"):  # the "thinking" the panel shows, then time to read
+        if msg.get("source") in ("backend", "pilot", "human"):  # the "thinking" the panel shows, then time to read
             return min(max(msg.get("seconds") or 1.0, 1.0), 6.0) + (1.2 if msg.get("why") else 0)
         return 0.4
     if kind in ("advice", "human_choice"):
@@ -63,7 +64,7 @@ class Demo:
 
     def play_once(self):
         self.game_id = f"demo:{self.name}:{int(time.time())}"
-        prev = None
+        prev, outcome = None, {}
         for msg in self.messages:
             if self.stop_event.wait(pace(prev, msg) / self.speed):
                 return
@@ -71,5 +72,10 @@ class Demo:
             out.update(game_id=self.game_id, ts=round(time.time(), 3))
             if out["type"] == "game_start":
                 out["demo"] = True
+            elif out["type"] == "meta":
+                # A finished game's meta.json knows the result; the demo is live until its game_end.
+                outcome.update({k: out.pop(k) for k in FINAL_META if k in out})
             self.bus.publish(out)
             prev = msg
+        if outcome:
+            self.bus.publish({"type": "meta", "game_id": self.game_id, "seat": 0, "ts": round(time.time(), 3), **outcome})

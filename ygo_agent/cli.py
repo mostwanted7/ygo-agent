@@ -5,7 +5,7 @@
     ygo-agent selfplay --a saffira:opus --b blackwing:sonnet [--games N] [--parallel K] [--spectate --pace 2]
     ygo-agent teach --deck blackwing [--opponent windbot:Blue-Eyes]   # the agent plays and explains; you watch
     ygo-agent teach --join         # legacy: the bot explains every decision in a room you host
-    ygo-agent copilot              # you choose every move in this terminal, the agent recommends
+    ygo-agent coach [--deck saffira] [--web]   # you play in EDOPro, the agent coaches you live and reviews the game
     ygo-agent replay games/latest 14 [--save NAME --expect '[[2]]' --note "..."]
     ygo-agent test [NAME ...]      # re-run saved regression cases
     ygo-agent web [--demo games/<dir> --speed 2]   # the web panel: recorded games, or one replayed live
@@ -84,8 +84,6 @@ def parser():
                    help="legacy: you host a LAN room in EDOPro and the agent's bot (the WindBot fork) joins it")
     p.add_argument("--teach", action="store_true", help="with --join: explain every decision for someone learning "
                                                         "the deck (arena-hosted: use `ygo-agent teach`)")
-    p.add_argument("--copilot", action="store_true",
-                   help="with --join: you make the decisions in this terminal, the agent recommends (implies --teach)")
     p.add_argument("--games", type=int, help="close the room after this many matches (default: when you press Ctrl+C)")
     add_bot(p, arena=True)
     add_common(p)
@@ -124,10 +122,6 @@ def parser():
     add_bot(p, arena=True)
     add_common(p)
 
-    p = sub.add_parser("copilot", help="you pilot the deck from this terminal, the agent recommends each move")
-    add_bot(p)
-    add_common(p)
-
     p = sub.add_parser("replay", help="re-ask a logged decision with the current playbook and rules")
     p.add_argument("game_dir", nargs="?")
     p.add_argument("decision", nargs="?", type=int)
@@ -155,6 +149,12 @@ def parser():
     p.add_argument("--edopro-dir", help="EDOPro install folder")
     p.add_argument("--games-dir", help="where game logs are")
     p.add_argument("--config", metavar="FILE", help="use FILE instead of config.local.toml")
+    from .bench.cli import register as register_bench  # ygo-agent bench (ygo_agent/bench/cli.py)
+    register_bench(sub)
+    from .trainer.cli import register as register_train  # ygo-agent train, train-compare (ygo_agent/trainer/cli.py)
+    register_train(sub)
+    from .coach.cli import register as register_coach  # ygo-agent coach (ygo_agent/coach/cli.py)
+    register_coach(sub)
     return ap
 
 
@@ -211,10 +211,8 @@ def web_on(cfg):
 
 
 def mode_of(args):
-    if args.cmd in ("teach", "copilot"):
+    if args.cmd == "teach":
         return args.cmd
-    if getattr(args, "copilot", False):
-        return "copilot"
     return "teach" if getattr(args, "teach", False) else "play"
 
 
@@ -241,22 +239,20 @@ def load_deck(cfg, key=None):
 
 
 def cmd_play(args, cfg):
-    """play --join, teach --join and copilot: the WindBot fork joins a room the user hosts in EDOPro."""
+    """play --join and teach --join: the WindBot fork joins a room the user hosts in EDOPro."""
     import os
     from . import paths, join
     from .agent.bridge_server import Runtime
     from .agent.gamelog import paint, BOLD, CYAN, DIM
 
     cfg["mode"] = mode_of(args)
-    if cfg["mode"] == "copilot":
-        cfg["chat"] = "off"
     profile_cfg = check_backend(cfg)
     if not args.brain_only and not os.path.exists(paths.WINDBOT_EXE):
         sys.exit(f"{paths.WINDBOT_EXE} is missing — run ./build.sh first.")
     os.makedirs(paths.resolve(cfg["games_dir"]), exist_ok=True)
     db, profile = load_deck(cfg)
     detail = backends.describe(profile_cfg)
-    mode = {"copilot": " — COPILOT: you choose, the agent recommends", "teach": " — teaching mode"}.get(cfg["mode"], "")
+    mode = " — teaching mode" if cfg["mode"] == "teach" else ""
     print(paint(BOLD + ";" + CYAN, f"ygo-agent — deck: {profile.name} ({len(profile.main)} main / "
                                    f"{len(profile.extra)} extra), backend: {backends.label(profile_cfg)}"
                                    f"{' — ' + detail if detail else ''}{mode}"))
@@ -301,7 +297,7 @@ def cmd_web(args, cfg):
     else:
         games = len(srv.panel.library.names())
         print(paint(DIM, f"{games} recorded game(s) in {srv.panel.library.games_dir}. Live games show up in the "
-                         "panel of the process that plays them (play/teach/copilot --web). Ctrl+C stops."))
+                         "panel of the process that plays them (play/teach/coach --web). Ctrl+C stops."))
     try:
         threading.Event().wait()
     except KeyboardInterrupt:
@@ -355,9 +351,9 @@ def cmd_play_arena(args, cfg):
     """play: the arena hosts a room, the agent sits in it, and the user joins from EDOPro."""
     from .agent.gamelog import paint, DIM
     from .match import SeatSpec
-    if args.teach or args.copilot:
-        sys.exit("--teach and --copilot go with --join (the legacy flow). For the arena-hosted version of teaching, "
-                 "run `ygo-agent teach`.")
+    if args.teach:
+        sys.exit("--teach goes with --join (the legacy flow). For the arena-hosted version of teaching, run "
+                 "`ygo-agent teach`; to be coached while you play, `ygo-agent coach`.")
     cfg["mode"] = "play"
     profile_cfg = check_backend(cfg)
     db, profile = load_deck(cfg)
@@ -471,7 +467,7 @@ def main(argv=None):
         return cmd_teach_arena(args, cfg)
     if args.cmd == "selfplay":
         return cmd_selfplay(args, cfg)
-    if args.cmd in ("play", "teach", "copilot"):
+    if args.cmd in ("play", "teach"):
         return cmd_play(args, cfg)
     if args.cmd == "replay":
         sys.exit(cmd_replay(args, cfg))
@@ -479,6 +475,8 @@ def main(argv=None):
         sys.exit(run_tests(args, cfg, args.names))
     if args.cmd == "web":
         return cmd_web(args, cfg)
+    if getattr(args, "handler", None):  # subcommands that register themselves (bench)
+        return args.handler(args, cfg)
 
 
 if __name__ == "__main__":

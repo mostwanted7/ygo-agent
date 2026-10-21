@@ -51,7 +51,8 @@ def test_expected_and_rejected_choices_are_legal(path):
     d = decisions(case)[-1]
     for choice in case.get("expect", []) + case.get("reject", []):
         assert validate(d, choice) is None, f"{choice} isn't even a legal reply"
-    assert case["source"].startswith("games/"), "source must be a relative games/<dir> #N pointer"
+    # games/<dir> #N, or decks/<deck>/train/... #N for cases the trainer saved from its own game logs
+    assert case["source"].startswith(("games/", "decks/")), "source must be a relative games/<dir> #N pointer"
 
 
 @pytest.mark.parametrize("path", CASES, ids=case_id)

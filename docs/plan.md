@@ -214,7 +214,7 @@ Status: ☐ todo · ◐ in progress · ☑ done (verified by the orchestrator)
 - After the game: `review.md` covering the key divergences and why, against the playbook. The old terminal
   copilot is replaced by coach mode; remove it once coach works.
 
-### Stage 6: Trainer ☐ (after 4; uses the lab from 2/3)
+### Stage 6: Trainer ☑ (after 4; uses the lab from 2/3)
 - `ygo-agent train path/to/deck.ydk --name foo [--backend opus] [--budget …]`:
   1. **Study**: card texts plus Lua scripts → card notes and a draft playbook in the house style (game plan,
      engine cards, main lines, Extra Deck usage, going second, locks).
@@ -228,7 +228,7 @@ Status: ☐ todo · ◐ in progress · ☑ done (verified by the orchestrator)
   `~/Games/ProjectIgnis/deck/` (e.g. Geargia or Chaos), and sanity-check it against the existing Saffira and
   Blackwing playbooks.
 
-### Stage 7: Bench ☐ (after 4)
+### Stage 7: Bench ☑ (after 4)
 - `ygo-agent bench --decks … --backends … --opponents … --games N`. Output: `bench/results/<ts>/results.md`
   and `.json`, with win rate and CI, mean and p95 latency, tokens, invalid-reply and fallback rates, and game
   length.
@@ -384,3 +384,35 @@ Status: ☐ todo · ◐ in progress · ☑ done (verified by the orchestrator)
 - Bug found: the web panel's board froze at decision #20 for the rest of the game, while the reasoning list
   kept updating. Suspected cause: native `place` decisions answered with a zone mask, which the panel never
   saw from the WindBot path. The Stage 5 agent is fixing it, together with clearer live/paused state.
+
+**Stage 7 (bench).**
+- `ygo_agent/bench/` (spec, runner, metrics, report, chart) and `bench/configs/{readme,smoke}.toml`.
+- Pilot run: `bench/results/2026-10-21_212557_readme/`, 268 games, copied to `docs/bench/`.
+  - Opus 4/4; Sonnet 7/12; Haiku 7/12; heuristic 26/120; random 2/120.
+  - Like-for-like on game 1 of each pairing: Opus 4/4, Sonnet 3/4, Haiku 1/4.
+  - 0 invalid replies out of 1,811.
+- Extend the pilot after the usage reset: raise the counts in `readme.toml`, then `ygo-agent bench readme --resume`.
+- Opponent strength scan: heuristic win rate against Branded 0%, Blue-Eyes 5%, Time Thief 25%, Dragunity 70%.
+- Both bench and trainer patch `room._ask_first` through `on_room` to force who goes first. Stage 9:
+  add a proper `first=` / `RoomConfig.first` and use it in both.
+
+**Stage 6 (trainer).**
+- `ygo_agent/trainer/` (dossier, goldfish, lab, games, review, llm, report) and the commands
+  `ygo-agent train` / `train-compare`.
+- The reviewer is agentic `claude -p` with only Read/Grep/Glob in a sandbox copy, or inline for other
+  backends. A lesson is applied only when its quoted evidence checks out against the script or log.
+- Geargia: 2 rounds, 2-2 in games, 12 lessons, 7 regression cases, 5 of 8 lines verified in the lab,
+  about $14, 50 min. Did not converge: round 2 still found 5 major mistakes.
+- Follow-ups for Stage 9:
+  1. Condensing must not lose behaviour. The final condense took 21.6 KB to 13.9 KB, but regression cases
+     fell from 7/7 to 5/7. Gate every condense on the saved cases, and retry or keep the longer text if
+     they drop.
+  2. The player "never went to Battle Phase" in both rounds. Consider a general built-in rule or a
+     stronger general.md line (enter the Battle Phase when an attack is possible and favourable), and
+     have the trainer write proposed rules into `rules.py` behind a flag.
+  3. Prune stale open questions.
+  4. `describe.py` prints "Opponent Special Summons X" before the negation window (Solemn Strike), so the
+     player believed the summon had resolved. Word it as "is being Special Summoned", or move it after the
+     window.
+  5. Gitignore `decks/*/train/` except `train-report.md`, per the agreed deck-storage layout.
+  6. After the usage reset: `ygo-agent train-compare --name geargia --games 2 --opponent windbot:Blue-Eyes --parallel 3`.

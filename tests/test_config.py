@@ -63,7 +63,7 @@ def test_cli_flags_win(tmp_path):
     args = parser().parse_args(["test", "--backend", "local", "--model", "llama3.1:8b", "--config", str(local)])
     cfg = configure(args)
     assert backend(cfg)["name"] == "local" and backend(cfg)["model"] == "llama3.1:8b"
-    assert mode_of(parser().parse_args(["play", "--join", "--copilot"])) == "copilot"
+    assert parser().parse_args(["coach", "--deck", "blackwing", "--level", "intermediate"]).coach_deck == "blackwing"
     assert mode_of(parser().parse_args(["teach"])) == "teach"
 
 

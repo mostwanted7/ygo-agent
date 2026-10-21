@@ -49,7 +49,10 @@ class Snapshot(Describer):
 def test_saved_fixtures_render_byte_identically(path, db):
     """The hashes were taken with describe.py as it was before Stage 3 (tests/native/fixtures)."""
     with open(GOLDEN, encoding="utf-8") as f:
-        golden = json.load(f)[case_id(path)]
+        snapshot = json.load(f)
+    if case_id(path) not in snapshot:
+        pytest.skip("case saved after the snapshot (e.g. by `replay --save` or the trainer)")
+    golden = snapshot[case_id(path)]
     texts = list(rendered(Snapshot(db), load_case(path)))
     assert len(texts) == len(golden)
     for i, (text, want) in enumerate(zip(texts, golden)):

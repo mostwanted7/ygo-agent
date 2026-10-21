@@ -9,7 +9,7 @@ from ..backends import Request
 from ..config import backend as backend_profile
 from .banter import Banter
 from .describe import Describer
-from .gamelog import GameLog, paint, BOLD, YELLOW, RED
+from .gamelog import GameLog, paint, BOLD, YELLOW
 from .prompts import SCHEMA, rules_from_flags
 from .rules import Context, Rules
 from .stats import GameStats
@@ -52,7 +52,7 @@ def chat_source(ev):
 class DuelBrain:
     """One game for one seat. `backend` (a profile dict or a Backend) overrides the config's agent.backend;
     `fallback` is who answers when the backend can't: "bot" (choice null, WindBot's own AI) or "heuristic".
-    `mode` overrides the config's (play, selfplay, teach, copilot); `opponent` describes who it plays against
+    `mode` overrides the config's (play, selfplay, teach, coach); `opponent` describes who it plays against
     (prompts.opponent_text); `log_options` go to its GameLog (terminal tag and verbosity, see GameLog)."""
 
     def __init__(self, cfg, db, profile, log=None, prewarm=True, runtime=None, room=None, backend=None,
@@ -72,7 +72,6 @@ class DuelBrain:
         self.mode = mode or cfg.get("mode", "play")
         self.opponent = opponent
         self.log_options = dict(log_options or {})
-        self.copilot = self.mode == "copilot"
         if backend is None:
             backend = backend_profile(cfg)
         self.backend = backends.create(backend, db=db)
@@ -87,8 +86,8 @@ class DuelBrain:
         self._fallback_policies = {}
         self.room = room
         self._system_prompt = None
-        # The pilot's moves aren't the bot's, so no jokes in copilot mode.
-        self.banter = Banter(enabled=cfg.get("chat") == "banter" and not self.copilot)
+        # A coach's moves are the human's, so no jokes in coach mode.
+        self.banter = Banter(enabled=cfg.get("chat") == "banter" and self.mode != "coach")
         self.history = []
         self.pending = []
         self.pending_ids = set()
@@ -103,10 +102,8 @@ class DuelBrain:
         self.plan_hint = None
         self.say_queue = []
         self.last_decision = None
-        self.suggested = None
         self.feedback = 0
         self.stats = GameStats()
-        self.overridden = 0
         self.turn_log = []     # this turn's decisions, replayed to a session that starts mid-turn
         self.turn_plan = None  # the last plan the backend gave this turn
         self.memory_turn = None
@@ -370,7 +367,6 @@ class DuelBrain:
 
     def on_decide(self, d):
         self.log.record("decide", d)
-        self.suggested = None
         kind = d["kind"]
         if kind == "game_over":
             return self.reply(d, None, "game_over")  # only a chance to send the end-of-duel chat line
@@ -381,8 +377,6 @@ class DuelBrain:
         options_text = self.describer.options(d)
         if kind != "select_unselect" or d.get("hint") != self.plan_hint:
             self.plan = []  # a planned multi-pick only continues within the same selection
-        if self.copilot and kind in ("idle", "battle", "chain"):
-            self.log.board(self.describer.state(d["state"]))
 
         if self.retry:
             self.retry = False
@@ -425,10 +419,10 @@ class DuelBrain:
             if fallback is not None:
                 note += f"; {self.fallback_label()} answered"
             choice = self.conclude(d, question, options_text, fallback, None, None, "fallback", seconds, note=note)
-            return self.finish(d, choice, "fallback" if self.suggested is None and choice == fallback else "pilot")
+            return self.finish(d, choice, "fallback")
         choice = self.conclude(d, question, options_text, choice, why, plan, "backend", seconds,
                                note=info.get("error"))
-        return self.finish(d, choice, "backend" if self.suggested is None else "pilot")
+        return self.finish(d, choice, "backend")
 
     def fallback_choice(self, d, policy="heuristic"):
         """What the fallback answers: None (WindBot's own AI) with fallback = "bot", else a policy's legal choice."""
@@ -446,11 +440,15 @@ class DuelBrain:
         self.log.decision(d["id"], question, options_text, chosen, why, plan, source, seconds, note,
                           label=self.label, fallback=self.fallback_label(), key=self.key_play(d, chosen),
                           turn=(d.get("state") or {}).get("turn"), **kw)
-        if kw.get("write", True):
-            picked = ", ".join(options_text[k] for k in chosen if 0 <= k < len(options_text)) if options_text else (
-                {(1,): "yes", (0,): "no"}.get(tuple(chosen), str(chosen)))
-            self.turn_log.append(f"- #{d['id']} {self.short_question(d, question)}: {picked or 'pass / none'} "
-                                 f"[{self.tag(source)}]" + (f" — {why}" if why else ""))
+        self.turn_log.append(f"- #{d['id']} {self.short_question(d, question)}: {self.picked(options_text, chosen)} "
+                             f"[{self.tag(source)}]" + (f" — {why}" if why else ""))
+
+    @staticmethod
+    def picked(options_text, chosen):
+        """The chosen options in words ("pass / none" when nothing was picked)."""
+        text = ", ".join(options_text[k] for k in chosen if 0 <= k < len(options_text)) if options_text else (
+            {(1,): "yes", (0,): "no"}.get(tuple(chosen), str(chosen)))
+        return text or "pass / none"
 
     @staticmethod
     def key_play(d, chosen):
@@ -471,58 +469,10 @@ class DuelBrain:
     def tag(self, source):
         return {"backend": self.label, "fallback": "fallback"}.get(source, source)
 
-    def conclude(self, d, question, options_text, suggested, why, plan, source, seconds=None, note=None):
-        """Log the decision and return the choice to send. In copilot mode the human makes the call first, with the
-        suggestion as the default, and game.md records what they actually did."""
-        args = (d, question, options_text)
-        if not self.copilot or d["kind"] in ("place", "go_first"):
-            self.decided(*args, suggested or [], why, plan, source, seconds, note)
-            return suggested
-        self.decided(*args, suggested or [], why, plan, source, seconds, note, write=False)
-        taken = self.pilot(d, options_text, suggested)
-        if taken != suggested:
-            self.suggested = suggested
-            chose = f"The pilot chose {taken}" + (f" instead of the suggestion {suggested}." if suggested is not None
-                                                  else " (there was no suggestion).")
-            note = f"{note}; {chose}" if note else chose
-        self.decided(*args, taken or [], why, plan, source, seconds, note, echo=False)
-        return taken
-
-    def pilot(self, d, options_text, suggested):
-        """Copilot mode: the human makes the call, with the suggestion as the default."""
-        kind = d["kind"]
-        if not self.copilot or kind in ("place", "go_first"):
-            return suggested
-        yes_no = kind in ("effect_yn", "yesno")
-        default = f"Enter = follow {self.label}" if suggested is not None else "Enter = let the built-in AI decide"
-        how = "y/n" if yes_no else "option number(s), e.g. 2 or 0 3, '-' for none/pass"
-        while True:
-            raw = input(paint(BOLD, f"    ▷ your move ({default}; or type {how}): ")).strip().lower()
-            if not raw:
-                return suggested
-            if yes_no:
-                if raw not in ("y", "yes", "n", "no", "1", "0"):
-                    continue
-                pick = [1] if raw in ("y", "yes", "1") else [0]
-            elif raw in ("-", "pass", "none"):
-                pick = []
-            else:
-                try:
-                    pick = [int(x) for x in raw.replace(",", " ").split()]
-                except ValueError:
-                    print(paint(RED, "    type option numbers from the list above"))
-                    continue
-            err = self.validate(d, pick)
-            if err:
-                print(paint(RED, f"    {err}"))
-                continue
-            if pick != suggested:
-                self.overridden += 1
-                chosen = ", ".join(options_text[k] for k in pick) if options_text else ("yes" if pick == [1] else "no")
-                text = f"The pilot chose {chosen or 'to pass'} instead of your suggestion."
-                self.history.append(text)
-                self.pending.append(text)
-            return pick
+    def conclude(self, d, question, options_text, choice, why, plan, source, seconds=None, note=None):
+        """Log the decision and return the choice to send."""
+        self.decided(d, question, options_text, choice or [], why, plan, source, seconds, note)
+        return choice
 
     def finish(self, d, choice, source):
         if d["kind"] == "select_unselect" and choice:
@@ -539,8 +489,6 @@ class DuelBrain:
         record = {"id": d["id"], "choice": choice, "source": source}
         if source != "game_over":
             self.stats.decision(source or "fallback")
-        if self.suggested is not None:
-            record["suggested"] = self.suggested
         if say:
             record["say"] = say
         self.log.record("reply", record)
@@ -551,8 +499,7 @@ class DuelBrain:
         echo = self.log.echo
         if echo in ("key", "off") or self.log.quiet:
             return  # the match prints the result
-        lines = [paint(BOLD, "\n  " + self.stats.line(self.label)
-                       + (f" You overrode {self.label} {self.overridden} time(s)." if self.copilot else "")),
+        lines = [paint(BOLD, "\n  " + self.stats.line(self.label)),
                  paint(BOLD + ";" + YELLOW, f"  Game log: {self.log.dir}/game.md")]
         if echo == "all" and not self.log.tag:
             lines.append(paint(YELLOW, "  Give your feedback to your coding agent (e.g. Claude Code) in this repo's "

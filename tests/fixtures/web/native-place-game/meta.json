@@ -1,0 +1,13 @@
+{
+  "deck": "saffira",
+  "deck_name": "Saffira",
+  "mode": "play",
+  "rules": "MR3",
+  "opponent_info": {
+    "kind": "human"
+  },
+  "first": true,
+  "result": "win",
+  "opponent": "Opponent",
+  "source": "a live arena game (native seat vs a human in EDOPro), 2026-10-21: the panel froze after its decision #20"
+}

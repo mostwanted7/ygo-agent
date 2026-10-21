@@ -41,16 +41,19 @@ def test_system_prompt_modes(db, cfg):
     p = Profile("blackwing", db, cfg)
     play = p.system_prompt("play", "MR3")
     teach = p.system_prompt("teach", "MR3")
-    copilot = p.system_prompt("copilot", "MR3")
-    for text in (play, teach, copilot):
+    coach = p.system_prompt("coach", "MR3", level="intermediate")
+    for text in (play, teach):
         assert text.startswith("You are an expert Yu-Gi-Oh! duelist")
         assert "Master Rule 3" in text and "Master Rule 5" not in text and "Claude" not in text.split("# Your deck")[0]
         assert "# General strategy" in text and p.general_playbook.strip() in text
         assert "# Playbook (coaching notes — follow these)" in text and p.playbook in text
         assert "choice: option indices" in text
     assert "human who is coaching you" in play and "# Teaching mode" not in play
-    assert "spectator seat" in teach and "# Teaching mode" in teach and "piloting this deck" not in teach
-    assert "# Teaching mode" in copilot and "piloting this deck" in copilot
+    assert "spectator seat" in teach and "# Teaching mode" in teach and "# Coaching mode" not in teach
+    # Coach mode: the human plays, the AI advises (tests/coach has the rest).
+    assert coach.startswith("You are an expert Yu-Gi-Oh! duelist, coaching a human") and "Master Rule 3" in coach
+    assert "# Coaching mode" in coach and "# Teaching mode" not in coach and "one terse sentence" in coach
+    assert f"# The deck they play: {p.name}" in coach and p.playbook in coach and p.general_playbook.strip() in coach
 
 
 def test_rules_from_flags():

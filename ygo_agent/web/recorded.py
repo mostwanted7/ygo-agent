@@ -10,6 +10,7 @@ import os
 import re
 import threading
 
+from ..agent.gamelog import same_pick
 from .render import Renderer
 
 DECISION = re.compile(r"^\*\*Decision #(\d+)\*\* — (.*)$")
@@ -156,6 +157,7 @@ def load_game(game_dir, db, name=None):
                     info[k] = round(info[k] + v, 4)
         prompts[p.get("id")] = {"reply": p.get("reply") or {}, "usage": info}
     replies = {r["msg"].get("id"): r["msg"] for r in rows if r.get("kind") == "reply"}
+    advices = {r["msg"].get("id"): r["msg"] for r in rows if r.get("kind") == "advice"}  # coach games
     title = {}
     try:
         with open(os.path.join(game_dir, "game.md"), encoding="utf-8") as f:
@@ -199,13 +201,22 @@ def load_game(game_dir, db, name=None):
                "label": (block.get("tag") if source == "backend" else None) or label,
                "seconds": block.get("seconds") or (prompt.get("usage") or {}).get("seconds"),
                "note": block.get("note")}
-        if prompt.get("usage"):
+        if prompt.get("usage") and source != "human":
             msg["usage"] = prompt["usage"]
-        for key in ("say", "suggested"):
+        for key in ("say", "suggested", "trivial", "advised"):
             if record and record.get(key) is not None:
                 msg[key] = record[key]
+        advice = advices.get(did)
+        if advice is not None:  # a coach game: the coach's advice, before or after the human's own move
+            note = {**base, "type": "advice", "ts": ts, **advice, **({"usage": prompt["usage"]} if prompt.get("usage") else {})}
+            human = []
+            if advice.get("choice") is not None:
+                human = [{**base, "type": "human_choice", "ts": ts, "id": did, "choice": msg["choice"],
+                          "advised": advice["choice"],
+                          "matched": same_pick(msg["choice"], advice["choice"], advice.get("kind"))}]
+            return [msg, note, *human] if advice.get("late") else [note, msg, *human]
         extra = []
-        suggested = (record or {}).get("suggested")
+        suggested = (record or {}).get("suggested")  # old copilot logs: the agent's suggestion the pilot overrode
         if suggested is not None or (mode == "copilot" and d.get("kind") not in ("place", "go_first")):
             advised = suggested if suggested is not None else msg["choice"]
             extra.append({**base, "type": "advice", "ts": ts, "id": did, "choice": advised, "why": msg["why"],
@@ -241,6 +252,11 @@ def load_game(game_dir, db, name=None):
             pending = msg
     if pending:
         out += reply_for(pending, rows[-1].get("ts", t0) if rows else t0)
+    review = os.path.join(game_dir, "review.md")
+    if os.path.isfile(review):  # coach games: the review written after the game
+        with open(review, encoding="utf-8") as f:
+            out.append({**base, "type": "review", "ts": rows[-1].get("ts", t0) if rows else t0, "markdown": f.read(),
+                        "path": os.path.abspath(review)})
     renderer = Renderer(db)
     return [renderer(m) for m in out]
 

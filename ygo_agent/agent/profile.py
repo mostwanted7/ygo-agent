@@ -120,5 +120,5 @@ class Profile:
         playbook = self.playbook
         return "\n".join("- " + self.card_text(i, mode, playbook) for i in dict.fromkeys(self.main + self.extra))
 
-    def system_prompt(self, mode="play", rules="MR3", card_texts="full", opponent=None):
-        return prompts.system_prompt(self, mode, rules, card_texts, opponent)
+    def system_prompt(self, mode="play", rules="MR3", card_texts="full", opponent=None, level=None):
+        return prompts.system_prompt(self, mode, rules, card_texts, opponent, level)

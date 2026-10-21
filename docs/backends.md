@@ -254,7 +254,7 @@ these, so the names are stable:
 | field | meaning |
 |---|---|
 | `decisions` | decisions answered (not counting the `game_over` round trip) |
-| `by_source` | `{backend, rule, auto, fallback, pilot}`: who made each decision (`auto` covers built-in rules such as single options, zone placements and planned multi-picks; `pilot` is the copilot's human) |
+| `by_source` | `{backend, rule, auto, fallback, human}`: who made each decision (`auto` covers built-in rules such as single options, zone placements and planned multi-picks; `human` is the coached human's own move in a coach game; logs from before Stage 5 have `pilot`, the old copilot's human) |
 | `asks` | `session.ask()` calls, the corrective re-asks included |
 | `replies` | model outputs received (a session's own repair retry is a second one) |
 | `invalid_replies` | outputs that couldn't be read, or named an illegal choice |

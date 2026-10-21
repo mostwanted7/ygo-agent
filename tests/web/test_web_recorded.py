@@ -125,6 +125,35 @@ def test_an_old_format_log_without_replies_or_meta(played, db, tmp_path):
     assert meta["started"] and next(m for m in msgs if m["type"] == "game_start")["deck_name"] == "Blackwing"
 
 
+def test_an_old_copilot_log_still_shows_the_pilots_moves(played, db, tmp_path):
+    """Copilot mode is gone (coach mode replaced it), but its logs still replay: a reply with source "pilot" and the
+    agent's `suggested` choice becomes the advice, the pilot's move and the human_choice."""
+    from ygo_agent.agent.replay import load_messages
+    game_dir, _ = played
+    old = tmp_path / "games" / "2026-02-02_000000_copilot"
+    old.mkdir(parents=True)
+    rows = [json.loads(line) for line in open(os.path.join(game_dir, "game.jsonl"), encoding="utf-8")]
+    target = next(r["msg"] for r in rows if r["kind"] == "decide" and r["msg"]["kind"] == "idle"
+                  and len(r["msg"]["options"]) > 1)
+    taken = recorded.parse_md(os.path.join(game_dir, "game.md"))[target["id"]]["chosen"]  # ✅: what was played
+    suggested = [1 if taken != [1] else 0]
+    with open(old / "game.jsonl", "w", encoding="utf-8") as out:
+        for r in rows:
+            if r["kind"] == "reply" and r["msg"]["id"] == target["id"]:
+                r = {**r, "msg": {"id": target["id"], "choice": taken, "source": "pilot", "suggested": suggested}}
+            out.write(json.dumps(r) + "\n")
+    shutil.copy(os.path.join(game_dir, "game.md"), old / "game.md")
+    meta = json.load(open(os.path.join(game_dir, "meta.json"), encoding="utf-8"))
+    json.dump({**meta, "mode": "copilot"}, open(old / "meta.json", "w"))
+    msgs = [m for m in recorded.load_game(str(old), db) if m.get("id") == target["id"]]
+    kinds = [m["type"] for m in msgs]
+    assert kinds == ["advice", "reply", "human_choice"]
+    advice, reply, human = msgs
+    assert advice["choice"] == suggested and reply["source"] == "pilot" and reply["choice"] == taken
+    assert human["advised"] == suggested and human["matched"] is False
+    assert load_messages(str(old), target["id"])[-1]["id"] == target["id"]  # `ygo-agent replay` reads it too
+
+
 def test_feedback_notes_land_after_their_decision(played, db):
     game_dir, _ = played
     ack = recorded.append_feedback(game_dir, "Chinook should wait", decision=5)
@@ -168,9 +197,12 @@ def test_demo_replays_a_game_through_the_bus(played, db, bus):
     demo = Demo(game_dir, db, speed=10000)
     demo.play_once()
     msgs = bus.backlog(demo.game_id)
-    assert demo.game_id.startswith("demo:") and len(msgs) == len(demo.messages)
+    assert demo.game_id.startswith("demo:") and len(msgs) == len(demo.messages) + 1
     assert msgs[0]["type"] == "game_start" and msgs[0]["demo"] and msgs[0]["dir"] == os.path.abspath(game_dir)
-    assert [m["type"] for m in msgs] == [m["type"] for m in demo.messages]
+    assert [m["type"] for m in msgs[:-1]] == [m["type"] for m in demo.messages]
+    # A finished game's result comes at its end, so the demo is a live game until then.
+    metas = [m for m in msgs if m["type"] == "meta"]
+    assert all("result" not in m for m in metas[:-1]) and metas[-1] is msgs[-1] and msgs[-1]["result"] == "win"
     assert bus.games()[0]["game_id"] == demo.game_id and not bus.games()[0]["live"]
     # Thinking time follows the backend's latency, within limits; quiet events go by quickly.
     assert pace(None, {"type": "reply", "source": "backend", "seconds": 30, "why": "x"}) == 7.2

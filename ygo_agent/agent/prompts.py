@@ -80,11 +80,12 @@ MODES = {
                      "below. Play to win, and play the way the playbook says.",
         "reader": "The human learning the deck reads these live.",
     },
-    "copilot": {
-        "situation": "A human who is learning this deck plays it with you: you recommend each decision and they make "
-                     "the final call. Your opponent is {opponent}. Your games are reviewed afterwards and the lessons "
-                     "are written into the playbook below. Play to win, and play the way the playbook says.",
-        "reader": "The human learning the deck reads these live.",
+    "coach": {
+        "role": "coaching a human through a duel",
+        "situation": "A human who is learning this deck plays it in EDOPro, and you coach them live; their opponent is "
+                     "{opponent}. You see the duel from their side of the table: \"you\" and \"your\" in the log "
+                     "and the state mean the human you coach.",
+        "reader": "The human reads it live, while deciding.",
     },
 }
 # play mode against a human (or against whoever joined the room the user hosts: play --join).
@@ -113,7 +114,7 @@ def situation(mode="play", opponent=None):
     return MODES[mode]["situation"].format(opponent=opponent_text(opponent))
 
 
-INTRO = """You are an expert Yu-Gi-Oh! duelist, playing a duel as a bot under {rules} (EDOPro engine). {situation}
+INTRO = """You are an expert Yu-Gi-Oh! duelist, {role} under {rules} (EDOPro engine). {situation}
 
 How this works:
 {rules_line}- Each message gives you what happened since your last decision, the full current game state, and one decision.
@@ -131,33 +132,53 @@ does, why it is right now, and how it sets up the next steps; mention the main a
 is instructive. Keep each "why" under about 80 words. Whenever your plan for the turn changes, give the full
 remaining line in "plan" as short numbered steps."""
 
-COPILOT = """The human is piloting this deck: they see your recommendation and then choose themselves, so the action
-actually taken can differ from your suggestion. Always re-read the events and the state instead of assuming your
-suggestion was followed, and adapt the plan to what they did."""
+COACH = """# Coaching mode
+You advise a human {who}. For every decision they face you get the view they have (their hand, their field, what
+they know about the opponent) and recommend one move:
+- choice: the one option you recommend, in the format the decision asks for.
+- why: {why}
+- plan: the line you recommend for the rest of the turn, as short numbered steps, whenever it changes.
+They make every move themselves and often play something else, so read the events and the state each time instead
+of assuming your advice was followed, and adapt your plan to what they actually did. The playbook below is what they
+are learning: base your advice on it, and say which playbook rule a move follows when one does. Never invent card
+effects: every card's text is in this prompt or in the messages, and its restrictions (Attribute, Type, Level, once
+per turn, what it can summon) count as much as its effect.
+Some messages ask about a decision the human already answered before your advice was ready. Answer those the same
+way, with a one-sentence why: they go into the review after the game."""
+
+COACH_LEVELS = {
+    "beginner": ("who is new to this deck", "2-3 short sentences a learner can follow: what the move does, why it is "
+                 "right now, and the idea behind it (e.g. why a negation waits for their turn, why you summon before "
+                 "you attack). Name the cards. Warn about the likely mistake when there is one."),
+    "intermediate": ("who knows the basics of this deck", "one terse sentence, like a teammate whispering: the card "
+                     "and the reason. Mention the alternative only when it is close."),
+}
 
 
 def intro(mode="play", rules="MR3", opponent=None):
     name, detail = ruleset(rules)
     rules_line = f"- The rules are {name}: {detail}. The engine enforces every rule.\n" if detail else ""
-    return INTRO.format(rules=name, situation=situation(mode, opponent), rules_line=rules_line,
-                        reader=MODES[mode]["reader"])
+    return INTRO.format(role=MODES[mode].get("role", "playing a duel as a bot"), rules=name,
+                        situation=situation(mode, opponent), rules_line=rules_line, reader=MODES[mode]["reader"])
 
 
-def system_prompt(profile, mode="play", rules="MR3", card_texts="full", opponent=None):
+def system_prompt(profile, mode="play", rules="MR3", card_texts="full", opponent=None, level=None):
     """card_texts: "full", "compact" or "none" (no card-text section; the decklist carries the type lines).
-    `opponent`: see opponent_text()."""
+    `opponent`: see opponent_text(). `level`: coach mode's student, "beginner" or "intermediate"."""
     general = profile.general_playbook
     parts = [intro(mode, rules, opponent)]
     if general:
         parts.append("\n\n# General strategy\n" + general.strip())
-    if mode in ("teach", "copilot"):
+    if mode == "teach":
         parts.append("\n\n" + TEACH)
-    if mode == "copilot":
-        parts.append("\n" + COPILOT)
+    if mode == "coach":
+        who, why = COACH_LEVELS.get(level or "beginner", COACH_LEVELS["beginner"])
+        parts.append("\n\n" + COACH.format(who=who, why=why))
+    deck = "The deck they play" if mode == "coach" else "Your deck"
     if card_texts == "none":
-        parts.append(f"\n\n# Your deck: {profile.name}\n{profile.decklist(with_types=True)}")
+        parts.append(f"\n\n# {deck}: {profile.name}\n{profile.decklist(with_types=True)}")
     else:
-        parts.append(f"\n\n# Your deck: {profile.name}\n{profile.decklist()}\n\n## Card texts\n"
+        parts.append(f"\n\n# {deck}: {profile.name}\n{profile.decklist()}\n\n## Card texts\n"
                      f"{profile.card_texts(card_texts)}")
     parts.append(f"\n\n# Playbook (coaching notes — follow these)\n{profile.playbook}\n")
     return "".join(parts)

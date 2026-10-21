@@ -41,7 +41,7 @@ While you play:
 - Type `!` followed by a note in the duel chat (e.g. `!don't Veiler my Stratos, save it`) to bookmark feedback at
   that exact moment. The bot confirms it with "Noted feedback #1." and the note is saved with the game log.
 
-Add `--web` (to `play`, `selfplay`, `teach` or `copilot`; `web.auto = true` in the config makes it the default) to
+Add `--web` (to `play`, `selfplay`, `teach` or `coach`; `web.auto = true` in the config makes it the default) to
 follow the duel in your browser as well, at http://127.0.0.1:7930/:
 the board with card pictures, every decision with the options, the choice, the reasoning and the turn's plan, the
 event log, and a feedback box that works like a `!note`. `ygo-agent web` browses and replays recorded games
@@ -104,12 +104,54 @@ result, which the trainer and the benchmark build on.
   browser. As a spectator you can't see its hand in EDOPro, but the terminal and the panel show it. `--pace 3` slows
   it down; `--games N` plays more. The older way still works: host the room in EDOPro, sit as a spectator, add a
   WindBot with *Add AI*, and run `ygo-agent teach --join` (or `./play.sh --deck blackwing --teach`).
-- **Copilot:** host the room in EDOPro as for `teach --join` (you in the spectator seat, a WindBot added with
-  *Add AI*) and run `ygo-agent copilot --deck blackwing`. For every decision the terminal shows the
-  board, the options and the AI's recommendation with its reasoning. Press Enter to follow it or type your own
-  choice, so you're the one playing and the AI coaches. Set a long time limit, because your thinking time counts too.
+- **Be coached:** `ygo-agent coach --web`, then join from EDOPro as for `play` (LAN Mode → `127.0.0.1`, port 7911)
+  with the deck you're learning. You play every move in EDOPro; for each decision the terminal and the web panel show
+  the AI's recommendation with a short reason (`--level intermediate` for terse ones), then whether you followed it.
+  After the game it writes `review.md` (the key moments, what was better and why, what you did well, what to practise)
+  and shows it in the panel's Review tab. The deck is recognised from the list you submit (`--deck` to name it); the
+  opponent is a WindBot deck AI by default (`--opponent saffira:sonnet` for an AI deck). Your time limit is 1200 s per
+  turn (`--time-limit`). `ygo-agent coach --review games/<dir>` reviews a coached game again. See
+  [docs/coach.md](docs/coach.md).
 - No one coaches the bot on a deck you don't know yet, so after a game ask Claude Code to *review* it. It checks the
   plays against the card scripts and the engine log and updates the playbook (see CLAUDE.md).
+
+## Training the AI on a new deck
+
+```sh
+ygo-agent train ~/Games/ProjectIgnis/deck/Geargia.ydk --name geargia --budget-usd 40
+ygo-agent play --deck geargia
+```
+
+The trainer reads every card and its Lua script, writes a playbook in the style of the Saffira and Blackwing ones,
+tests its lines in a lab (stacked opening hands against a dummy that never acts), plays games against WindBot deck
+AIs, reviews each game against the scripts and the engine log, and repeats until a round shows no significant
+mistakes. You get `decks/geargia/` (playbook, rules template, regression cases) and `decks/geargia/train/` with
+everything it did and a `train-report.md`. Opus reviews and Sonnet plays by default (`--backend`,
+`--player-backend`); `--resume` continues a stopped run. See [docs/training.md](docs/training.md).
+
+## Benchmark
+
+The AI piloting Saffira and Blackwing against two Master Rule 3 WindBot deck AIs, Blue-Eyes and Time Thief (Bo1),
+on 2026-10-21. Every backend gets the same seeds, and the AI seat alternates between going first and second. This is
+a **small-sample pilot** with wide intervals: 12 games each for Haiku and Sonnet, 4 for Opus (game 1 of each pairing
+only, always going first), and 120 each for the baselines.
+
+| Backend | Games | Win rate (95% CI) | Game 1 only (same deals, going first) | Time per game | Decision latency p50 · p95 | Cost per game | Invalid replies |
+|---|---:|---|---:|---:|---:|---:|---:|
+| Opus 5.5 (`opus`) | 4 | **100%** (51%–100%) | 4/4 | 2m51s | 2.7s · 7.5s | $1.15 | 0 of 186 |
+| Sonnet 5.5 (`sonnet`) | 12 | **58%** (32%–81%) | 3/4 | 3m05s | 1.9s · 5.5s | $0.80 | 0 of 871 |
+| Haiku 5.5 (`haiku`) | 12 | **58%** (32%–81%) | 1/4 | 3m03s | 1.6s · 9.0s | $0.06 | 0 of 754 |
+| heuristic (no LLM) | 120 | **22%** (15%–30%) | 1/4 | 6s | – | free | – |
+| random (no LLM) | 120 | **2%** (0%–6%) | 0/4 | 6s | – | free | – |
+
+![Win rate with 95% CI, and cost per game against win rate](docs/bench/chart.svg)
+
+Cost is the Claude Code CLI's figure at API prices (a subscription login isn't billed per call); no game needed a
+fallback. The full report, with every game's EDOPro replay, the per-matchup tables, ratings and versions, is in
+[bench/results/2026-10-21_212557_readme/report.md](bench/results/2026-10-21_212557_readme/report.md). Run it yourself
+with `ygo-agent bench readme` (`--resume` extends a run on the same seeds), or benchmark a local model by adding an
+OpenAI-compatible profile and running `ygo-agent bench --backends local,haiku,heuristic --decks saffira,blackwing
+--opponents "windbot:Blue-Eyes,windbot:Time Thief" --games 6 --parallel 1`. See [docs/bench.md](docs/bench.md).
 
 ## Configuration
 
@@ -172,7 +214,8 @@ play --join:  EDOPro room ⇄ WindBot fork (windbot-src, C#) ⇄ agent (Python, 
   `ygo-agent test` re-runs every saved mistake.
 - `ygo_agent/arena/`: the arena, a headless EDOPro host on the game engine (libocgcore) that seats the agent
   in-process ("native seats", no WindBot), EDOPro clients (you, spectators) and WindBot deck AIs, and writes EDOPro
-  replays. `ygo_agent/match.py` runs matches on it: `play`, `selfplay` and `teach` are built on its `run_games()`.
+  replays. `ygo_agent/match.py` runs matches on it: `play`, `selfplay`, `teach` and `coach` are built on its
+  `run_games()`. `ygo_agent/coach/`: coach mode, the advice for a human's seat and the review after the game.
   `python -m ygo_agent.arena` has the low-level tools (`host`, `bots`, `selfplay-direct`, `list-bots`,
   `replay-info`).
 
@@ -187,6 +230,10 @@ play --join:  EDOPro room ⇄ WindBot fork (windbot-src, C#) ⇄ agent (Python, 
   and `run_games` (in-process and parallel games, a WindBot room, a spectator, the web panel, `selfplay` and `play`);
   `python tests/native/parity.py --games 5` prints a parity report. The LAN test binds UDP 7920: while an arena with
   LAN discovery runs, deselect it (`--deselect tests/arena/test_server.py::test_lan_discovery_reply`).
+- `tests/coach/`: coach mode (deck detection; the advice flow with a scripted coach and human; two arena games with
+  the arena's Python client as the human).
+- `tests/bench/`: the benchmark's statistics, reports, seed pairing and resume logic, plus one tiny real run (no LLM);
+  `ygo-agent bench smoke` runs the whole pipeline against a WindBot in about a minute.
 
 ## License
 

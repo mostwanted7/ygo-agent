@@ -6,7 +6,7 @@ The field names are stable (the benchmark aggregates them); docs/backends.md doc
 import collections
 import math
 
-SOURCES = ("backend", "rule", "auto", "fallback", "pilot")
+SOURCES = ("backend", "rule", "auto", "fallback", "human")
 TOKENS = ("input_tokens", "output_tokens", "cache_read_tokens", "cache_write_tokens")
 
 
@@ -73,8 +73,8 @@ class GameStats:
         src = s["by_source"]
         bits = [f"{s['decisions']} decisions: {src['backend']} by {label}, {src['rule']} by rules, "
                 f"{src['auto']} automatic, {src['fallback']} fallbacks"]
-        if src["pilot"]:
-            bits[0] += f", {src['pilot']} by the pilot"
+        if src["human"]:
+            bits[0] += f", {src['human']} by the human"
         if s["latency_mean_s"] is not None:
             bits.append(f"latency mean {s['latency_mean_s']}s / p95 {s['latency_p95_s']}s")
         if s["replies"]:

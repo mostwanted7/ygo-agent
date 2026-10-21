@@ -50,6 +50,16 @@ def unique_dir(parent, name):
 
 
 RESULTS = {0: "win", 1: "loss", 2: "draw"}
+
+
+def same_pick(choice, advised, kind=None):
+    """Did the human play what the coach advised? A select_unselect prompt takes one pick at a time, so its advice
+    (the whole selection) is followed when the human's pick is the first one advised."""
+    if choice is None or advised is None:
+        return False
+    if kind == "select_unselect" and advised:
+        return list(choice)[:1] == list(advised)[:1]
+    return list(choice) == list(advised)
 USAGE = ("seconds", "input_tokens", "output_tokens", "cache_read_tokens", "cache_write_tokens", "cost_usd")
 
 
@@ -93,7 +103,8 @@ class GameLog:
         self._flush()
         self._lock = threading.RLock()  # the panel's feedback box writes from another thread
         self._outcome = None            # the decision logged last, sent to the panel along with its reply
-        self._advice = {}               # decision id -> what the agent suggested before the human chose
+        self._advice = {}               # decision id -> (advised choice, kind): coach advice the human hasn't answered
+        self._human = {}                # decision id -> the human's choice, logged before the advice came (late)
         self._usage = {}                # decision id -> the backend's time and tokens for it
         self.web = Channel(game_id or self.name, seat, enabled=not quiet if publish is None else publish)
         self.web.send("game_start", deck=deck_key, deck_name=deck_name, dir=self.dir, name=self.name)
@@ -166,6 +177,26 @@ class GameLog:
             self.web.send("decision", decision=payload)
         elif kind == "reply":
             self._publish_reply(payload)
+        elif kind == "advice":
+            usage = self._usage.pop(payload.get("id"), None)
+            self.web.send("advice", **payload, **({"usage": usage} if usage else {}))
+            did, advised = payload.get("id"), payload.get("choice")
+            if advised is None:
+                return
+            if did in self._human:
+                self._human_choice(did, self._human.pop(did), advised, payload.get("kind"))
+            else:
+                self._advice[did] = (advised, payload.get("kind"))
+
+    def advice(self, decision_id, choice, **fields):
+        """A recommendation for a human seat (coach mode): an `advice` row in game.jsonl and an `advice` message on
+        the panel (fields: why, plan, source, label, seconds, late, kind...). The human's own move is logged as a
+        reply with source "human", before or after it; whichever of the two comes second also publishes their
+        `human_choice`. A choice of None marks a decision the coach doesn't weigh in on."""
+        self.record("advice", {"id": decision_id, "choice": choice, **fields})
+
+    def _human_choice(self, did, choice, advised, kind=None):
+        self.web.send("human_choice", id=did, choice=choice, advised=advised, matched=same_pick(choice, advised, kind))
 
     def _publish_reply(self, record):
         """The panel's view of a reply: what was decided and why (from decision()), the backend's usage (from
@@ -175,16 +206,17 @@ class GameLog:
         self._outcome = None
         msg = {"choice": record.get("choice"), **outcome, "sent": record.get("choice"),
                "source": record.get("source") or outcome.get("source")}
-        for key in ("say", "suggested"):
+        for key in ("say", "suggested", "trivial", "advised"):  # suggested: old copilot logs; the rest: coach games
             if record.get(key) is not None:
                 msg[key] = record[key]
-        if did in self._usage:
+        if did in self._usage and msg["source"] != "human":  # a coach's usage goes with its advice
             msg["usage"] = self._usage.pop(did)
         self.web.send("reply", **msg)
         if did in self._advice:
-            advised = self._advice.pop(did)
-            self.web.send("human_choice", id=did, choice=msg["choice"], advised=advised,
-                          matched=msg["choice"] == advised)
+            advised, kind = self._advice.pop(did)
+            self._human_choice(did, msg["choice"], advised, kind)
+        elif msg["source"] == "human":
+            self._human[did] = msg["choice"]
 
     def prompt(self, decision_id, text, reply, info):
         self.prompts.write(json.dumps({"id": decision_id, "prompt": text, "reply": reply, "info": info}) + "\n")
@@ -225,11 +257,10 @@ class GameLog:
         self._flush()
 
     def decision(self, decision_id, question, options, chosen, why, plan, source, seconds=None, note=None,
-                 label="backend", echo=True, write=True, fallback="the built-in AI", key=False, turn=None):
+                 label="backend", echo=True, fallback="the built-in AI", key=False, turn=None):
         """source: 'backend' (shown as `label`, e.g. "opus (claude-code)"), 'rule:<name>', 'auto', 'fallback' or
-        'pilot'. echo/write: show it in the terminal / write it to game.md (copilot shows the advice first, and
-        writes the decision once the human has made it). `key`: a key play, the only decisions the compact
-        terminal view (echo "key") shows, with `turn`."""
+        'human' (a coached human's own move; old copilot logs say 'pilot'). echo: show it in the terminal too.
+        `key`: a key play, the only decisions the compact terminal view (echo "key") shows, with `turn`."""
         if len(options) > 40:  # e.g. "declare a card name": only show what was picked
             many = len(options)
             options = [t if i in chosen else "" for i, t in enumerate(options)]
@@ -242,17 +273,11 @@ class GameLog:
             self._echo_decision(decision_id, question, options, chosen, why, plan, source, tag, timing, note, many)
         elif echo and self.echo == "key" and key:
             self._echo_key(decision_id, options, chosen, why, source, tag, turn)
-        if write:
-            with self._lock:
-                self._write_decision(decision_id, question, options, chosen, why, plan, tag, timing, note)
+        with self._lock:
+            self._write_decision(decision_id, question, options, chosen, why, plan, tag, timing, note)
         if self.web.live:
-            outcome = {"id": decision_id, "choice": list(chosen or []), "why": why, "plan": plan, "source": source,
-                       "label": label, "seconds": seconds, "note": note}
-            if write:
-                self._outcome = outcome
-            else:  # shown before a human makes the call (copilot): that's advice
-                self._advice[decision_id] = outcome["choice"]
-                self.web.send("advice", **outcome, late=False)
+            self._outcome = {"id": decision_id, "choice": list(chosen or []), "why": why, "plan": plan,
+                             "source": source, "label": label, "seconds": seconds, "note": note}
 
     def _echo_decision(self, decision_id, question, options, chosen, why, plan, source, tag, timing, note, many):
         out = ["", paint(BOLD + ";" + CYAN, f"  ? #{decision_id} {question}")]
@@ -308,9 +333,12 @@ class GameLog:
         self.md.write("\n")
         self._flush()
 
-    def board(self, text):
-        """Terminal-only board view for copilot mode (the full state is in game.jsonl anyway)."""
-        self.say("", paint(DIM, "    " + text.replace("\n", "\n    ")))
+    def append_md(self, text):
+        """Raw Markdown appended to game.md (e.g. coach advice that arrived after the decision was written)."""
+        with self._lock:
+            if not self.md.closed:
+                self.md.write(text.rstrip("\n") + "\n\n")
+                self._flush()
 
     def note(self, text):
         if self.echo in ("all", "decisions"):

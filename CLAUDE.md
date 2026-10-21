@@ -1,9 +1,9 @@
 # ygo-agent — notes for Claude Code
 
 The user plays EDOPro duels against the agent (`ygo-agent play`: the agent hosts the room; or `play --join`: a
-Claude-driven WindBot joins the user's room), or watches it play (`selfplay` against itself or a WindBot deck AI,
-`teach`), then gives feedback here. Their goal is to have a good opponent to play against, not to review logs, so
-turn short feedback into precise fixes yourself.
+Claude-driven WindBot joins the user's room), watches it play (`selfplay` against itself or a WindBot deck AI,
+`teach`), or plays a deck themselves while the agent coaches them (`coach`), then gives feedback here. Their goal is
+to have a good opponent to play against, not to review logs, so turn short feedback into precise fixes yourself.
 See README.md for the architecture and `docs/plan.md` for where the project is going.
 
 `ygo-agent` below means `.venv/bin/ygo-agent`; `python3 -m ygo_agent` from the repo folder does the same.
@@ -52,14 +52,18 @@ For `decks/blackwing` the user is learning the deck and can't spot mistakes, so 
 - Check doubtful rulings in the card script before writing a lesson. Never write a lesson you haven't verified
   against the script or the engine log.
 - Promote steps the engine actually allowed from *(unverified)* to verified, and fix steps that failed.
-- In copilot games, "The pilot chose …" notes mark the user's own decisions, not Claude's (✅ marks the move actually
-  played; the reply in `game.jsonl` has `"source": "pilot"` and the `suggested` choice). You can point out where
-  their choice cost them, since they're there to learn.
+- In coach games (`meta.json` `mode: "coach"`, docs/coach.md) every move is the user's own, not Claude's: game.md
+  tags each decision `human` (✅ marks the move they played) and puts the coach's advice under it as a `🎓 Coach`
+  line; in `game.jsonl` the replies have `"source": "human"` with `advised`/`matched`, and the coach's advice is in
+  `advice` rows. `review.md` is the coach's own review of the game. A mistake in the *advice* (or the review) is
+  fixed like any other (playbook, rules, describe.py); the user's own mistakes are theirs to learn from, so you can
+  point out where their choice cost them. Old copilot logs mark the user's moves with "The pilot chose …" and
+  `"source": "pilot"` (with the `suggested` choice).
 
 ## Code map
 
-- `ygo_agent/cli.py`: the `ygo-agent` command (`play`, `selfplay`, `teach`, `play --join`, `teach --join`,
-  `copilot`, `replay`, `test`, `web`). `ygo_agent/match.py`: seat specs and `run_games()`, which every arena-hosted
+- `ygo_agent/cli.py`: the `ygo-agent` command (`play`, `selfplay`, `teach`, `coach`, `play --join`, `teach --join`,
+  `replay`, `test`, `web`, plus `bench` and `train`). `ygo_agent/match.py`: seat specs and `run_games()`, which every arena-hosted
   command runs on (in-process AI vs AI, or an arena room for WindBot/human/spectators; results, replays, the web
   panel). `ygo_agent/join.py`: launches the bot into the user's room (`--join`). `ygo_agent/config.py`:
   `config/default.toml`, then `config.local.toml`, then CLI flags.
@@ -78,6 +82,12 @@ For `decks/blackwing` the user is learning the deck and can't spot mistakes, so 
 - `ygo_agent/web/`: the browser panel (`--web`, `ygo-agent web [--demo games/<dir>]`). `GameLog` publishes everything
   it logs to `web/bus.py` (a no-op unless a panel runs); `server.py` serves it over SSE; `recorded.py` turns a game
   folder into the same messages. Notes typed in the panel land in `feedback.md` like `!notes`. Schema: `docs/web.md`.
+- `ygo_agent/coach/`: `ygo-agent coach` (docs/coach.md): `live.py` watches the human's seat through a SeatWatcher
+  and advises without ever blocking the duel, `brain.py` is the coach's DuelBrain (prompt mode `coach`), `review.py`
+  writes review.md after the game (`coach --review games/<dir>` again), `detect.py` recognises the human's deck.
+- `ygo_agent/trainer/`: `ygo-agent train` (docs/training.md): dossier → study → lab (goldfish turns with stacked
+  hands) → games → reviews, checkpointed in `decks/<name>/train/state.json`. A trained deck's `train/` folder has the
+  scripts, logs and reviewer calls behind every lesson in its playbook.
 - `windbot-src/`: WindBot fork, its own git repo, branch `brain-bridge` (`ExecutorBase/Game/BrainBridge.cs`, the
   `Brain` hooks in `ExecutorBase/Game/GameAI.cs` and `Game/GameBehavior.cs`, `Game/AI/Decks/AgentExecutor.cs`).
   Run `./build.sh` after editing C#, then `tests/run_bridge_test.sh` (real Claude calls, ~1 minute).

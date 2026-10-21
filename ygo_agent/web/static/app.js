@@ -206,7 +206,12 @@ function applyEvent(st, ev, m) {
       if (t.l) put(st, t, ev.id);
       break;
     }
-    case "pos_change": { const c = sideOf(st, ev.c).mz[ev.s]; if (c) c.p = ev.to; break; }
+    case "pos_change": {  // a monster changing position, or a Set Spell/Trap flipped face-up
+      const s = sideOf(st, ev.c);
+      const c = ev.l === L.SZONE ? s.sz[ev.s] : ev.l === L.FZONE ? s.sz[5] : ev.l == null || ev.l === L.MZONE ? s.mz[ev.s] : null;
+      if (c) { c.p = ev.to; if (ev.id) c.id = ev.id; }
+      break;
+    }
     case "swap": for (const c of ev.cards || []) relocate(st, c); break; // native seats: control swaps
     case "counter": {  // native seats
       const at = ev.card || {};
@@ -221,7 +226,14 @@ function applyEvent(st, ev, m) {
       break;
     }
     case "damage": case "pay_lp": case "recover": case "lp": sideOf(st, ev.player).lp = ev.lp; break;
-    case "chaining": st.chain.push({ card: ev.card, id: ev.id, player: ev.player, desc: ev.desc, desc_text: m.desc_text }); break;
+    case "chaining": {
+      st.chain.push({ card: ev.card, id: ev.id, player: ev.player, desc: ev.desc, desc_text: m.desc_text });
+      const c = ev.card;  // a face-down card activated on the field is face-up now
+      const z = c && (c.l === L.MZONE ? sideOf(st, c.c).mz : c.l === L.SZONE ? sideOf(st, c.c).sz : null);
+      const here = z && z[c.l === L.SZONE && c.s === 5 ? 5 : c.s];
+      if (here && c.id && (!here.id || here.id === c.id)) { here.id = c.id; if (c.p) here.p = c.p; }
+      break;
+    }
     case "chain_solved": { const l = st.chain[ev.link - 1]; if (l) l.done = true; break; }
     case "chain_negated": case "chain_disabled": { const l = st.chain[ev.link - 1]; if (l) l.negated = true; break; }
     case "chain_end": st.chain = []; break;
@@ -298,8 +310,9 @@ function names(g) {
   const other = g.multi ? g.seat(1 - s) : null;
   const meName = mine.deck_name || mine.deck || "Agent";
   const oppName = other ? other.deck_name || other.deck || "Seat " + (1 - s) : mine.opponent || "Opponent";
+  const coached = mine.mode === "coach" && !g.multi;
   return {
-    me: [meName, mine.label || (mine.mode && mine.mode !== "play" ? mine.mode : "")],
+    me: [meName, coached ? `you · coach ${(mine.label || "").split(" (")[0]}`.trim() : mine.label || (mine.mode && mine.mode !== "play" ? mine.mode : "")],
     opp: [oppName, other ? other.label || "" : mine.opponent ? "opponent" : ""],
   };
 }
@@ -611,6 +624,7 @@ function sourceBadge(rec, g) {
   let cls = s, text = s;
   if (s === "backend") text = r.label || g.seat(rec.seat).label || "model";
   else if (s.startsWith("rule")) { cls = "rule"; text = s.replace(/^rule:/, "rule · "); }
+  else if (s === "human") text = "you";  // coach games: the human's own move
   else if (!["fallback", "pilot", "auto"].includes(s)) cls = "auto";
   return `<span class="src ${cls}" title="${esc(s)}">${esc(text)}</span>`;
 }
@@ -688,18 +702,39 @@ function optionsHtml(rec) {
 }
 
 function verdictHtml(rec) {
+  const a = rec.advice;
   if (rec.human) {
-    const late = rec.advice && rec.advice.late ? `<span class="verdict late">late</span>` : "";
+    const late = a && a.hindsight ? `<span class="verdict late">looked back</span>` : a && a.late ? `<span class="verdict late">late</span>` : "";
     return late + (rec.human.matched ? `<span class="verdict match">followed coach</span>` : `<span class="verdict diverge">diverged</span>`);
   }
-  if (rec.advice) return `<span class="verdict late">coach</span>`;
+  if (a && a.choice != null && !(rec.reply && rec.reply.source === "human")) return `<span class="verdict late">coach</span>`;
   return "";
+}
+
+// Coach games: the coach's line under a decision (its pick is marked in the options).
+const quietAdvice = (a) => !a || a.choice == null || a.source === "auto";
+function coachHtml(rec, waiting) {
+  const a = rec.advice;
+  const wait = waiting ? `<div class="thinking"><span class="dots"><i></i><i></i><i></i></span>${waiting}</div>` : "";
+  if (!a) return `<div class="thinking"><span class="dots"><i></i><i></i><i></i></span>coach is thinking</div>${wait}`;
+  if (a.choice == null) {
+    const why = a.source === "skipped" ? "no advice: you answered before the coach got to it" : a.source === "failed" ? `the coach had no usable advice${a.why ? ` (${a.why.replace(/^no usable advice:\s*/, "")})` : ""}` : "";
+    return (why ? `<div class="coachline quiet"><b>Coach</b>${esc(why)}</div>` : "") + wait;
+  }
+  const when = a.hindsight ? "looking back" : a.late ? `late · ${(+a.after).toFixed(1)}s` : a.after != null ? `${(+a.after).toFixed(1)}s` : "";
+  const usage = usageText({ usage: a.usage, seconds: null }).replace(/^[\d.]+s( · )?/, "");  // tokens; the time is `when`
+  const rule = a.source && a.source.startsWith("rule") ? `<span class="src rule">${esc(a.source.replace(/^rule:/, "rule · "))}</span>` : "";
+  const meta = `<span class="cmeta" title="after the decision · the coach's tokens">${esc(when)}${usage ? ` · ${esc(usage)}` : ""}</span>`;
+  const plan = a.plan && !a.late ? `<div class="planned" data-plan>${ICON.plan}<span>The coach's plan${rec.planOpen ? "" : " (show)"}</span></div>${rec.planOpen ? `<div class="planned-body">${esc(a.plan)}</div>` : ""}` : "";
+  return `<div class="coachline"><b>Coach</b>${rule}${meta}<div>${nameSpans(a.why || "")}</div></div>${plan}${wait}`;
 }
 
 function fillCard(card, rec) {
   const g = app.game, r = rec.reply;
   const src = r ? (r.source || "backend") : "";
-  const auto = src === "auto" || (r && !r.why && src !== "backend" && src !== "fallback" && !src.startsWith("rule") && src !== "pilot");
+  const coached = g.seat(rec.seat).mode === "coach" || src === "human";
+  const auto = src === "auto" || (r && !r.why && !["backend", "fallback", "pilot", "human"].includes(src) && !src.startsWith("rule"))
+    || (coached && (r ? r.trivial || (rec.advice && quietAdvice(rec.advice) && rec.advice.source === "auto") : rec.advice && rec.advice.source === "auto"));
   card.className = `dc src-${src.startsWith("rule") ? "rule" : src || "none"} ${auto ? "compact is-auto" : ""} ${!r && !rec.human ? "pending" : ""}`;
   card.dataset.i = rec.i;
   const [q, sub] = headline(rec);
@@ -710,18 +745,25 @@ function fillCard(card, rec) {
     const chosen = choiceOf(rec) || [];
     const texts = rec.m.options || [];
     const what = YES_NO[rec.d.kind] ? YES_NO[rec.d.kind][chosen[0]] || "—" : chosen.map((k) => splitEffect(texts[k] || "")[0]).join(", ") || "pass";
-    card.innerHTML = `${head}<div class="q">${nameSpans(what)}${r && r.why ? ` <span style="color:var(--faint)">· ${esc(r.why)}</span>` : ""}</div>`;
+    const quiet = r && r.source === "human" ? (rec.advice && rec.advice.why) || "" : r && r.why;
+    card.innerHTML = r || rec.human ? `${head}<div class="q">${nameSpans(what)}${quiet ? ` <span style="color:var(--faint)">· ${esc(quiet)}</span>` : ""}</div>`
+      : `${head}<div class="q" style="color:var(--faint)">waiting for your move</div>`;
     return;
   }
   const why = (r && r.why) || (rec.advice && rec.advice.why) || "";
   let body = `${head}<div class="q">${nameSpans(splitEffect(q)[0])}${sub ? `<span class="sub">${esc(sub)}</span>` : ""}</div>${optionsHtml(rec)}`;
+  if (coached) {  // the human decides; the coach's line comes with it, before or after their move
+    body += coachHtml(rec, r || rec.human ? "" : "waiting for your move");
+    card.innerHTML = body;
+    return;
+  }
   if (!r && !rec.human) {
     body += rec.advice
       ? `<div class="coachline"><b>Coach</b>${esc(rec.advice.why || "")}</div><div class="thinking"><span class="dots"><i></i><i></i><i></i></span>waiting for the player</div>`
       : `<div class="thinking"><span class="dots"><i></i><i></i><i></i></span>thinking<span class="elapsed"></span></div>`;
   } else {
     if (why) body += `<div class="why">${nameSpans(why)}</div>`;
-    if (rec.human && !rec.human.matched && rec.advice && rec.advice.why && r && r.why !== rec.advice.why) body += `<div class="coachline"><b>Coach</b>${esc(rec.advice.why)}</div>`;
+    if (rec.human && !rec.human.matched && rec.advice && rec.advice.why && r && r.why !== rec.advice.why) body += `<div class="coachline"><b>Coach</b>${esc(rec.advice.why)}</div>`;  // old copilot logs
     if (r && r.note) body += `<div class="note">${ICON.warn}<span>${esc(r.note)}</span></div>`;
     if (r && r.say) body += `<div class="note" style="color:var(--good)">${ICON.pen}<span>said in chat: “${esc(r.say)}”</span></div>`;
     if (r && r.plan) body += `<div class="planned" data-plan>${ICON.plan}<span>Plan for the turn${rec.planOpen ? "" : " (show)"}</span></div>${rec.planOpen ? `<div class="planned-body">${esc(r.plan)}</div>` : ""}`;
@@ -761,6 +803,56 @@ function addNote(g, m, animate) {
   item.dataset.i = m._i;
   if (animate) item.classList.add("new");
   $("#stream").append(item);
+}
+
+// ---------------------------------------------------------------- the coach's review
+
+// The small Markdown the review uses: headings, lists, quotes, fenced blocks, paragraphs, **bold**, *italic*, `code`.
+function mdInline(text) {
+  return nameSpans(text).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/(^|[\s(])\*([^*\s][^*]*?)\*(?=[\s.,;:)!?]|$)/g, "$1<i>$2</i>")
+    .replace(/`([^`]+)`/g, "<code>$1</code>");
+}
+function markdown(text) {
+  const out = [];
+  let para = [], list = null;
+  const flush = () => {
+    if (para.length) { out.push(`<p>${mdInline(para.join(" "))}</p>`); para = []; }
+    if (list) { out.push(`<${list.tag}>${list.items.join("")}</${list.tag}>`); list = null; }
+  };
+  let pre = null;
+  for (const raw of String(text || "").split("\n")) {
+    const line = raw.replace(/\s+$/, "");
+    let m;
+    if (/^```/.test(line)) {  // a fenced block: kept as it is (states, option lists)
+      if (pre) { out.push(`<pre>${esc(pre.join("\n"))}</pre>`); pre = null; } else { flush(); pre = []; }
+      continue;
+    }
+    if (pre) { pre.push(raw); continue; }
+    if (!line.trim()) { flush(); continue; }
+    if ((m = line.match(/^(#{1,4})\s+(.*)$/))) { flush(); const n = Math.min(4, m[1].length + 1); out.push(`<h${n}>${mdInline(m[2])}</h${n}>`); continue; }
+    if ((m = line.match(/^(\s*)([-*]|\d+[.)])\s+(.*)$/))) {
+      if (para.length) { out.push(`<p>${mdInline(para.join(" "))}</p>`); para = []; }
+      const tag = /\d/.test(m[2]) ? "ol" : "ul";
+      if (!list || list.tag !== tag) { if (list) flush(); list = { tag, items: [] }; }
+      list.items.push(`<li class="${m[1].length >= 2 ? "sub" : ""}">${mdInline(m[3])}</li>`);
+      continue;
+    }
+    if ((m = line.match(/^>\s?(.*)$/))) { flush(); out.push(`<blockquote>${mdInline(m[1])}</blockquote>`); continue; }
+    if (list && /^\s{2,}\S/.test(raw)) { list.items[list.items.length - 1] = list.items[list.items.length - 1].replace(/<\/li>$/, ` ${mdInline(line.trim())}</li>`); continue; }
+    if (list) flush();
+    para.push(line.trim());
+  }
+  flush();
+  if (pre) out.push(`<pre>${esc(pre.join("\n"))}</pre>`);
+  return out.join("");
+}
+function renderReview() {
+  const g = app.game, tab = $("#tab-review"), pane = $("#review");
+  const m = g && g.review;
+  tab.classList.toggle("hidden", !m);
+  if (!m) { pane.innerHTML = ""; if (app.tab === "review") setTab("stream"); return; }
+  const where = m.path ? `<div class="rv-foot">${esc(m.path)}${m.seconds ? ` · written in ${(+m.seconds).toFixed(0)}s` : ""}${m.label ? ` by ${esc(m.label)}` : ""}</div>` : "";
+  pane.innerHTML = `<article class="review-doc">${markdown(m.markdown)}${where}</article>`;
 }
 
 // ---------------------------------------------------------------- the event log
@@ -819,7 +911,7 @@ function ingest(g, m, animate) {
         rec[m.type === "reply" ? "reply" : m.type === "advice" ? "advice" : "human"] = m;
         if (m.type === "reply") rec.ri = m._i;
         if (rec.el) fillCard(rec.el, rec);
-        if (m.type === "reply" && m.plan) schedulePlan();
+        if (m.plan) schedulePlan();
       }
       if (m.type === "reply" && m.source === "backend" && m.label && !info.label) { info.label = m.label; scheduleHeader(); }
       if (m.type === "reply") addLog(g, m);
@@ -831,6 +923,11 @@ function ingest(g, m, animate) {
       break;
     case "feedback_ack":
       addNote(g, m, animate);
+      break;
+    case "review":
+      g.review = m;
+      renderReview();
+      if (animate) { toast("The coach's review is ready", "Open the Review tab", "good"); setTab("review"); }
       break;
     case "game_end":
       info.result = m.result;
@@ -910,15 +1007,18 @@ function pendingFor(g, upto) {
   return null;
 }
 
+// Moving the cursor: timeline scrubs, arrow keys, decision clicks. In a game still being played, the newest decision
+// is the live view, so seeking there (stepping forward onto it, End, clicking its card) follows the game again;
+// anything older pauses the board on it, with the paused bar over the board.
+const followable = (g) => g && g.mode !== "recorded" && !g.ended;
+const pausedLive = (g) => followable(g) && g.cursor != null;
 function seek(k, opts = {}) {
   const g = app.game;
   if (!g) return;
   const t = timeline(g);
   if (!t.length) return;
-  const live = g.mode !== "recorded";
-  if (k == null || (live && k >= t.length - 1 && opts.allowLive !== false && g.cursor != null && k > g.cursor && !g.ended)) {
-    g.cursor = null;
-  } else g.cursor = Math.max(0, Math.min(k, t.length - 1));
+  if (k == null || (followable(g) && k >= t.length - 1)) g.cursor = null;
+  else g.cursor = Math.max(0, Math.min(k, t.length - 1));
   applyCursor(opts.animate);
   if (opts.scroll !== false) scrollToCurrent();
   syncUrl();
@@ -938,6 +1038,7 @@ function applyCursor(animate) {
   renderPlan();
   renderTimeline();
   renderFeedbackHint();
+  renderStatus();
 }
 
 function scrollToCurrent() {
@@ -964,7 +1065,7 @@ function renderTimeline() {
     let html = "", thtml = "", lastTurn = 0;
     t.forEach((r, k) => {
       const s = r.reply ? (r.reply.source || "backend") : "pending";
-      const cls = s.startsWith("rule") ? "rule" : s === "backend" ? "" : s;
+      const cls = s.startsWith("rule") ? "rule" : s === "backend" ? "" : s === "human" && r.human && !r.human.matched ? "diverge" : s;
       html += `<i class="tick ${cls}" style="left:${pos(k)}%" data-k="${k}"></i>`;
       const st = r.d.state || {};
       if (st.turn && st.turn !== lastTurn) {
@@ -1006,25 +1107,26 @@ function step(delta, byTurn) {
   stopPlaying();
   const t = timeline(g);
   const k = g.cursor == null ? t.length - 1 : g.cursor;
-  if (!byTurn) return seek(k + delta, { allowLive: true });
+  if (!byTurn) return seek(k + delta);
   const starts = turnStarts(g);
   if (delta < 0) {
     const prev = starts.filter((s) => s < k);
     return seek(prev.length ? prev[prev.length - 1] : 0);
   }
   const next = starts.find((s) => s > k);
-  return seek(next == null ? t.length - 1 : next, { allowLive: true });
+  return seek(next == null ? t.length - 1 : next);
 }
 function togglePlay() {
   const g = app.game;
   if (!g) return;
   if (app.playing) return stopPlaying();
   const t = timeline(g);
+  if (g.cursor == null && followable(g)) return;  // following a live game already
   if (g.cursor == null || g.cursor >= t.length - 1) seek(0);
   app.playing = setInterval(() => {
-    const tt = timeline(app.game);
-    if (app.game.cursor == null || app.game.cursor >= tt.length - 1) { stopPlaying(); return; }
-    seek(app.game.cursor + 1, { animate: true, allowLive: false });
+    const gg = app.game, tt = timeline(gg);
+    if (!gg || gg.cursor == null || gg.cursor >= tt.length - 1) { stopPlaying(); return; }
+    seek(gg.cursor + 1, { animate: true });  // in a live game, reaching the newest decision follows it again
   }, 1400);
   renderTimeline();
 }
@@ -1034,6 +1136,7 @@ function stopPlaying() {
 
 // ---------------------------------------------------------------- plan, header, feedback hint
 
+const planOf = (r) => (r.reply && r.reply.plan) || (r.advice && !r.advice.late && r.advice.plan) || null;
 let planTimer = 0;
 function schedulePlan() { cancelAnimationFrame(planTimer); planTimer = requestAnimationFrame(renderPlan); }
 function renderPlan() {
@@ -1046,14 +1149,14 @@ function renderPlan() {
     const r = g.decs[k];
     if (r.i > upto || r.seat !== app.seat) continue;
     if ((r.d.state || {}).turn !== st.turn) break;
-    if (r.reply && r.reply.plan && (r.ri ?? r.i) <= upto) { found = r; break; }
+    if (planOf(r) && (r.ri ?? r.i) <= upto) { found = r; break; }
   }
   if (!found) { box.classList.add("hidden"); box._sig = ""; return; }
   const sig = `${found.d.id}|${found.seat}`;
   box.classList.remove("hidden");
   if (box._sig === sig) return;
   box._sig = sig;
-  const steps = found.reply.plan.split(/\n+/).map((s) => `<span class="step">${nameSpans(s.trim())}</span>`).join("");
+  const steps = planOf(found).split(/\n+/).map((s) => `<span class="step">${nameSpans(s.trim())}</span>`).join("");
   const who = names(g).me[0];
   box.classList.toggle("collapsed", store.get("planCollapsed", false));
   box.innerHTML = `<div class="plan-head">${ICON.plan}<span>Plan</span><span class="when">turn ${st.turn} · ${esc(who)} · since #${found.d.id}</span><span class="caret">${ICON.caret}</span></div><div class="plan-body">${steps}</div>`;
@@ -1068,9 +1171,7 @@ function renderHeader() {
   if (!g) { chip.className = "chip status idle"; chip.textContent = "NO GAME"; title.textContent = "Open a game"; return; }
   const n = names(g);
   title.innerHTML = `${esc(n.me[0])}<span class="vs">vs</span>${esc(n.opp[0])}`;
-  const state = g.mode === "recorded" ? "replay" : g.ended ? "done" : g.mode === "demo" ? "demo" : "live";
-  chip.className = `chip status ${state}`;
-  chip.textContent = { replay: "REPLAY", done: "ENDED", demo: "DEMO", live: "LIVE" }[state];
+  renderStatus();
   document.title = `${n.me[0]} vs ${n.opp[0]} · ygo-agent`;
   const tabs = $("#seat-tabs");
   tabs.classList.toggle("hidden", !g.multi);
@@ -1081,6 +1182,37 @@ function renderHeader() {
       + `<button data-seat="all" class="${app.streamSeats === "all" ? "on" : ""}" title="Reasoning from both seats">both</button>`;
   }
   renderPlan();
+}
+
+// The status chip and the paused bar say whether the BOARD is live, not just the game.
+function renderStatus() {
+  const g = app.game, chip = $("#status-chip"), bar = $("#pausebar");
+  if (!g) return;
+  const paused = pausedLive(g);
+  const rec = paused ? currentRec(g) : null;
+  const state = g.mode === "recorded" ? "replay" : g.ended ? "done" : paused ? "paused" : g.mode === "demo" ? "demo" : "live";
+  chip.className = `chip status ${state}`;
+  chip.textContent = paused && rec ? `PAUSED AT #${rec.d.id}` : { replay: "REPLAY", done: "ENDED", demo: "DEMO", live: "LIVE", paused: "PAUSED" }[state];
+  chip.title = paused ? "The board shows an earlier decision. Esc, End or “Back to live” follows the game again." : "";
+  $("#board").classList.toggle("past", paused);
+  bar.classList.toggle("hidden", !paused);
+  if (paused && rec) {
+    const st = rec.d.state || {};
+    const behind = timeline(g).length - 1 - g.cursor;
+    $("#pause-text").innerHTML = `Viewing decision <b>#${rec.d.id}</b> (turn ${st.turn || 0}), not live<span class="behind"> · ${behind} newer</span>`;
+  }
+}
+
+function backToLive() { stopPlaying(); app.stick = true; $("#jump").classList.add("hidden"); seek(null); }
+
+// One bad message must never stop the board or the timeline: it is logged and counted, and the rest goes on.
+function renderError(where, e, m) {
+  app.renderErrors = (app.renderErrors || 0) + 1;
+  console.error(`panel: ${where} failed`, e, m);
+  const n = $("#render-err");
+  n.classList.remove("hidden");
+  n.textContent = app.renderErrors > 1 ? `render errors: ${app.renderErrors}` : "render error";
+  n.title = `${where}: ${(e && e.message) || e}${m && m.type ? ` (message ${m.type}${m.seq ? " #" + m.seq : ""})` : ""}. Details in the browser console.`;
 }
 
 function renderFeedbackHint() {
@@ -1097,6 +1229,7 @@ function renderFeedbackHint() {
 function resetView(g) {
   stopPlaying();
   app.game = g;
+  renderReview();
   app.lastSepTurn = 0;
   app.logCount = 0;
   app.lastUpto = -1;
@@ -1148,7 +1281,7 @@ async function openRecorded(name, decision) {
   const data = await res.json();
   const g = new GameView(`rec:${name}`, "recorded");
   resetView(g);
-  for (const m of data.messages) ingest(g, m, false);
+  for (const m of data.messages) { try { ingest(g, m, false); } catch (e) { renderError("ingest", e, m); } }
   renderHeader();
   const t = timeline(g);
   let k = 0;
@@ -1206,13 +1339,14 @@ function onStream(m, subscribed) {
     if (g && g.id === m.game_id) {
       g.caughtUp = true;
       rebuildIfNeeded();
-      if (!g.msgs.length && g.mode !== "recorded") { toast("That game isn't on this panel", "Pick one from the list.", "bad"); showGames(); }
+      if (!g.msgs.length && g.mode !== "recorded") { toast("That game isn't on this panel", "Pick one from the list.", "bad"); showGames(); app.awaiting = g.id; }
     }
     return;
   }
   if (g && m.game_id === g.id && g.mode !== "recorded" && subscribed === g.id) {
     const following = g.caughtUp && g.cursor == null;
-    ingest(g, m, following);
+    if (app.awaiting === g.id) { app.awaiting = null; if ($("#modal")._kind === "games") closeModal(); }  // it started after all
+    try { ingest(g, m, following); } catch (e) { renderError("ingest", e, m); }
     if (g.caughtUp) liveUpdate(following);
     return;
   }
@@ -1227,10 +1361,12 @@ function onStream(m, subscribed) {
 }
 
 function rebuildIfNeeded() {
-  renderHeader();
-  $("#ticks")._dirty = true;
-  applyCursor(false);
-  scrollToCurrent();
+  try {
+    renderHeader();
+    $("#ticks")._dirty = true;
+    applyCursor(false);
+    scrollToCurrent();
+  } catch (e) { renderError("catch-up", e); }
 }
 
 let liveFrame = 0;
@@ -1239,12 +1375,14 @@ function liveUpdate(following) {
   liveFrame = requestAnimationFrame(() => {
     const g = app.game;
     $("#ticks")._dirty = true;
-    if (following) {
-      applyCursor(true);
-      if (app.stick) { const pane = $("#stream"); pane.scrollTop = pane.scrollHeight; }
-      else $("#jump").classList.remove("hidden");
-    } else renderTimeline();
-    if (g) renderHeader();
+    try {
+      if (following) {
+        applyCursor(true);
+        if (app.stick) { const pane = $("#stream"); pane.scrollTop = pane.scrollHeight; }
+        else $("#jump").classList.remove("hidden");
+      } else { renderTimeline(); renderStatus(); }
+    } catch (e) { renderError("live update", e); }
+    try { if (g) renderHeader(); } catch (e) { renderError("header", e); }
   });
 }
 
@@ -1296,7 +1434,7 @@ function renderGames(open) {
   }).join("");
   const html = `<div class="modal-head"><h2>Games</h2><span class="sub">live games in this process, and every log under games/</span><div class="spacer"></div><button class="icon-btn" data-close title="Close (Esc)">✕</button></div>
     <div class="modal-body">
-      <div class="gsec"><h3>Live</h3>${live ? `<div class="glist">${live}</div>` : `<div class="empty-note" style="padding:14px 0;text-align:left">No live game. Start one with <code>ygo-agent play --join --web</code> (or <code>teach</code> / <code>copilot</code> with <code>--web</code>), or replay a log live with <code>ygo-agent web --demo games/&lt;dir&gt;</code>.</div>`}</div>
+      <div class="gsec"><h3>Live</h3>${live ? `<div class="glist">${live}</div>` : `<div class="empty-note" style="padding:14px 0;text-align:left">No live game. Start one with <code>ygo-agent play --web</code> (or <code>selfplay</code> / <code>teach</code> / <code>coach</code> with <code>--web</code>), or replay a log live with <code>ygo-agent web --demo games/&lt;dir&gt;</code>.</div>`}</div>
       <div class="gsec"><h3>Recorded</h3>${rec ? `<div class="glist">${rec}</div>` : `<div class="empty-note" style="padding:14px 0;text-align:left">No game logs found.</div>`}</div>
     </div>`;
   if (open || $("#modal")._kind === "games") openModal("games", html);
@@ -1392,6 +1530,7 @@ async function sendFeedback(ev) {
     toast("The note wasn't saved", String(e.message || e), "bad");
   } finally {
     $("#fb-send").disabled = false;
+    input.focus();
   }
 }
 
@@ -1441,8 +1580,9 @@ function wire() {
   $("#tl-prev-turn").onclick = () => step(-1, true);
   $("#tl-next-turn").onclick = () => step(1, true);
   $("#tl-play").onclick = togglePlay;
-  $("#live-btn").onclick = () => { stopPlaying(); seek(null); };
-  $("#jump").onclick = () => { app.stick = true; $("#jump").classList.add("hidden"); seek(null); };
+  $("#live-btn").onclick = backToLive;
+  $("#pause-live").onclick = backToLive;
+  $("#jump").onclick = backToLive;
   const pane = $("#stream");
   // Auto-scroll pauses only when the viewer scrolls up (content growing below never counts as scrolling away).
   let lastTop = 0;
@@ -1460,6 +1600,7 @@ function wire() {
     if (!rec) return;
     if (e.target.closest("[data-more]")) { rec.expanded = true; fillCard(card, rec); return; }
     if (e.target.closest("[data-plan]")) { rec.planOpen = !rec.planOpen; fillCard(card, rec); return; }
+    if (String(getSelection && getSelection()).trim()) return;  // selecting text to copy, not seeking
     const k = timeline(app.game).indexOf(rec);
     if (k >= 0) { stopPlaying(); seek(k, { scroll: false }); }
   });
@@ -1472,7 +1613,7 @@ function wire() {
     const r = track.getBoundingClientRect();
     const k = Math.round(((e.clientX - r.left) / r.width) * (n - 1));
     stopPlaying();
-    seek(Math.max(0, Math.min(n - 1, k)), { allowLive: false });
+    seek(Math.max(0, Math.min(n - 1, k)));
   };
   track.addEventListener("pointerdown", (e) => { track.setPointerCapture(e.pointerId); scrub(e); track.onpointermove = scrub; });
   track.addEventListener("pointerup", () => { track.onpointermove = null; });
@@ -1489,13 +1630,23 @@ function wire() {
     else if (!t && previewFor) hidePreview();
   });
   document.addEventListener("keydown", (e) => {
-    if (e.target.matches && e.target.matches("input, textarea")) { if (e.key === "Escape") e.target.blur(); return; }
-    if (e.ctrlKey || e.metaKey || e.altKey) return;
-    if (e.key === "Escape") return closeModal();
+    const t = e.target;
+    // Typing (the note box, any field) never drives the timeline; Space/Enter on a button just press it.
+    if (t && t.closest && t.closest("input, textarea, select, [contenteditable], #feedback")) {
+      if (e.key === "Escape" && t.matches("input, textarea")) t.blur();
+      return;
+    }
+    if (t && t.closest && t.closest("button") && (e.key === " " || e.key === "Enter")) return;
+    if (e.ctrlKey || e.metaKey || e.altKey || e.isComposing) return;
+    if (e.key === "Escape") {
+      if (!$("#modal").classList.contains("hidden")) return closeModal();
+      if (pausedLive(app.game)) backToLive();
+      return;
+    }
     if (e.key === "ArrowLeft") { e.preventDefault(); step(-1, e.shiftKey); }
     else if (e.key === "ArrowRight") { e.preventDefault(); step(1, e.shiftKey); }
     else if (e.key === "Home") { e.preventDefault(); stopPlaying(); seek(0); }
-    else if (e.key === "End") { e.preventDefault(); stopPlaying(); seek(timeline(app.game || { decs: [] }).length - 1, { allowLive: true }); }
+    else if (e.key === "End") { e.preventDefault(); stopPlaying(); seek(timeline(app.game || { decs: [] }).length - 1); }
     else if (e.key === " ") { e.preventDefault(); togglePlay(); }
     else if (e.key === "l" || e.key === "L") { stopPlaying(); seek(null); }
     else if (e.key === "g" || e.key === "G") showGames();
@@ -1513,10 +1664,13 @@ function wire() {
 }
 
 function setTab(tab) {
+  if (tab === "review" && !(app.game && app.game.review)) tab = "stream";
   app.tab = tab;
   for (const t of $$(".tab")) t.classList.toggle("on", t.dataset.tab === tab);
   $("#stream").classList.toggle("hidden", tab !== "stream");
   $("#log").classList.toggle("hidden", tab !== "log");
+  $("#review").classList.toggle("hidden", tab !== "review");
+  $("#feedback").classList.toggle("hidden", tab === "review");
   if (tab === "log") { const l = $("#log"); if (!app.game || app.game.cursor == null) l.scrollTop = l.scrollHeight; else { const f = $$("#log > :not(.future)"); const last = f[f.length - 1]; if (last) l.scrollTop = last.offsetTop - l.clientHeight + 60; } }
 }
 

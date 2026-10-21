@@ -121,3 +121,20 @@ type = "heuristic"
 [backends.random]
 type = "random"
 # seed = 1               # fixed seed for reproducible runs; unset = a new seed each run
+
+[trainer]
+# `ygo-agent train` (docs/training.md). Flags override these.
+backend = "opus"                                     # the reviewer: writes and corrects the playbook (--backend)
+player_backend = "sonnet"                            # plays the lab turns and the games (--player-backend)
+opponents = ["windbot:Blue-Eyes", "windbot:Dragunity"]  # WindBot deck AIs legal under the rules (no Link monsters)
+lab_hands = 10                                       # lab hands in round 1 (later rounds re-test what isn't verified)
+games = 4                                            # games per round
+max_rounds = 3
+
+[coach]
+# `ygo-agent coach` (docs/coach.md): you play in EDOPro, the agent advises live and reviews the game. Flags override.
+opponent = "windbot:Blue-Eyes"  # who you play against (--opponent): a WindBot deck AI or an AI seat like saffira:sonnet
+level = "beginner"              # beginner (explains the idea behind each move) | intermediate (terse) (--level)
+time_limit = 1200               # your seconds per turn (--time-limit; 0 = none): reading the advice takes time
+review_backend = ""             # backend profile for the post-game review; "" = the coach's (--review-backend)
+review_timeout_seconds = 600

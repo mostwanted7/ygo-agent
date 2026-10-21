@@ -117,7 +117,7 @@ def test_stats_labels_and_invalid_replies(db, cfg, scripted):
     assert meta["backend"]["label"] == "test (scripted)" and meta["backend"]["type"] == "scripted"
     assert "policy" not in meta["backend"]
     assert s["decisions"] == len(replies) == sum(s["by_source"].values()) and s["by_source"]["fallback"] == 0
-    assert set(s["by_source"]) == {"backend", "rule", "auto", "fallback", "pilot"}
+    assert set(s["by_source"]) == {"backend", "rule", "auto", "fallback", "human"}
     assert s["invalid_replies"] == len(seen) and s["asks"] == s["replies"] == s["by_source"]["backend"] + len(seen)
     assert s["invalid_rate"] == round(len(seen) / s["replies"], 4)
     assert s["latency_mean_s"] is not None and s["latency_p95_s"] is not None and s["cost_usd"] is None

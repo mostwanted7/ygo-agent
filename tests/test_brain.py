@@ -1,4 +1,4 @@
-"""The decision flow end to end with a scripted backend: fixtures, logging, copilot, Bo3 routing, chat."""
+"""The decision flow end to end with a scripted backend: fixtures, logging, Bo3 routing, chat."""
 
 import json
 import os
@@ -75,33 +75,6 @@ def test_feedback_note_and_spectator_chat(db, cfg, scripted):
     assert brain.history == ['A spectator says in chat: "nice"']
     with open(os.path.join(brain.log.dir, "feedback.md"), encoding="utf-8") as f:
         assert "save Veiler" in f.read()
-    brain.close()
-
-
-def copilot_case():
-    return next(p for p in CASES if p.endswith("main2-to-set-lance.json"))
-
-
-def test_copilot_logs_the_move_actually_taken(db, cfg, scripted, monkeypatch):
-    cfg["mode"] = "copilot"
-    case = load_case(copilot_case())
-    profile = Profile("saffira", db, cfg)
-    brain = DuelBrain(cfg, db, profile, prewarm=False)
-    for m in case["messages"][:-1]:
-        if m.get("t") == "event":
-            brain.on_event(json.loads(json.dumps(m)))
-    d = json.loads(json.dumps(case["messages"][-1]))
-    scripted["decision"] = d
-    scripted["policy"] = lambda _: [2]          # the agent suggests ending the turn
-    monkeypatch.setattr("builtins.input", lambda prompt="": "1")  # the pilot goes to Main Phase 2 instead
-    reply = brain.on_decide(d)
-    assert reply["choice"] == [1]
-    rec = [r["msg"] for r in records(brain.log.dir) if r["kind"] == "reply"][-1]
-    assert rec["choice"] == [1] and rec["suggested"] == [2] and rec["source"] == "pilot"
-    with open(os.path.join(brain.log.dir, "game.md"), encoding="utf-8") as f:
-        md = f.read().split(f"**Decision #{d['id']}**")[-1]
-    assert "✅ `[1]`" in md and "✅ `[2]`" not in md and "The pilot chose [1]" in md
-    assert brain.history[-1].startswith("The pilot chose")
     brain.close()
 
 
