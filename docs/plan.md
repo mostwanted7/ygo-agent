@@ -309,7 +309,10 @@ Status: ☐ todo · ◐ in progress · ☑ done (verified by the orchestrator)
   decks, seats, seed=)`.
 - Replays: `.yrpX` files that match EDOPro field by field, and STOC_NEW_REPLAY is sent. Comparisons must use
   `replay.streams_match`, because some hint-message order differs.
-- Not yet tested with a real human EDOPro client: lobby with host flag/auto-start, RPS popup, timer, rematch
-  and side flow, spectator catch-up rendering, LAN broadcast.
+- **User GUI check, 2026-10-21: passed.** The user joined by IP (LAN → 127.0.0.1:7911) with Geargia against
+  `windbot:Blue-Eyes`. Two full duels, with the lobby, RPS/first, timer, chat and replay (EDOPro auto-saved
+  `_LastReplay.yrpX` from our STOC_NEW_REPLAY, and it plays back) all fine. The LAN list didn't show the room:
+  EDOPro's own refresh button segfaults in MenuHandler::OnEvent before any reply arrives, an EDOPro bug.
+  Still untested: spectator catch-up, and the Bo3 side flow.
 - Additions to the planned layout: `arena/{runner,deck,client,policies,gamelog,cli}.py`. CLI:
   `python -m ygo_agent.arena host|bots|selfplay-direct|list-bots|replay-info`.
