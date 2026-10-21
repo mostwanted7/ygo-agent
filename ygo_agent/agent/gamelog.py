@@ -16,7 +16,18 @@ def paint(code, text):
     return f"\033[{code}m{text}\033[0m" if COLOR else text
 
 
-DIM, BOLD, GREEN, CYAN, YELLOW, RED, MAGENTA = "2", "1", "32", "36", "33", "31", "35"
+DIM, BOLD, GREEN, CYAN, YELLOW, RED, MAGENTA, BLUE = "2", "1", "32", "36", "33", "31", "35", "34"
+ECHO = ("all", "decisions", "key", "off")
+_PRINT = threading.Lock()  # several seats (and parallel games) print from their own threads
+
+
+def emit(lines, tag=None):
+    """Print lines as one block (no other seat's output in between), each prefixed with `tag` when given."""
+    text = "\n".join(lines)
+    if tag:
+        text = "\n".join(f"{tag} {line}" if line.strip() else line for line in text.split("\n"))
+    with _PRINT:
+        print(text, flush=True)
 
 
 def slug(text, limit=24):
@@ -48,11 +59,20 @@ class GameLog:
     <time>_<deck>, and gets -vs-<opponent> once the duel starts; games/latest points at the newest one.
 
     Everything it logs also goes to the web panel's bus (a no-op unless a panel is running; docs/web.md) as seat
-    `seat` of game `game_id` (default: this folder's first name). `publish` defaults to `not quiet`."""
+    `seat` of game `game_id` (default: this folder's first name). `publish` defaults to `not quiet`.
+
+    Terminal output: `tag` (e.g. a coloured "[A Saffira·opus]") prefixes every line, for several seats in one
+    terminal; `echo` is how much this seat prints: "all" (events and decisions, the default), "decisions" (the
+    second seat of a self-play game: the first one already prints the events), "key" (one line per key play) or
+    "off". `quiet` prints nothing and writes a plain game.md (replays, tests)."""
 
     def __init__(self, games_dir, deck_name, name=None, latest=True, quiet=False, deck_key=None, game_id=None,
-                 seat=0, publish=None):
+                 seat=0, publish=None, tag=None, echo="all"):
+        if echo not in ECHO:
+            raise ValueError(f"echo must be one of {', '.join(ECHO)}")
         self.quiet = quiet
+        self.tag = tag
+        self.echo = "off" if quiet else echo
         self.games_dir = games_dir
         self.latest = latest
         self.timestamped = not name
@@ -77,8 +97,12 @@ class GameLog:
         self._usage = {}                # decision id -> the backend's time and tokens for it
         self.web = Channel(game_id or self.name, seat, enabled=not quiet if publish is None else publish)
         self.web.send("game_start", deck=deck_key, deck_name=deck_name, dir=self.dir, name=self.name)
-        if not quiet:
-            print(paint(BOLD, f"\n▶ New game — logging to {self.dir}"))
+        if self.echo in ("all", "decisions"):
+            self.say("", paint(BOLD, f"▶ New game — logging to {self.dir}"))
+
+    def say(self, *lines):
+        """Terminal lines from this seat (tagged)."""
+        emit(lines, self.tag)
 
     def _link_latest(self):
         if not self.latest:
@@ -181,25 +205,31 @@ class GameLog:
         if self.quiet:
             self.md.write(f"- {line}\n")
             return
+        show = self.echo == "all"
         if line.startswith("==="):
-            print(paint(BOLD + ";" + MAGENTA, "\n" + line))
+            if show:
+                self.say("", paint(BOLD + ";" + MAGENTA, line))
             self.md.write(f"\n## {line.strip('= ')}\n\n")
         elif line.startswith("--"):
-            print(paint(DIM, line))
+            if show:
+                self.say(paint(DIM, line))
             self.md.write(f"*{line[2:].strip()}*\n\n")
         elif line.startswith("***"):
-            print(paint(BOLD + ";" + YELLOW, line))
+            if show:
+                self.say(paint(BOLD + ";" + YELLOW, line))
             self.md.write(f"\n**{line}**\n\n")
         else:
-            print(paint(DIM, "  " + line))
+            if show:
+                self.say(paint(DIM, "  " + line))
             self.md.write(f"- {line}\n")
         self._flush()
 
     def decision(self, decision_id, question, options, chosen, why, plan, source, seconds=None, note=None,
-                 label="backend", echo=True, write=True, fallback="the built-in AI"):
+                 label="backend", echo=True, write=True, fallback="the built-in AI", key=False, turn=None):
         """source: 'backend' (shown as `label`, e.g. "opus (claude-code)"), 'rule:<name>', 'auto', 'fallback' or
         'pilot'. echo/write: show it in the terminal / write it to game.md (copilot shows the advice first, and
-        writes the decision once the human has made it)."""
+        writes the decision once the human has made it). `key`: a key play, the only decisions the compact
+        terminal view (echo "key") shows, with `turn`."""
         if len(options) > 40:  # e.g. "declare a card name": only show what was picked
             many = len(options)
             options = [t if i in chosen else "" for i, t in enumerate(options)]
@@ -208,8 +238,10 @@ class GameLog:
         tag = {"backend": label, "auto": "auto", "fallback": f"FALLBACK ({fallback.removeprefix('the ')})"}.get(
             source, source)
         timing = f" ({seconds}s)" if seconds is not None else ""
-        if echo:
+        if echo and self.echo in ("all", "decisions"):
             self._echo_decision(decision_id, question, options, chosen, why, plan, source, tag, timing, note, many)
+        elif echo and self.echo == "key" and key:
+            self._echo_key(decision_id, options, chosen, why, source, tag, turn)
         if write:
             with self._lock:
                 self._write_decision(decision_id, question, options, chosen, why, plan, tag, timing, note)
@@ -223,28 +255,40 @@ class GameLog:
                 self.web.send("advice", **outcome, late=False)
 
     def _echo_decision(self, decision_id, question, options, chosen, why, plan, source, tag, timing, note, many):
-        print(paint(BOLD + ";" + CYAN, f"\n  ? #{decision_id} {question}"))
+        out = ["", paint(BOLD + ";" + CYAN, f"  ? #{decision_id} {question}")]
         if many:
-            print(paint(DIM, f"    ({many} options, showing the chosen one)"))
+            out.append(paint(DIM, f"    ({many} options, showing the chosen one)"))
         for i, text in enumerate(options):
             if not text:
                 continue
             mark = "▶" if i in chosen else " "
             line = f"    {mark} [{i}] {text}"
-            print(paint(GREEN + ";" + BOLD, line) if i in chosen else paint(DIM, line))
+            out.append(paint(GREEN + ";" + BOLD, line) if i in chosen else paint(DIM, line))
         if not options and chosen in ([0], [1]):
-            print(paint(GREEN + ";" + BOLD, f"    ▶ {'YES' if chosen == [1] else 'NO'}"))
+            out.append(paint(GREEN + ";" + BOLD, f"    ▶ {'YES' if chosen == [1] else 'NO'}"))
         elif not chosen and source != "fallback":
-            print(paint(GREEN + ";" + BOLD, "    ▶ (pass / none)"))
+            out.append(paint(GREEN + ";" + BOLD, "    ▶ (pass / none)"))
         color = RED if source == "fallback" else (YELLOW if source.startswith("rule") else CYAN)
         if why:
-            print(paint(color, f"    ↳ {tag}{timing}: {why}"))
+            out.append(paint(color, f"    ↳ {tag}{timing}: {why}"))
         else:
-            print(paint(color, f"    ↳ {tag}{timing}"))
+            out.append(paint(color, f"    ↳ {tag}{timing}"))
         if plan:
-            print(paint(YELLOW, "    ✎ plan: " + plan.replace("\n", "\n            ")))
+            out.append(paint(YELLOW, "    ✎ plan: " + plan.replace("\n", "\n            ")))
         if note:
-            print(paint(RED, f"    ! {note}"))
+            out.append(paint(RED, f"    ! {note}"))
+        self.say(*out)
+
+    def _echo_key(self, decision_id, options, chosen, why, source, tag, turn):
+        """One line: "T3 #12 Normal Summon "X" (from hand) — why"."""
+        picked = "; ".join(options[k] for k in chosen if 0 <= k < len(options) and options[k]) or (
+            "YES" if chosen == [1] else "")
+        why = (why or "").replace("\n", " ")
+        if len(why) > 140:
+            why = why[:137].rstrip() + "..."
+        head = f"T{turn} #{decision_id}" if turn is not None else f"#{decision_id}"
+        source_note = f" [{tag}]" if source != "backend" else ""
+        self.say(paint(CYAN, f"{head} {picked}{source_note}") + (paint(DIM, f" — {why}") if why else ""))
 
     def _write_decision(self, decision_id, question, options, chosen, why, plan, tag, timing, note):
         self.md.write(f"\n**Decision #{decision_id}** — {question}\n\n")
@@ -266,16 +310,18 @@ class GameLog:
 
     def board(self, text):
         """Terminal-only board view for copilot mode (the full state is in game.jsonl anyway)."""
-        print(paint(DIM, "\n    " + text.replace("\n", "\n    ")))
+        self.say("", paint(DIM, "    " + text.replace("\n", "\n    ")))
 
     def note(self, text):
-        print(paint(YELLOW, f"    ✎ {text}"))
+        if self.echo in ("all", "decisions"):
+            self.say(paint(YELLOW, f"    ✎ {text}"))
         with self._lock:
             self.md.write(f"> ✎ {text}\n\n")
             self._flush()
 
     def feedback(self, text, context, who="Opponent"):
-        print(paint(BOLD + ";" + YELLOW, f"\n  ✍ feedback noted: {text}"))
+        if self.echo != "off":
+            self.say("", paint(BOLD + ";" + YELLOW, f"  ✍ feedback noted: {text}"))
         with self._lock:
             path = os.path.join(self.dir, "feedback.md")
             with open(path, "a", encoding="utf-8") as f:

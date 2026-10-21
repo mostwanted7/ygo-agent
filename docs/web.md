@@ -12,13 +12,14 @@ in `ygo_agent/web/static/`, with no build step and nothing from a CDN, so it wor
 ## Running it
 
 ```sh
-ygo-agent play --join --web          # also teach --web and copilot --web; prints http://127.0.0.1:7930/
+ygo-agent play --web                 # also selfplay/teach --web, and the legacy --join flows; prints http://127.0.0.1:7930/
 ygo-agent web                        # no live game: browse games/* and replay any of them
 ygo-agent web --demo games/<dir> --speed 2   # replay a recorded game live, as if it were being played now
 ```
 
-- `--web-port N` (play/teach/copilot) or `--port N` (web) picks the port. `[web]` in `config/default.toml` holds the
-  defaults: `enabled` (start it without `--web`), `host` (`127.0.0.1`; keep it local, since the panel serves your logs
+- `--web-port N` (play/selfplay/teach/copilot) or `--port N` (web) picks the port. `[web]` in `config/default.toml`
+  holds the defaults: `auto` (start it with every play/selfplay/teach/copilot run without `--web`; `--no-web` turns
+  it off for one run), `host` (`127.0.0.1`; keep it local, since the panel serves your logs
   and writes notes), `port` (7930), `open_browser`, `fetch_pics`.
 - `--demo` paces the game for watching: about the real rhythm, with thinking time taken from each reply's latency
   (capped at 6 s, divided by `--speed`), and quick events squeezed. `--loop` restarts it. It's meant for the README
@@ -114,10 +115,12 @@ choice yet, as "waiting for the player".
 
 ### What later stages publish
 
-- **Stage 4 (self-play, several seats).** Nothing new: create each seat's `DuelBrain(..., game_id=G, seat=S)` with
-  the same `G` (or pass `game_id`/`seat` to `GameLog`), and the panel shows both seats, seat tabs and god view.
-  Seats of different duels use different ids; the games list switches between them. A seat that logs quietly must
-  pass `publish=True`.
+- **Stage 4 (self-play, several seats), done.** `ygo_agent.match.run_games` links the two AI seats of every duel
+  (`native_seat.link`), so each seat's `DuelBrain(..., game_id=G, seat=S)` shares `G`: `<run>-m<match>-g<game>`
+  in-process, `<run>-g<game>` in a room (`<run>-r<room>-g<game>` with parallel rooms), where `<run>` is the run
+  folder's name. The panel shows both seats, seat tabs and god view. Parallel games are
+  separate games in the list. A seat that logs quietly must pass `publish=True`; the terminal's `--quiet` (echo
+  "key") still publishes everything.
 - **Stage 5 (coach).** For the human's seat, publish the `decision` (the human's own view, through that seat's
   GameLog or `Channel.send("decision", decision=d)`), then `advice` when the coach answers (`late: true` if the human
   already chose), then `human_choice` with the decoded choice and `matched`. A `reply` is optional for a human seat:

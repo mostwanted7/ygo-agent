@@ -1,7 +1,9 @@
 # ygo-agent — notes for Claude Code
 
-The user plays EDOPro duels against a Claude-driven WindBot, then gives feedback here. Their goal is to have
-a good opponent to play against, not to review logs, so turn short feedback into precise fixes yourself.
+The user plays EDOPro duels against the agent (`ygo-agent play`: the agent hosts the room; or `play --join`: a
+Claude-driven WindBot joins the user's room), or watches it play (`selfplay` against itself or a WindBot deck AI,
+`teach`), then gives feedback here. Their goal is to have a good opponent to play against, not to review logs, so
+turn short feedback into precise fixes yourself.
 See README.md for the architecture and `docs/plan.md` for where the project is going.
 
 `ygo-agent` below means `.venv/bin/ygo-agent`; `python3 -m ygo_agent` from the repo folder does the same.
@@ -9,7 +11,11 @@ See README.md for the architecture and `docs/plan.md` for where the project is g
 ## Turning feedback into improvements
 
 1. Read `games/latest/game.md` (or the game the user names). If it exists, also read `games/latest/feedback.md`:
-   notes the user typed as `!...` in duel chat, each tagged with the decision number it followed.
+   notes the user typed as `!...` in duel chat (or in the web panel's note box), each tagged with the decision number
+   it followed. Every game gets its folder `games/<time>_<deck>-vs-<opponent>/`, whichever command played it. In a
+   self-play game each AI seat has its own folder (`games/latest` is seat A's); the run's
+   `games/matches/<time>_<a>-vs-<b>/results.json` lists every game with each seat's `log_dir`, and `meta.json`'s
+   `match` points back at the run. Both seats' mistakes count: fix the deck the seat played.
    Decisions are numbered (`Decision #N`). `game.jsonl` has the raw state for each one and the reply that was sent,
    `prompts.jsonl` has the exact prompt the model saw and its reply, and `meta.json` says which deck and backend
    played (with the game's stats). The default backend is Claude Code (`claude -p`); `--backend NAME` picks
@@ -52,9 +58,14 @@ For `decks/blackwing` the user is learning the deck and can't spot mistakes, so 
 
 ## Code map
 
-- `ygo_agent/cli.py`: the `ygo-agent` command (`play --join`, `teach`, `copilot`, `replay`, `test`, `web`).
-  `ygo_agent/join.py`: launches the bot into the user's room. `ygo_agent/config.py`: `config/default.toml`, then
-  `config.local.toml`, then CLI flags.
+- `ygo_agent/cli.py`: the `ygo-agent` command (`play`, `selfplay`, `teach`, `play --join`, `teach --join`,
+  `copilot`, `replay`, `test`, `web`). `ygo_agent/match.py`: seat specs and `run_games()`, which every arena-hosted
+  command runs on (in-process AI vs AI, or an arena room for WindBot/human/spectators; results, replays, the web
+  panel). `ygo_agent/join.py`: launches the bot into the user's room (`--join`). `ygo_agent/config.py`:
+  `config/default.toml`, then `config.local.toml`, then CLI flags.
+- `ygo_agent/arena/`: the headless EDOPro host on libocgcore (`server.py` rooms, `duel.py`, `native_seat.py`: the
+  agent as an in-process seat, `windbot.py`: WindBot deck AIs as opponents); `python -m ygo_agent.arena` for the
+  low-level tools.
 - `ygo_agent/agent/brain.py`: one game (events → history, decisions → rules → model → validation → reply).
   `bridge_server.py`: the TCP server; one `Match` per bot connection, a fresh `DuelBrain` and log for each game.
 - `ygo_agent/agent/prompts.py`: the system prompt (mode, rules in force, `playbooks/general.md`, deck, playbook).
@@ -79,3 +90,5 @@ For `decks/blackwing` the user is learning the deck and can't spot mistakes, so 
 - Don't use `pkill -f`/`pgrep -f` with a pattern that also appears in your own command line: it kills the
   shell running it. Use PIDs, as `tests/run_bridge_test.sh` does.
 - Decision ids restart at 1 for each game, including each game of a Bo3 (they share one bot connection).
+- `ygo-agent replay` works on arena games too (native seats send the same decision JSON). For a deck played from a
+  loose `.ydk`, `meta.json` has `deck_ydk` and replay finds it there.

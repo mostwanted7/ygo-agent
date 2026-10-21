@@ -18,10 +18,17 @@ chat = "banter"
 rules = "MR3"
 
 [room]
-# play --join: the EDOPro LAN room you host.
+# The duel room. play/teach/selfplay --spectate: the room the arena hosts (port, password); play --join: the EDOPro
+# LAN room you host (host, port, password).
 host = "127.0.0.1"
 port = 7911
 password = ""
+
+[arena]
+# Rooms the arena hosts (play, teach, selfplay).
+time_limit = 600          # seconds per turn for a human player, as in EDOPro (0 = none); AI seats have no limit
+lan = true                # answer EDOPro's LAN room search (--no-lan: join by address only)
+room_name = "ygo-agent"   # shown in EDOPro's LAN list
 
 [bot]
 # The WindBot fork (windbot-src) that joins the room and asks the agent for every decision.
@@ -33,8 +40,8 @@ protocol_version = 0
 
 [web]
 # The local web panel: the board with card pictures, every decision with its reasoning and plan, coach advice and a
-# feedback box (docs/web.md). play/teach/copilot start it with --web; `ygo-agent web` browses recorded games.
-enabled = false      # true = always start it with play/teach/copilot (same as --web)
+# feedback box (docs/web.md). play/selfplay/teach/copilot start it with --web; `ygo-agent web` browses recorded games.
+auto = false         # true = start it with every play/selfplay/teach/copilot run, as if --web were given (--no-web)
 host = "127.0.0.1"   # keep it local: the panel serves your game logs and writes feedback notes
 port = 7930          # --web-port
 open_browser = false # open the panel in your browser when it starts

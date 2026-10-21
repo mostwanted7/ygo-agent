@@ -36,10 +36,14 @@ def load_messages(game_dir, decision_id):
 
 
 def game_deck(game_dir):
-    """The deck key a logged game was played with: meta.json, or for older logs the deck name in game.md's title."""
+    """The deck a logged game was played with: meta.json's deck key (or its .ydk, for a deck played from a loose
+    file), or for older logs the deck name in game.md's title."""
     try:
         with open(os.path.join(game_dir, "meta.json"), encoding="utf-8") as f:
-            return json.load(f).get("deck")
+            meta = json.load(f)
+        if meta.get("deck_ydk") and meta.get("deck") not in deck_keys():
+            return meta["deck_ydk"]
+        return meta.get("deck")
     except (OSError, ValueError):
         pass
     try:

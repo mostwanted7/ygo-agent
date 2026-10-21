@@ -67,11 +67,21 @@ def test_cli_flags_win(tmp_path):
     assert mode_of(parser().parse_args(["teach"])) == "teach"
 
 
-def test_play_without_join_explains(capsys):
+def test_arena_commands_parse(tmp_path):
     from ygo_agent.cli import main
     with pytest.raises(SystemExit) as e:
-        main(["play"])
-    assert "--join" in str(e.value)
+        main(["play", "--teach", "--games-dir", str(tmp_path)])  # teaching without --join is `ygo-agent teach`
+    assert "--join" in str(e.value) and "ygo-agent teach" in str(e.value)
+    args = parser().parse_args(["play", "--best-of", "3", "--pace", "2s", "--no-web", "--games", "2", "--port", "7999"])
+    cfg = configure(args)
+    assert (args.best_of, args.pace, args.games, cfg["room"]["port"]) == (3, 2.0, 2, 7999)
+    assert cfg["web"]["auto"] is False and not args.join
+    args = parser().parse_args(["selfplay", "--a", "saffira:opus", "--b", "windbot:Blue-Eyes", "--parallel", "3",
+                                "--spectate", "--web"])
+    assert (args.a, args.b, args.parallel, args.spectate) == ("saffira:opus", "windbot:Blue-Eyes", 3, True)
+    assert configure(args)["web"]["auto"] is True
+    args = parser().parse_args(["teach", "--deck", "blackwing", "--opponent", "windbot:Dragunity"])
+    assert args.opponent == "windbot:Dragunity" and not args.join and mode_of(args) == "teach"
 
 
 def test_protocol_version_comes_from_config_then_cache(monkeypatch, tmp_path):

@@ -37,13 +37,16 @@ INLINE_BACKENDS = ("heuristic", "random", "scripted")  # fast, pure: no worker t
 
 class AgentSeat(Seat):
     def __init__(self, name: str, cfg: dict, db, profile, backend: dict, *, cards=None, pace: float = 0.0,
-                 threaded: bool | None = None, position: int = 0, chat=None, timeout: float | None = None):
+                 threaded: bool | None = None, position: int = 0, chat=None, timeout: float | None = None,
+                 mode: str | None = None, opponent: dict | None = None, log_options: dict | None = None):
         """`cfg`: the agent config (config.load_config()); `db`: the agent CardDB; `profile`: the deck Profile;
         `backend`: a backend profile dict ({"name", "type", ...}). `cards`: the arena CardDatabase (printed stats
         and declarable names); `pace`: minimum seconds per decision; `position`: the lobby seat (chat events);
-        `chat(text)`: sends the agent's chat lines to the room."""
+        `chat(text)`: sends the agent's chat lines to the room. `mode`, `opponent` and `log_options` go to each
+        game's DuelBrain (the prompt's mode and opponent, the log's terminal tag and verbosity)."""
         self.name = name
         self.cfg, self.db, self.profile, self.backend = cfg, db, profile, backend
+        self.mode, self.opponent, self.log_options = mode, opponent, log_options
         self.cards = cards
         self.view: SeatView | None = None
         self.native = NativeView(0, cards)
@@ -143,13 +146,33 @@ class AgentSeat(Seat):
 
     def _new_brain(self):
         from ..agent.brain import DuelBrain
-        kw = {"prewarm": True, "room": self.room_event, "backend": self.backend, "fallback": "heuristic"}
-        params = inspect.signature(DuelBrain).parameters
-        if "seat" in params:
-            kw["seat"] = self.position
-        if "game_id" in params and self.match_id:
+        kw = {"prewarm": True, "room": self.room_event, "backend": self.backend, "fallback": "heuristic",
+              "seat": self.position, "mode": self.mode, "opponent": self.opponent, "log_options": self.log_options}
+        if self.match_id:
             kw["game_id"] = f"{self.match_id}-g{self.stats['games'] + 1}"  # shared by every seat of the duel
         return DuelBrain(self.cfg, self.db, self.profile, **kw)
+
+    def game_info(self) -> dict | None:
+        """The current (or just finished) game as its brain saw it: `game` (1, 2, ... for this seat), `dir` (its log
+        folder), `result` (win/loss/draw, None if it never ended), `stats` (meta.json's), `label`. Call it on the
+        brain's thread (`collect`), so that every message sent before is accounted for."""
+        b = self.brain
+        if b is None:
+            return None
+        log = b._log
+        return {"game": self.stats["games"], "dir": log.dir if log else None,
+                "result": log.meta.get("result") if log else None, "stats": b.stats.summary(), "label": b.label,
+                "log": log}
+
+    def collect(self, fn=None):
+        """game_info() once the brain has handled everything sent so far (it runs on the brain's thread, after them):
+        a Future with the worker thread, else the value. `fn(info)` runs there too, e.g. to add to the game's log."""
+        def run():
+            info = self.game_info()
+            if fn is not None and info is not None:
+                fn(info)
+            return info
+        return self._run(run)
 
     def _event(self, ev: dict) -> None:
         brain = self._brain_for(ev)
@@ -333,8 +356,9 @@ class AgentSeat(Seat):
     def on_end(self, result, team: int) -> None:
         pass
 
-    def close(self) -> None:
-        """End of the seat's life: close the last game's brain (log files, backend session) and the worker."""
+    def close(self, timeout: float = 60) -> None:
+        """End of the seat's life: close the last game's brain (log files, backend session) and the worker.
+        `timeout`: how long to wait for a decision still in progress (e.g. 2 after Ctrl+C)."""
         if self.closed:
             return
         self.closed = True
@@ -343,7 +367,9 @@ class AgentSeat(Seat):
             if self.brain is not None:
                 self.brain.close()
         try:
-            self._call(shut, timeout=60)
+            self._call(shut, timeout=timeout)
+        except concurrent.futures.TimeoutError:
+            pass
         except Exception:
             traceback.print_exc()
         if self._worker is not None:

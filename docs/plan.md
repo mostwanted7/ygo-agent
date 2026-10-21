@@ -196,7 +196,7 @@ Status: ☐ todo · ◐ in progress · ☑ done (verified by the orchestrator)
     WindBot seat yield the same game, or a recorded list of known differences.
   - A full heuristic-vs-heuristic headless duel in CI-style integration tests.
 
-### Stage 4: Multi-seat agent, self-play, watching ◐ (after 1 and 3)
+### Stage 4: Multi-seat agent, self-play, watching ☑ (after 1 and 3)
 - The agent is per seat, with its own deck profile, backend, mode and log. Several duels and seats run in one
   process.
 - CLI:
@@ -350,3 +350,22 @@ Status: ☐ todo · ◐ in progress · ☑ done (verified by the orchestrator)
   (2) `event_ids` ignores `confirm.cards`, so revealed cards' texts aren't added to the prompt;
   (3) two Xyz-procedure options read identically. Brain fallbacks are only `place` (about 16%, as in the
   bridge). The LAN test binds UDP 7920, so deselect it while an arena is running.
+
+**Stage 4.**
+- `ygo_agent/match.py` is the API that Stages 5, 6 and 7 build on:
+  - `SeatSpec.parse("saffira:opus" | "path.ydk:sonnet" | "heuristic[:deck]" | "random" | "windbot:Blue-Eyes" | "human")`.
+  - `run_games(seat_a, seat_b, games, *, rules, seed, best_of, pace, parallel, spectate, web, web_port, out,
+    stack, start_state, first, on_game, on_room, quiet, …) -> RunResult`. A `RunResult` holds
+    `GameResult`s (winner, reason, turns, seconds, first, seed, replay, retries, lua_errors, plus one
+    `SeatResult` per seat with kind, name, deck, backend, log_dir and the meta.json stats); helpers are
+    `wins()`, `seat_totals(i)`, `summary_lines()` and `to_dict()`. Setup problems raise `MatchError`.
+  - AI-vs-AI games with no spectator run in-process, on threads when `parallel`. Anything with WindBot, a
+    human or a spectator goes through an arena room. `on_room(room)` is the hook for the Stage 5 coach.
+  - Output: `games/matches/<ts>_<a>-vs-<b>/results.json` plus replays. Seat logs are in `log_dir`.
+- CLI: `play` (arena-hosted, `--web`), `play --join` (legacy), `selfplay --a --b [--games --parallel
+  --spectate --pace --quiet --web]`, `teach --deck [--opponent]` (waits for a spectator).
+- Stats change: native seats' zone placements count as `auto`, not `fallback`.
+- Sonnet vs Sonnet (Saffira vs Blackwing): Blackwing won in 15 turns, 16 min, about $4.8, with 1 invalid
+  reply out of 351 and 0 fallbacks. The play looked sensible.
+- Gaps: spectating with the real EDOPro GUI is unchecked; the spectator gate holds only game 1 of a Bo3;
+  WindBot seats can't be paced.

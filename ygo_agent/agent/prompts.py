@@ -61,27 +61,57 @@ def ruleset(rules):
     return RULESETS.get(str(rules).upper(), (str(rules), None))
 
 
+# Who the AI is playing against and who reads its reasoning, per mode. {opponent} is opponent_text(): the opponent
+# described as precisely as the match knows it (a human, another AI and its deck, a WindBot deck AI).
 MODES = {
     "play": {
-        "situation": "Your opponent is a human who is coaching you: after each game they review your decisions, and "
-                     "their lessons are written into the playbook below. Play to win, and play the way the playbook "
-                     "says.",
+        "situation": "Your opponent is {opponent}. Your games are reviewed afterwards and the lessons are written into "
+                     "the playbook below. Play to win, and play the way the playbook says.",
         "reader": "The human reads these in the terminal, during or after the game.",
     },
+    "selfplay": {
+        "situation": "This is a practice game: your opponent is {opponent}. Your games are reviewed afterwards and the "
+                     "lessons are written into the playbook below. Play to win, and play the way the playbook says.",
+        "reader": "They are read after the game, and live by anyone watching.",
+    },
     "teach": {
-        "situation": "A human is watching from the spectator seat to learn this deck from you; your opponent is another "
-                     "player (an AI or a human). Your games are reviewed afterwards and the lessons are written into "
-                     "the playbook below. Play to win, and play the way the playbook says.",
+        "situation": "A human is watching from the spectator seat to learn this deck from you; your opponent is "
+                     "{opponent}. Your games are reviewed afterwards and the lessons are written into the playbook "
+                     "below. Play to win, and play the way the playbook says.",
         "reader": "The human learning the deck reads these live.",
     },
     "copilot": {
         "situation": "A human who is learning this deck plays it with you: you recommend each decision and they make "
-                     "the final call. Your opponent is another player (an AI or a human). Your games are reviewed "
-                     "afterwards and the lessons are written into the playbook below. Play to win, and play the way "
-                     "the playbook says.",
+                     "the final call. Your opponent is {opponent}. Your games are reviewed afterwards and the lessons "
+                     "are written into the playbook below. Play to win, and play the way the playbook says.",
         "reader": "The human learning the deck reads these live.",
     },
 }
+# play mode against a human (or against whoever joined the room the user hosts: play --join).
+COACHING_HUMAN = ("Your opponent is a human who is coaching you: after each game they review your decisions, and their "
+                  "lessons are written into the playbook below. Play to win, and play the way the playbook says.")
+POLICIES = {"heuristic": "a simple rule-based bot", "random": "a bot that makes random legal moves"}
+
+
+def opponent_text(opponent=None):
+    """The opponent in a few words. `opponent`: {"kind": "human" | "agent" | "windbot", "deck": deck name,
+    "backend": backend type (agent), "name": player name}, or None when the match doesn't know (play --join)."""
+    if not opponent:
+        return "another player (an AI or a human)"
+    kind, deck, name = opponent.get("kind"), opponent.get("deck"), opponent.get("name")
+    if kind == "human":
+        return "a human player" + (f" ({name})" if name else "")
+    if kind == "windbot":
+        return "WindBot, EDOPro's built-in scripted AI" + (f", playing its {deck} deck" if deck else "")
+    who = POLICIES.get(opponent.get("backend"), "another AI") if kind == "agent" else "another player"
+    return who + (f" playing {deck}" if deck else "")
+
+
+def situation(mode="play", opponent=None):
+    if mode == "play" and (not opponent or opponent.get("kind") == "human"):
+        return COACHING_HUMAN
+    return MODES[mode]["situation"].format(opponent=opponent_text(opponent))
+
 
 INTRO = """You are an expert Yu-Gi-Oh! duelist, playing a duel as a bot under {rules} (EDOPro engine). {situation}
 
@@ -106,17 +136,18 @@ actually taken can differ from your suggestion. Always re-read the events and th
 suggestion was followed, and adapt the plan to what they did."""
 
 
-def intro(mode="play", rules="MR3"):
+def intro(mode="play", rules="MR3", opponent=None):
     name, detail = ruleset(rules)
-    m = MODES[mode]
     rules_line = f"- The rules are {name}: {detail}. The engine enforces every rule.\n" if detail else ""
-    return INTRO.format(rules=name, situation=m["situation"], rules_line=rules_line, reader=m["reader"])
+    return INTRO.format(rules=name, situation=situation(mode, opponent), rules_line=rules_line,
+                        reader=MODES[mode]["reader"])
 
 
-def system_prompt(profile, mode="play", rules="MR3", card_texts="full"):
-    """card_texts: "full", "compact" or "none" (no card-text section; the decklist carries the type lines)."""
+def system_prompt(profile, mode="play", rules="MR3", card_texts="full", opponent=None):
+    """card_texts: "full", "compact" or "none" (no card-text section; the decklist carries the type lines).
+    `opponent`: see opponent_text()."""
     general = profile.general_playbook
-    parts = [intro(mode, rules)]
+    parts = [intro(mode, rules, opponent)]
     if general:
         parts.append("\n\n# General strategy\n" + general.strip())
     if mode in ("teach", "copilot"):

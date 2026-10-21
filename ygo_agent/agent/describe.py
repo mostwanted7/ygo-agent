@@ -13,6 +13,7 @@ REASONS = [(0x1, "destroyed"), (0x2, "Tributed"), (0x20, "by battle"), (0x40, "b
 ATTRIBUTE_FLAGS = {0x1: "EARTH", 0x2: "WATER", 0x4: "FIRE", 0x8: "WIND", 0x10: "LIGHT", 0x20: "DARK", 0x40: "DIVINE"}
 
 HINT_ATTACK_TARGET = 549
+OWN_PROCEDURE = "(by its own summoning procedure)"
 
 
 def loc_name(loc):
@@ -189,8 +190,10 @@ class Describer:
 
     # ---- options ----
 
-    def effect_text(self, desc):
+    def effect_text(self, desc, card_id=None):
         text = self.db.desc(desc)
+        if text and "%ls" in text and card_id:
+            text = text.replace("%ls", self.db.name(card_id))  # e.g. 'Use the effect of "%ls" to avoid destruction'
         return f' — effect: "{text}"' if text else ""
 
     def option_line(self, kind, opt):
@@ -198,11 +201,12 @@ class Describer:
             a = opt["a"]
             card = opt.get("card")
             if a == "activate":
-                return f"Activate {self.card_line(card)} from {self.where(card)}{self.effect_text(opt.get('desc'))}"
+                return (f"Activate {self.card_line(card)} from {self.where(card)}"
+                        f"{self.effect_text(opt.get('desc'), (card or {}).get('id'))}")
             if a == "summon":
                 return f"Normal Summon {self.name(card)} (from hand)"
             if a == "spsummon":
-                return f"Special Summon {self.name(card)} from {self.where(card)} (by its own summoning procedure)"
+                return f"Special Summon {self.name(card)} from {self.where(card)} {OWN_PROCEDURE}"
             if a == "set_monster":
                 return f"Set {self.name(card)} face-down in Defense Position (counts as your Normal Summon)"
             if a == "set_spell":
@@ -238,7 +242,27 @@ class Describer:
         return str(opt)
 
     def options(self, d):
-        return [self.option_line(d["kind"], o) for o in d.get("options", [])]
+        lines = [self.option_line(d["kind"], o) for o in d.get("options", [])]
+        if d["kind"] == "idle":
+            self._number_repeats(d["options"], lines)
+        return lines
+
+    @staticmethod
+    def _number_repeats(options, lines):
+        """The engine lists a card once per copy and summoning procedure (e.g. an Xyz Monster with an alternative
+        procedure), and those entries would read the same: number them, and say they're interchangeable."""
+        groups = {}
+        for i, o in enumerate(options):
+            card = o.get("card") or {}
+            if o.get("a") == "spsummon":
+                groups.setdefault((card.get("id"), card.get("c"), card.get("l"), card.get("s")), []).append(i)
+        for entries in groups.values():
+            if len(entries) < 2:
+                continue
+            for n, i in enumerate(entries, 1):
+                lines[i] = lines[i].replace(OWN_PROCEDURE, f"(by its own summoning procedure; entry {n} of "
+                                            f"{len(entries)} for this card, which the engine lists once per copy "
+                                            "and procedure: the entries are equivalent)")
 
     def hint(self, d):
         text = self.db.desc(d.get("hint", 0))
@@ -258,7 +282,7 @@ class Describer:
             return q + ". Reply with [] to pass (do nothing), or one option index to activate."
         if kind == "effect_yn":
             return (f"Do you want to activate/use {self.card_line(d['card'])} ({self.where(d['card'])})"
-                    f"{self.effect_text(d.get('desc'))}? Reply [1] for yes or [0] for no.")
+                    f"{self.effect_text(d.get('desc'), d['card'].get('id'))}? Reply [1] for yes or [0] for no.")
         if kind == "yesno":
             text = self.db.desc(d.get("desc")) or f"question #{d.get('desc')}"
             return f'Yes/no question from the game: "{text}". Reply [1] for yes or [0] for no.'
@@ -343,7 +367,7 @@ class Describer:
             who = "You" if ev["player"] == 0 else "Opponent"
             card = ev.get("card") or {}
             return (f"CL{ev['link']}: {who} activate{'s' if who == 'Opponent' else ''} \"{db.name(ev['id'])}\""
-                    f" from {self.where(card) if card else '?'}{self.effect_text(ev.get('desc'))}")
+                    f" from {self.where(card) if card else '?'}{self.effect_text(ev.get('desc'), ev.get('id'))}")
         if e == "chain_solved":
             return f"   CL{ev['link']} resolved."
         if e in ("chain_negated", "chain_disabled"):

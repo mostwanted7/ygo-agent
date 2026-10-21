@@ -20,10 +20,20 @@ Without the venv, `python3 -m ygo_agent …` and `./play.sh` do the same thing f
 
 ## Playing a game
 
-1. In EDOPro: **LAN Mode → Host**. Use the banlist you normally use with the deck (or tick *Don't check deck*), and
-   set the **time limit as high as it goes**: the AI takes a few seconds per decision.
-2. In a terminal: `./play.sh` (the same as `ygo-agent play --join`), then press **Enter** once you're in the room.
-3. The bot joins the room. Start the duel.
+1. In a terminal: `ygo-agent play` (options: `--deck blackwing`, `--backend sonnet`, `--best-of 3`, `--web`).
+   The agent hosts a room (Master Rule 3 by default, `--rules MR5` etc.) and prints where it is.
+2. In EDOPro: **LAN Mode**, type the **Host address `127.0.0.1`** and **port `7911`** (`--port` changes it), and
+   **Join**. Type the address rather than waiting for the room list: EDOPro may not list the room, and its LAN
+   Refresh button can crash EDOPro. Pick your deck, ready up, and the duel starts.
+3. Play as many matches as you like (EDOPro offers a rematch); Ctrl+C closes the room and prints the results.
+
+```sh
+ygo-agent play --deck blackwing --backend sonnet --web     # with the browser panel at http://127.0.0.1:7930/
+```
+
+You get 600 s per turn (`--time-limit`, or `[arena] time_limit` in the config); the AI has no limit. The older way
+still works: host the room yourself in EDOPro (LAN Mode → Host, with a long time limit), run `./play.sh` (the same as
+`ygo-agent play --join`), and press **Enter** once you're in the room; the agent's bot (the WindBot fork) joins it.
 
 While you play:
 - The terminal shows every decision live: the options, what the AI picked, why, and its plan for the turn.
@@ -31,7 +41,8 @@ While you play:
 - Type `!` followed by a note in the duel chat (e.g. `!don't Veiler my Stratos, save it`) to bookmark feedback at
   that exact moment. The bot confirms it with "Noted feedback #1." and the note is saved with the game log.
 
-Add `--web` (to `play`, `teach` or `copilot`) to follow the duel in your browser as well, at http://127.0.0.1:7930/:
+Add `--web` (to `play`, `selfplay`, `teach` or `copilot`; `web.auto = true` in the config makes it the default) to
+follow the duel in your browser as well, at http://127.0.0.1:7930/:
 the board with card pictures, every decision with the options, the choice, the reasoning and the turn's plan, the
 event log, and a feedback box that works like a `!note`. `ygo-agent web` browses and replays recorded games
 (`←`/`→` steps through the decisions), and `ygo-agent web --demo games/<dir>` replays one live. See
@@ -41,23 +52,60 @@ event log, and a feedback box that works like a `!note`. `ygo-agent web` browses
 
 After the game:
 - The log is in `games/latest/` (each game gets `games/<time>_<deck>-vs-<opponent>/`): `game.md` to read,
-  `feedback.md` with your notes, `game.jsonl` and `prompts.jsonl` with the raw data, and `windbot.log`.
+  `feedback.md` with your notes, `game.jsonl` and `prompts.jsonl` with the raw data, `meta.json` with the stats,
+  and `replay.yrpX` (open it in EDOPro's replay menu; `play --join` games have `windbot.log` instead, and EDOPro
+  saves their replay). `games/matches/<time>_.../` holds the run's `results.json` and every game's replay.
 - Open Claude Code in this folder and tell it what the AI got wrong. It updates the deck's playbook and rules (see
   CLAUDE.md), and the next game uses them.
 
 Options: `--backend sonnet` (faster, a bit weaker; also `haiku`, `api-opus`, `local`, `heuristic`, `random` or
-your own profile), `--model`/`--effort` to override the profile's, `--deck blackwing` (any folder under `decks/`),
-`--host`/`--port`/`--password` for the room, `--chat off`, `--web` (the browser panel), `--brain-only` (run only the
-agent and print the bot command). `ygo-agent play --help` lists them all. At the end of a game the terminal prints the decision stats
-(who decided, latency, invalid replies, tokens, cost), which `meta.json` keeps too.
+your own profile), `--model`/`--effort` to override the profile's, `--deck blackwing` (any folder under `decks/`, a
+`.ydk` file, or a deck in EDOPro's deck folder), `--port`/`--password` for the room, `--chat off`, `--web` (the
+browser panel), `--games N` (close the room after N matches). With `--join`: `--host`, and `--brain-only` (run only
+the agent and print the bot command). `ygo-agent play --help` lists them all. At the end of a game the terminal
+prints the decision stats (who decided, latency, invalid replies, tokens, cost), which `meta.json` keeps too.
+
+## Self-play: the AI against itself or a WindBot deck
+
+```sh
+ygo-agent selfplay --a saffira:opus --b blackwing:sonnet            # one game, AI vs AI
+ygo-agent selfplay --a saffira:sonnet --b windbot:Blue-Eyes --games 10 --parallel 3 --quiet
+ygo-agent selfplay --a saffira:heuristic --b blackwing:random --games 50 --parallel 4 --quiet   # no LLM: seconds
+ygo-agent selfplay --a saffira:opus --b blackwing:opus --spectate --pace 2 --web   # watch it in EDOPro and the browser
+```
+
+A seat is `<deck>[:<backend>]` (deck: a folder in `decks/`, a `.ydk` path, or a deck in EDOPro's deck folder;
+backend: a profile, default `agent.backend`), `heuristic`/`random` (no LLM; `heuristic:blackwing` picks the deck),
+`windbot:<deck AI>` (EDOPro's WindBot deck AIs, listed by `python -m ygo_agent.arena list-bots`) or `human`.
+
+- Two AI seats play in-process, straight on the game engine, with no network; `--parallel K` runs K games at a time,
+  each seat with its own model sessions. A WindBot opponent joins an arena room on a free port (parallel games get a
+  room each).
+- `--spectate` hosts the room on `--port` (7911) and waits before each match until you join as a spectator
+  (EDOPro: LAN Mode → Host address `127.0.0.1`, port 7911 → Join; both duelist seats are taken, so you watch) or
+  press Enter. `--pace 2` makes every AI decision take at least 2 s, so you can follow.
+- The terminal shows both seats' decisions, each line tagged with the seat, deck and backend (`[A Saffira·opus]`);
+  `--quiet` shows only the key plays (activations, summons, attacks) and the results.
+- At the end: wins, game lengths, and each AI seat's stats (decisions, latency, invalid replies, fallbacks, tokens,
+  cost). Each seat logs every game to its own `games/<time>_<deck>-vs-<opponent>/` folder, so the feedback workflow
+  below works on self-play games too.
+- Options: `--games N`, `--best-of 3`, `--seed S` (reproducible), `--first a|b`, `--stack-a "Card,Card"` (put
+  cards on top of A's Deck: its opening hand), `--rules MR5`, `--out DIR`.
+
+From Python, `ygo_agent.match.run_games(seat_a, seat_b, games=N, ...)` does the same and returns every game's
+result, which the trainer and the benchmark build on.
 
 ## Learning a deck (e.g. Blackwings)
 
-- **Watch:** host the room, move yourself to the spectator seat, and use EDOPro's *Add AI* to fill the other seat with
-  any WindBot deck. Then run `ygo-agent teach --deck blackwing` (or `./play.sh --deck blackwing --teach`) and start
-  the duel. The AI explains every play like a coach, and its full plan for the turn appears in the terminal. As a
-  spectator you can't see its hand in EDOPro, but the terminal shows it.
-- **Copilot:** the same setup with `ygo-agent copilot --deck blackwing`. For every decision the terminal shows the
+- **Watch:** `ygo-agent teach --deck blackwing --web`. The AI plays against a WindBot deck AI (`--opponent
+  windbot:Dragunity`, or another AI seat such as `saffira:sonnet`) and explains every play like a coach; its full plan
+  for the turn appears in the terminal and the web panel. Join the room in EDOPro as a spectator (LAN Mode → Host
+  address `127.0.0.1`, port 7911 → Join); the duel starts when you're in, or when you press Enter to watch only in the
+  browser. As a spectator you can't see its hand in EDOPro, but the terminal and the panel show it. `--pace 3` slows
+  it down; `--games N` plays more. The older way still works: host the room in EDOPro, sit as a spectator, add a
+  WindBot with *Add AI*, and run `ygo-agent teach --join` (or `./play.sh --deck blackwing --teach`).
+- **Copilot:** host the room in EDOPro as for `teach --join` (you in the spectator seat, a WindBot added with
+  *Add AI*) and run `ygo-agent copilot --deck blackwing`. For every decision the terminal shows the
   board, the options and the AI's recommendation with its reasoning. Press Enter to follow it or type your own
   choice, so you're the one playing and the AI coaches. Set a long time limit, because your thinking time counts too.
 - No one coaches the bot on a deck you don't know yet, so after a game ask Claude Code to *review* it. It checks the
@@ -86,19 +134,26 @@ model = "qwen3:14b"
 card_texts = "compact"
 ```
 
-and `ygo-agent play --join --backend qwen`. [docs/backends.md](docs/backends.md) covers every backend and key.
+and `ygo-agent play --backend qwen`. [docs/backends.md](docs/backends.md) covers every backend and key.
 
-The rules stated to the AI come from the room's own settings when the bot joins (Master Rule 3 by default). When
+`[arena]` holds the settings of the rooms the agent hosts (a human's time limit, LAN discovery, the room name), and
+`[web] auto = true` starts the web panel with every game (`--no-web` skips it once).
+
+The rules stated to the AI are the room's own (`--rules`, Master Rule 3 by default; with `--join`, read from the
+room when the bot joins), and so is the opponent: a human, another AI and its deck, or a WindBot deck AI. When
 EDOPro updates its network protocol, the bot notices, retries with the new version and remembers it in
 `~/.cache/ygo-agent/`.
 
 ## How it works
 
 ```
-EDOPro room ⇄ WindBot fork (windbot-src, C#) ⇄ agent (Python, port 7922) ⇄ backend (default: claude -p, your Claude Code login)
+EDOPro (you / a spectator) ⇄ arena room (Python) ⇄ agent seats (in-process) ⇄ backend (default: claude -p, your Claude Code login)
+                                              ⇅ WindBot deck AIs (opponents)
+play --join:  EDOPro room ⇄ WindBot fork (windbot-src, C#) ⇄ agent (Python, port 7922) ⇄ backend
 ```
 
-- `windbot-src/` is a fork of ProjectIgnis WindBot, branch `brain-bridge`. When started with `Brain=host:port`, its
+- `windbot-src/` is a fork of ProjectIgnis WindBot, branch `brain-bridge`, for `play --join` and the WindBot
+  opponents. When started with `Brain=host:port`, its
   `BrainBridge` sends every decision (the visible board and the legal options) and every game event to the agent; if
   the agent can't answer, WindBot's own AI does. Without `Brain=` it is plain WindBot. Rebuild with `./build.sh`
   after changing it. The message format is in `docs/decision-protocol.md`.
@@ -115,10 +170,11 @@ EDOPro room ⇄ WindBot fork (windbot-src, C#) ⇄ agent (Python, port 7922) ⇄
   to the page (docs/web.md).
 - `ygo-agent replay games/latest 14` re-asks decision #14 with the current playbook and rules, and
   `ygo-agent test` re-runs every saved mistake.
-- *In progress (the `ygo-agent` commands come in Stage 4):* the arena (`python -m ygo_agent.arena`) can also seat the
-  agent itself, with no WindBot: `host --seat0 human --seat1 agent:saffira:opus` (you join from EDOPro), or
-  `bots --seat0 agent:saffira:heuristic --seat1 windbot:Blue-Eyes --no-lan` headless (`--pace 2` slows AI turns
-  down for a spectator). Game logs are the usual `games/<time>_<deck>-vs-<opponent>/`.
+- `ygo_agent/arena/`: the arena, a headless EDOPro host on the game engine (libocgcore) that seats the agent
+  in-process ("native seats", no WindBot), EDOPro clients (you, spectators) and WindBot deck AIs, and writes EDOPro
+  replays. `ygo_agent/match.py` runs matches on it: `play`, `selfplay` and `teach` are built on its `run_games()`.
+  `python -m ygo_agent.arena` has the low-level tools (`host`, `bots`, `selfplay-direct`, `list-bots`,
+  `replay-info`).
 
 ## Tests
 
@@ -127,8 +183,10 @@ EDOPro room ⇄ WindBot fork (windbot-src, C#) ⇄ agent (Python, port 7922) ⇄
   call (and an Anthropic API call when `ANTHROPIC_API_KEY` is set).
 - `tests/run_bridge_test.sh`: checks the C# ⇄ agent ⇄ model plumbing without EDOPro (real model calls, about a minute;
   `--model sonnet` makes it quicker).
-- `tests/native/`: the arena's native agent seats (fairness, protocol conformance, parity with the WindBot bridge);
-  `python tests/native/parity.py --games 5` prints a parity report.
+- `tests/native/`: the arena's native agent seats (fairness, protocol conformance, parity with the WindBot bridge)
+  and `run_games` (in-process and parallel games, a WindBot room, a spectator, the web panel, `selfplay` and `play`);
+  `python tests/native/parity.py --games 5` prints a parity report. The LAN test binds UDP 7920: while an arena with
+  LAN discovery runs, deselect it (`--deselect tests/arena/test_server.py::test_lan_discovery_reply`).
 
 ## License
 

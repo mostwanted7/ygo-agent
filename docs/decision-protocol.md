@@ -150,7 +150,8 @@ acknowledges it in chat.
   falls back when the backend gives no usable answer, after the engine rejected a response (`retry`), and for
   prompts it leaves to WindBot (`place`, `announce_card` with more than 150 names). With `agent.fallback =
   "heuristic"` (native seats) the agent answers those itself instead, with the heuristic policy (a random legal
-  answer after a `retry`), so `choice` is never null; see docs/backends.md.
+  answer after a `retry`), so `choice` is never null; see docs/backends.md. The reply `source` of a `place` (and a
+  long `announce_card`) is `auto` either way.
 - `choice: []` = pass / cancel / finish, where the kind allows it (below). Otherwise it is treated as a fallback.
 - `say`: optional chat text, sent to the room right away. `\n` separates lines; lines longer than 240 characters are
   split. The agent uses it for its rare banter and to acknowledge `!notes`, never for explanations.

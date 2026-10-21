@@ -4,6 +4,7 @@ and events render concisely (no EDOPro needed)."""
 import hashlib
 import json
 import os
+import re
 
 import pytest
 
@@ -32,6 +33,15 @@ FIXED = {
     # a Set Spell/Trap turning face-up used to read 'changes to ?.' (no name for S/T positions)
     ("saffira/main2-to-set-lance", 119): 'is flipped face-up.',
 }
+# Stage 4: a card the engine lists more than once (one entry per copy and procedure) gets its entries numbered, and
+# '%ls' in an effect description is the card's name (Snapshot renders it the old way).
+NUMBERED = re.compile(r"\(by its own summoning procedure; entry \d+ of \d+ for this card, which the engine lists once "
+                      r"per copy and procedure: the entries are equivalent\)")
+
+
+class Snapshot(Describer):
+    def effect_text(self, desc, card_id=None):
+        return super().effect_text(desc)
 
 
 @pytest.mark.skipif(not CASES, reason="no saved cases")
@@ -40,14 +50,36 @@ def test_saved_fixtures_render_byte_identically(path, db):
     """The hashes were taken with describe.py as it was before Stage 3 (tests/native/fixtures)."""
     with open(GOLDEN, encoding="utf-8") as f:
         golden = json.load(f)[case_id(path)]
-    texts = list(rendered(Describer(db), load_case(path)))
+    texts = list(rendered(Snapshot(db), load_case(path)))
     assert len(texts) == len(golden)
     for i, (text, want) in enumerate(zip(texts, golden)):
         fixed = FIXED.get((case_id(path), i))
         if fixed:
             assert text.endswith(fixed) and "?" not in text, text
             continue
-        assert hashlib.sha256(text.encode()).hexdigest()[:16] == want, f"message {i} renders differently:\n{text}"
+        old = NUMBERED.sub("(by its own summoning procedure)", text)
+        assert hashlib.sha256(old.encode()).hexdigest()[:16] == want, f"message {i} renders differently:\n{text}"
+
+
+def test_repeated_special_summon_entries_are_numbered(db):
+    """Stage 3 found two Xyz-procedure options for one card reading identically."""
+    d = Describer(db)
+    code, other = list(db.cards)[:2]
+    xyz = {"id": code, "c": 0, "l": 0x40, "s": -1}
+    options = [{"a": "spsummon", "card": xyz}, {"a": "spsummon", "card": dict(xyz, id=other)},
+               {"a": "spsummon", "card": xyz}, {"a": "to_end"}]
+    lines = d.options({"kind": "idle", "options": options})
+    assert len(set(lines)) == len(lines)
+    assert "entry 1 of 2" in lines[0] and "entry 2 of 2" in lines[2] and "equivalent" in lines[0]
+    assert lines[1].endswith("(by its own summoning procedure)")
+
+
+def test_effect_descriptions_name_their_card(db):
+    d = Describer(db)
+    code = next(iter(db.cards))
+    db.system[96] = 'Use the effect of "%ls" to avoid destruction?'
+    q = d.question({"kind": "effect_yn", "card": {"id": code, "c": 0, "l": 0x10, "s": 0}, "desc": 96})
+    assert f'Use the effect of "{db.name(code)}" to avoid destruction?' in q and "%ls" not in q
 
 
 def test_spell_trap_flips_read_as_flips(db):

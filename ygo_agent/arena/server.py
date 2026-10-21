@@ -20,7 +20,7 @@ import logging
 import random
 import socket
 import time
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -204,6 +204,10 @@ class Room:
         self.room_observers: list[RoomObserver] = []
         self.duel_observers: list[DuelObserver] = []
         self.duel_observer_factory: Callable[["Room", int], list[DuelObserver]] | None = None
+        # Awaited before each match starts (e.g. until a spectator has joined); None starts at once.
+        self.gate: Callable[["Room"], Awaitable[None]] | None = None
+        self._gate_task: asyncio.Task | None = None
+        self._gate_open = False
         self.finished = asyncio.Event()
         self._budget = [0.0, 0.0]
         self._turn_seen = -1
@@ -523,8 +527,32 @@ class Room:
             self._maybe_resume_after_siding()
 
     # --- starting a game ---------------------------------------------------------------------------------------
+    def _gated(self, resume: Callable[[], None]) -> bool:
+        """True while `gate` holds the next match back; `resume` is called again once it lets go."""
+        if self.gate is None:
+            return False
+        if self._gate_open:
+            self._gate_open = False
+            return False
+        if self._gate_task is None or self._gate_task.done():
+            self._gate_task = asyncio.get_running_loop().create_task(self._pass_gate(resume))
+        return True
+
+    async def _pass_gate(self, resume: Callable[[], None]) -> None:
+        try:
+            await self.gate(self)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            log.exception("match gate failed")
+        self._gate_open = True
+        resume()
+        self._gate_open = False  # not used up when the match couldn't start after all (someone left)
+
     def _maybe_start(self) -> None:
         if self.stage != Stage.LOBBY or any(p is None or not p.ready for p in self.slots):
+            return
+        if self._gated(self._maybe_start):
             return
         self.stage = Stage.RPS
         self._broadcast(P.STOC_DUEL_START)
@@ -822,9 +850,16 @@ class Room:
             p.state = STATE_NONE
             p.send(P.STOC_DUEL_START)
         if self.stage == Stage.REMATCH and all(q is not None and q.ready for q in self.slots):
-            loser = self._loser()
-            self.match_results, self.match_kill = [], False
-            self._ask_first(loser)
+            self._start_rematch()
+
+    def _start_rematch(self) -> None:
+        if self.stage != Stage.REMATCH or not all(q is not None and q.ready for q in self.slots):
+            return
+        if self._gated(self._start_rematch):
+            return
+        loser = self._loser()
+        self.match_results, self.match_kill = [], False
+        self._ask_first(loser)
 
     def _close_match(self) -> None:
         """The match is over and everyone was told (STOC_DUEL_END). Clients leave on their own; the room
@@ -960,6 +995,8 @@ class ArenaServer:
             await self.close()
 
     async def close(self) -> None:
+        if self.room._gate_task is not None and not self.room._gate_task.done():
+            self.room._gate_task.cancel()
         if self.room.game_task and not self.room.game_task.done():
             if self.room.duel is not None and self.room.duel.result is None:
                 self.room.duel.end(2, 0x6)

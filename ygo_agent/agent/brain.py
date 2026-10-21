@@ -18,6 +18,7 @@ from .validate import validate
 BOSS_TYPES = 0x40 | 0x80 | 0x2000 | 0x800000 | 0x4000000  # Fusion, Ritual, Synchro, Xyz, Link
 BOSS_ATK = 2500
 FIELD = (0x4, 0x8)
+KEY_ACTIONS = ("activate", "summon", "spsummon", "set_monster", "set_spell", "attack", "reposition")
 FALLBACKS = ("bot", "heuristic")
 # Backend profile keys meta.json records (never headers or keys).
 META_KEYS = ("name", "type", "model", "effort", "base_url", "json_mode", "structured", "api_key_env", "temperature",
@@ -29,12 +30,12 @@ def card_key(c):
 
 
 def event_ids(ev):
+    """The card codes an event names (their texts go into the next prompt if the session hasn't seen them)."""
     ids = set()
-    for key in ("id",):
-        if isinstance(ev.get(key), int) and ev[key]:
-            ids.add(ev[key])
-    for key in ("card", "attacker", "target"):
-        c = ev.get(key)
+    if isinstance(ev.get("id"), int) and ev["id"]:
+        ids.add(ev["id"])
+    cards = [ev.get(key) for key in ("card", "attacker", "target")] + list(ev.get("cards") or [])  # confirm, swap
+    for c in cards:
         if isinstance(c, dict) and c.get("id"):
             ids.add(c["id"])
     return ids
@@ -50,10 +51,12 @@ def chat_source(ev):
 
 class DuelBrain:
     """One game for one seat. `backend` (a profile dict or a Backend) overrides the config's agent.backend;
-    `fallback` is who answers when the backend can't: "bot" (choice null, WindBot's own AI) or "heuristic"."""
+    `fallback` is who answers when the backend can't: "bot" (choice null, WindBot's own AI) or "heuristic".
+    `mode` overrides the config's (play, selfplay, teach, copilot); `opponent` describes who it plays against
+    (prompts.opponent_text); `log_options` go to its GameLog (terminal tag and verbosity, see GameLog)."""
 
     def __init__(self, cfg, db, profile, log=None, prewarm=True, runtime=None, room=None, backend=None,
-                 fallback=None, game_id=None, seat=0):
+                 fallback=None, game_id=None, seat=0, mode=None, opponent=None, log_options=None):
         self.cfg = cfg
         self.db = db
         self.profile = profile
@@ -66,7 +69,9 @@ class DuelBrain:
             log.web.on_feedback(self.panel_note)
         self.prewarm = prewarm
         self.runtime = runtime
-        self.mode = cfg.get("mode", "play")
+        self.mode = mode or cfg.get("mode", "play")
+        self.opponent = opponent
+        self.log_options = dict(log_options or {})
         self.copilot = self.mode == "copilot"
         if backend is None:
             backend = backend_profile(cfg)
@@ -90,6 +95,8 @@ class DuelBrain:
         self.session = None
         self.session_turn = None
         self.session_seen = set()
+        self.opened_turn = None  # the turn the last session was opened for
+        self.rolled_over = False  # the current session replaces one of the same turn
         self.turn = 0
         self.retry = False
         self.plan = []
@@ -113,11 +120,15 @@ class DuelBrain:
         # Created on first use, so a bot that never got into a duel leaves no empty log behind.
         if self._log is None:
             self._log = GameLog(paths.resolve(self.cfg.get("games_dir", "games")), self.profile.name,
-                                deck_key=self.profile.key, game_id=self.game_id, seat=self.seat)
+                                deck_key=self.profile.key, game_id=self.game_id, seat=self.seat,
+                                **self.log_options)
             self._log.web.on_feedback(self.panel_note)
+            extra = {"deck_ydk": self.profile.ydk} if getattr(self.profile, "adhoc", False) else {}
+            if self.opponent:
+                extra["opponent_info"] = self.opponent
             self._log.write_meta(deck=self.profile.key, deck_name=self.profile.name, mode=self.mode,
                                  backend=self.backend_meta(), rules=self.rules_key,
-                                 started=time.strftime("%Y-%m-%d %H:%M:%S"))
+                                 started=time.strftime("%Y-%m-%d %H:%M:%S"), **extra)
             if self.room:
                 self._log.record("event", self.room)
             if self.runtime and self.runtime.windbot_log:
@@ -136,7 +147,8 @@ class DuelBrain:
     @property
     def system_prompt(self):
         if self._system_prompt is None:
-            self._system_prompt = self.profile.system_prompt(self.mode, self.rules_key, self.card_texts)
+            self._system_prompt = self.profile.system_prompt(self.mode, self.rules_key, self.card_texts,
+                                                             self.opponent)
         return self._system_prompt
 
     def say(self, line):
@@ -250,18 +262,25 @@ class DuelBrain:
             self.session_turn = turn
             self.session_seen = set(self.profile.ids)
             self.stats.sessions += 1
+            # A rollover replaces a session of the same turn. The turn's first session is none, even when rules
+            # already answered some of its decisions.
+            self.rolled_over = self.opened_turn == turn
+            self.opened_turn = turn
         return self.session
 
     def carry_over(self):
-        """For a session that starts mid-turn: the plan and the decisions so far, so the backend keeps its line."""
+        """For a session that starts mid-turn: the plan and the decisions so far, so the backend keeps its line.
+        A turn's first session gets the decisions the rules already made this turn, if any."""
         if not self.turn_log and not self.turn_plan:
             return None
-        lines = ["Your previous session for this turn ended (message limit, crash or timeout). Where you were:"]
-        if self.turn_plan:
-            lines.append("Your plan for this turn: " + self.turn_plan)
+        lines = []
+        if self.rolled_over:
+            lines.append("Your previous session for this turn ended (message limit, crash or timeout). Where you were:")
+            if self.turn_plan:
+                lines.append("Your plan for this turn: " + self.turn_plan)
         if self.turn_log:
             lines.append("Decisions already made this turn:\n" + "\n".join(self.turn_log[-30:]))
-        return "\n".join(lines)
+        return "\n".join(lines) or None
 
     def build_message(self, d, question, options_text, first):
         parts = []
@@ -270,8 +289,9 @@ class DuelBrain:
             parts.append("A new session started for this turn. Duel log so far:\n" + "\n".join(history))
             carry = self.carry_over()
             if carry:
-                self.stats.rollovers += 1
                 parts.append(carry)
+            if self.rolled_over:
+                self.stats.rollovers += 1
         elif self.pending:
             parts.append("What happened since your last decision:\n" + "\n".join(self.pending))
         self.pending = []
@@ -386,7 +406,10 @@ class DuelBrain:
         if decided is not None:
             choice = decided.choice
             if choice is None and self.fallback != "bot":
-                choice, source = self.fallback_choice(d), "fallback"  # e.g. zone placement in a native seat
+                # A built-in rule leaving the prompt to the default (zone placement, a huge card-name list) is still
+                # "auto", as with WindBot; a deck rule that gives up is a fallback.
+                choice = self.fallback_choice(d)
+                source = "auto" if source == "auto" else "fallback"
             if kind != "place":
                 if source.startswith("rule"):
                     choice = self.conclude(d, question, options_text, choice, decided.why, None, source)
@@ -421,12 +444,24 @@ class DuelBrain:
     def decided(self, d, question, options_text, chosen, why, plan, source, seconds=None, note=None, **kw):
         """Log a decision (terminal + game.md) and remember it for this turn's carry-over."""
         self.log.decision(d["id"], question, options_text, chosen, why, plan, source, seconds, note,
-                          label=self.label, fallback=self.fallback_label(), **kw)
+                          label=self.label, fallback=self.fallback_label(), key=self.key_play(d, chosen),
+                          turn=(d.get("state") or {}).get("turn"), **kw)
         if kw.get("write", True):
             picked = ", ".join(options_text[k] for k in chosen if 0 <= k < len(options_text)) if options_text else (
                 {(1,): "yes", (0,): "no"}.get(tuple(chosen), str(chosen)))
             self.turn_log.append(f"- #{d['id']} {self.short_question(d, question)}: {picked or 'pass / none'} "
                                  f"[{self.tag(source)}]" + (f" — {why}" if why else ""))
+
+    @staticmethod
+    def key_play(d, chosen):
+        """A play worth a line in the compact terminal view: an action taken in the Main or Battle Phase or a
+        chain (not a phase change or a pass), or a yes to an optional effect."""
+        if d["kind"] == "effect_yn":
+            return chosen == [1]
+        if d["kind"] not in ("idle", "battle", "chain") or not chosen:
+            return False
+        options = d.get("options", [])
+        return any(0 <= k < len(options) and options[k].get("a") in KEY_ACTIONS for k in chosen)
 
     def short_question(self, d, question):
         if d["kind"] in ("select_card", "tribute", "select_unselect", "select_sum"):
@@ -513,11 +548,16 @@ class DuelBrain:
 
     def summary(self):
         self.log.write_meta(stats=self.stats.summary())
-        print(paint(BOLD, "\n  " + self.stats.line(self.label)
-                    + (f" You overrode {self.label} {self.overridden} time(s)." if self.copilot else "")))
-        print(paint(BOLD + ";" + YELLOW, f"  Game log: {self.log.dir}/game.md"))
-        print(paint(YELLOW, "  Give your feedback to your coding agent (e.g. Claude Code) in this repo's folder to "
-                            "update the playbook/rules.\n"))
+        echo = self.log.echo
+        if echo in ("key", "off") or self.log.quiet:
+            return  # the match prints the result
+        lines = [paint(BOLD, "\n  " + self.stats.line(self.label)
+                       + (f" You overrode {self.label} {self.overridden} time(s)." if self.copilot else "")),
+                 paint(BOLD + ";" + YELLOW, f"  Game log: {self.log.dir}/game.md")]
+        if echo == "all" and not self.log.tag:
+            lines.append(paint(YELLOW, "  Give your feedback to your coding agent (e.g. Claude Code) in this repo's "
+                                       "folder to update the playbook/rules.\n"))
+        self.log.say(*lines)
 
     def close(self):
         if self.session:

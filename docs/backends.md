@@ -215,6 +215,9 @@ corrective re-ask, or a prompt the agent leaves alone (zone placement, `announce
 - `"heuristic"`: the heuristic policy answers. After an engine `retry`, a random legal answer is sent instead, so
   the rejected answer isn't repeated. Native arena seats use this mode.
 
+Either way, the prompts the agent leaves alone on purpose (zone placement, a card-name list over 150) count as
+`auto` in the stats, not as fallbacks.
+
 ## Prompt budget (small-context models)
 
 Each profile may set these keys; otherwise `[agent]` applies.
@@ -251,7 +254,7 @@ these, so the names are stable:
 | field | meaning |
 |---|---|
 | `decisions` | decisions answered (not counting the `game_over` round trip) |
-| `by_source` | `{backend, rule, auto, fallback, pilot}`: who made each decision (`auto` covers built-in rules such as single options and planned multi-picks; `pilot` is the copilot's human) |
+| `by_source` | `{backend, rule, auto, fallback, pilot}`: who made each decision (`auto` covers built-in rules such as single options, zone placements and planned multi-picks; `pilot` is the copilot's human) |
 | `asks` | `session.ask()` calls, the corrective re-asks included |
 | `replies` | model outputs received (a session's own repair retry is a second one) |
 | `invalid_replies` | outputs that couldn't be read, or named an illegal choice |

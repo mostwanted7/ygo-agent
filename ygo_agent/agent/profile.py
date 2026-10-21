@@ -34,11 +34,37 @@ def deck_keys():
     return sorted(k for k in os.listdir(paths.DECKS) if os.path.exists(os.path.join(paths.DECKS, k, "deck.json")))
 
 
-class Profile:
-    """The deck being played: decklist, card texts and the coaching playbook."""
+def find_playbook(ydk):
+    """The playbook that goes with a loose .ydk file: <name>.md or <name>.playbook.md next to it, if there is one."""
+    stem = os.path.splitext(ydk)[0]
+    return next((p for p in (stem + ".playbook.md", stem + ".md") if os.path.isfile(p)), None)
 
-    def __init__(self, deck_key, db, cfg=None):
+
+class Profile:
+    """The deck being played: decklist, card texts and the coaching playbook.
+
+    Normally a folder decks/<key>/ (deck.json, the .ydk, playbook.md, rules.py, tests/). `ydk=` makes one from a
+    loose .ydk file instead (e.g. a deck in EDOPro's deck folder), with an optional `playbook` file; its rules.py
+    and tests/, if any, are looked up next to the .ydk."""
+
+    def __init__(self, deck_key, db, cfg=None, ydk=None, playbook=None):
         self.key = deck_key
+        self.db = db
+        if ydk is not None:
+            self.ydk = os.path.abspath(os.path.expanduser(ydk))
+            if not os.path.isfile(self.ydk):
+                raise FileNotFoundError(f"deck file not found: {self.ydk}")
+            self.dir = os.path.dirname(self.ydk)
+            self.settings = {"name": os.path.splitext(os.path.basename(self.ydk))[0]}
+            self.playbook_path = playbook if playbook is not None else find_playbook(self.ydk)
+            self.adhoc = True
+        else:
+            self._load_folder(deck_key, cfg)
+        self.name = self.settings.get("name", deck_key)
+        self.main, self.extra, self.side = parse_ydk(self.ydk)
+        self.ids = set(self.main) | set(self.extra) | set(self.side)
+
+    def _load_folder(self, deck_key, cfg):
         self.dir = os.path.join(paths.DECKS, deck_key)
         json_path = os.path.join(self.dir, "deck.json")
         if not os.path.exists(json_path):
@@ -48,13 +74,11 @@ class Profile:
             self.settings = json.load(f)
         # config.local.toml [decks.<key>] wins, e.g. to play the EDOPro copy of the .ydk so its edits carry over.
         self.settings.update(deck_overrides(cfg or {}, deck_key))
-        self.name = self.settings.get("name", deck_key)
         self.ydk = paths.resolve(self.settings.get("ydk", "deck.ydk"), self.dir)
         if not os.path.exists(self.ydk):
             raise FileNotFoundError(f"deck file for {deck_key!r} not found: {self.ydk}")
-        self.main, self.extra, self.side = parse_ydk(self.ydk)
-        self.ids = set(self.main) | set(self.extra) | set(self.side)
-        self.db = db
+        self.playbook_path = os.path.join(self.dir, "playbook.md")
+        self.adhoc = False
 
     def get(self, key, default=None):
         return self.settings.get(key, default)
@@ -68,7 +92,7 @@ class Profile:
 
     @property
     def playbook(self):
-        return self._read(os.path.join(self.dir, "playbook.md"), "(no playbook yet)")
+        return self._read(self.playbook_path, "(no playbook yet)") if self.playbook_path else "(no playbook yet)"
 
     @property
     def general_playbook(self):
@@ -96,5 +120,5 @@ class Profile:
         playbook = self.playbook
         return "\n".join("- " + self.card_text(i, mode, playbook) for i in dict.fromkeys(self.main + self.extra))
 
-    def system_prompt(self, mode="play", rules="MR3", card_texts="full"):
-        return prompts.system_prompt(self, mode, rules, card_texts)
+    def system_prompt(self, mode="play", rules="MR3", card_texts="full", opponent=None):
+        return prompts.system_prompt(self, mode, rules, card_texts, opponent)
