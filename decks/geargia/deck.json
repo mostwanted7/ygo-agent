@@ -1,5 +1,11 @@
 {
   "name": "Geargia",
   "ydk": "deck.ydk",
-  "go_first": true
+  "go_first": true,
+  "tips_seen": [
+    "1221a8234d56",
+    "4042bbda407f",
+    "48f6473cc854",
+    "5b348aaa007b"
+  ]
 }

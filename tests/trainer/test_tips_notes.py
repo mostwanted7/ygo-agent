@@ -56,3 +56,17 @@ def test_notes_pending_trust_and_mark(tmp_path):
     assert notes.pending("geargia", str(tmp_path)) == []
     assert [n.key for n in notes.for_deck("geargia", str(tmp_path))][1:] == [
         "2026-10-22_100000_geargia:0", "2026-10-22_100000_geargia:1", "2026-10-22_100000_geargia:2"]
+
+
+def test_tips_seen_travels_in_deck_json(tmp_path):
+    deck = tmp_path / "chaos"
+    deck.mkdir()
+    (deck / "deck.json").write_text('{"name": "Chaos"}')
+    tips.add(str(deck), "Go first.")
+    assert tips.seen(str(deck)) == set()
+    tips.remember(str(deck), tips.entries(str(deck)))
+    assert tips.seen(str(deck)) == {tips.key(tips.entries(str(deck))[0])}
+    from ygo_agent.trainer.learn import tips_status
+    assert tips_status(str(deck))["new"] == []
+    tips.add(str(deck), "Keep Lightpulsar.")
+    assert tips_status(str(deck))["new"] == [2]

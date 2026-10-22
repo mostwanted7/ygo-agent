@@ -23,7 +23,6 @@ run in <deck>/train/learn.md; its state is under "learn" in train/state.json, ap
 from __future__ import annotations
 
 import collections
-import hashlib
 import json
 import os
 import re
@@ -70,16 +69,14 @@ def learn_state(deck_dir: str) -> dict:
         return {}
 
 
-def tip_key(tip: dict) -> str:
-    """A tip's identity (its title and text), to tell the ones a playbook already took in from new or edited ones."""
-    return hashlib.sha1(f"{tip['title']}\n{' '.join(tip['text'].split())}".encode()).hexdigest()[:12]
+tip_key = tips_mod.key
 
 
 def tips_status(deck_dir: str) -> dict:
     """The tips, and which ones the playbook hasn't taken in yet (added or edited since the study or the last learn
     that folded tips in)."""
     entries = tips_mod.entries(deck_dir)
-    seen = set(learn_state(deck_dir).get("tips_seen") or [])
+    seen = set(learn_state(deck_dir).get("tips_seen") or []) | tips_mod.seen(deck_dir)
     new = [n for n, t in enumerate(entries, 1) if tip_key(t) not in seen]
     return {"path": tips_mod.path(deck_dir), "count": len(entries), "new": new, "digest": tips_mod.digest(deck_dir),
             "changed": bool(new)}
@@ -252,6 +249,7 @@ class Learner:
             if tips_folded:
                 ws.state.update(tips_digest=self.tips_info["digest"],
                                 tips_seen=[tip_key(x) for x in self.tips_entries])
+                tips_mod.remember(self.deck.dir, self.tips_entries)
             self.summary.update(self.totals(status, size_before, time.monotonic() - started))
             ws.state["runs"].append({k: self.summary[k] for k in ("run", "status", "notes", "verdicts", "tips",
                                                                   "kb_before", "kb_after", "cases", "cost")})

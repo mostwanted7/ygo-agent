@@ -12,6 +12,7 @@ this file is the owner's record, so nothing but the owner and these helpers writ
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import re
 import time
@@ -79,6 +80,37 @@ def digest(deck_dir: str) -> str:
     """A hash of the file ("" when there is none): `learn` compares it with the one it last folded in."""
     text = read(deck_dir)
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16] if text.strip() else ""
+
+
+def key(tip: dict) -> str:
+    """A tip's identity (its title and text), to tell the ones a playbook already took in from new or edited ones."""
+    return hashlib.sha1(f"{tip['title']}\n{' '.join(tip['text'].split())}".encode()).hexdigest()[:12]
+
+
+def seen(deck_dir: str) -> set[str]:
+    """The keys of the tips the playbook has taken in, kept in deck.json ("tips_seen") so a shared deck carries
+    them (train/ isn't shared)."""
+    try:
+        with open(os.path.join(deck_dir, "deck.json"), encoding="utf-8") as f:
+            return set(json.load(f).get("tips_seen") or [])
+    except (OSError, ValueError, AttributeError):
+        return set()
+
+
+def remember(deck_dir: str, tips: list[dict]) -> None:
+    """Record that the playbook now reflects these tips (in deck.json; nothing happens without one)."""
+    path = os.path.join(deck_dir, "deck.json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return
+    if not tips and "tips_seen" not in data:
+        return
+    data["tips_seen"] = sorted({key(t) for t in tips})
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+        f.write("\n")
 
 
 def one_line(text: str, limit: int = 200) -> str:

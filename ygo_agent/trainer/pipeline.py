@@ -384,6 +384,7 @@ class Trainer:
         self.ws.state.setdefault("learn", {}).update(tips_digest=tips_mod.digest(self.deck_dir),
                                                      tips_seen=[tip_key(t) for t in self.tips()])
         self.ws.save()
+        tips_mod.remember(self.deck_dir, self.tips())
 
     # ---- the interview ----
 
