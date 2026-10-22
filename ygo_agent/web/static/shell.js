@@ -398,7 +398,8 @@
     await loadInfo();
     const d = await api(`/api/decks/${encodeURIComponent(name)}`);
     if (!alive(p)) return;
-    if (d.training_only && !d.playbook) { location.hash = `#/new/${encodeURIComponent(d.key)}`; return; }
+    // A deck still being trained (questions waiting, or a run that stopped before the playbook) belongs to the wizard.
+    if (!d.playbook && (d.training_only || (d.train && d.train.status !== "done"))) { location.hash = `#/new/${encodeURIComponent(d.key)}`; return; }
     S.deck = d;
     const pendingGames = new Set(d.pending.map((n) => n.game)).size;
     const learnJob = d.jobs.find((j) => j.kind === "learn" && j.running);
@@ -555,8 +556,11 @@
     const head = `<div class="pg-head"><a class="backlink" href="#/decks">Decks</a><h1>Train ${esc(d.name || name)}</h1>${d.dir ? `<span class="sub mono">${esc(d.dir)}</span>` : ""}</div>`;
     const done = d.train && d.train.status === "done";
     if (trainJob && (trainJob.running || !done)) return wizardProgress(p, d, trainJob, head);
+    // `train --interview-only` writes a report too: questions waiting for answers come before any report.
+    const asking = d.interview && !(interviewJob && interviewJob.running);
+    if (asking && d.train && d.train.status === "interview ready") return wizardQuestions(p, d, head);
     if (done || (d.report && !trainJob)) return wizardReport(p, d, head);
-    if (d.interview && !(interviewJob && interviewJob.running)) return wizardQuestions(p, d, head);
+    if (asking) return wizardQuestions(p, d, head);
     if (interviewJob) {
       page().innerHTML = `<div class="pg wizard">${head}${steps(0)}
         <div class="box"><div class="box-head"><h2>${interviewJob.running ? "Reading the deck…" : interviewJob.status === "done" ? "Read" : "It stopped"}</h2>${statusChip(interviewJob)}<div class="spacer"></div><a class="lnk" href="#/jobs/${esc(interviewJob.id)}">the job</a></div>
