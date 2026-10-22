@@ -73,7 +73,15 @@ happened>" and then:
 - **Why:** the concrete reason: what the cards do, the board and LP it leads to, what the opponent could do about it.
 - **Playbook:** the playbook rule it is about (quote it briefly), or "No rule yet:" and the rule worth adding.
 A moment can be one where the coach was wrong and the human right: say so. Decisions where they followed good advice
-don't belong here.
+don't belong here. When the same mistake happens more than once, report it at its FIRST occurrence and list the later
+decisions that repeat it.
+
+Judge every decision only by what the human could know at that moment: their hand, the public board, the cards
+revealed so far. Never use information revealed later (what a face-down card turned out to be, the opponent's hand)
+or how things worked out. A risky play that happened to work is still risky, and safe advice that was not followed
+was still right. Yu-Gi-Oh is a game of incomplete information and several lines are often equally good: call a play a
+mistake only if it was clearly worse with what was known, and leave out choices that were reasonable alternatives
+(you can mention one briefly under "What you did well" if the reasoning was sound).
 
 ## What you did well
 2-4 bullets, each tied to a specific decision of this game.

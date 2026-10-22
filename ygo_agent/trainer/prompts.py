@@ -217,6 +217,9 @@ learning the deck and nobody else reviews its games. {log_ref}
 Go through the game turn by turn, the way a coach reviews a student's game:
 - Judge each play on the board, not on whether it followed the playbook: the playbook is guidance, and a deviation \
 that was as good or better is not a mistake (if it was better, improve the principle it broke).
+- Judge each play only by what the player could know at that moment, never by what a face-down card turned out to \
+be or how it worked out: a risky play that happened to work is still risky. Several lines are often equally good; \
+call a play a mistake only if it was clearly worse with what was known.
 - Look for: decisions the fallback made and "engine rejected"/"can't take" notes (listed below); unused resources \
 (searches not taken, the Normal Summon unused, once-per-turn effects or triggers skipped, a card left in hand that had \
 a use this turn); wrong Extra Deck choices or locks; zone clogging; self-damage; missed lethal (add up the most damage \

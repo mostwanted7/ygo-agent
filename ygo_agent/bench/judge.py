@@ -77,6 +77,8 @@ Grade every answer:
 - acceptable: playable but clearly worse; it costs a little
 - mistake: it costs real resources, damage, tempo or a winning chance; a strong player wouldn't do it
 - blunder: it likely loses the game, throws away a key card or effect, or rests on a misread of the cards or rules
+Judge only by what the player could know at that moment (the log shows nothing hidden that the player didn't see); \
+Yu-Gi-Oh! is a game of incomplete information, so a reasonable line under uncertainty is not a mistake.
 
 Grade the move, not the prose: a right move with a muddled reason is still right (say so in the reason), and a \
 well-argued wrong move is still wrong. Judge from what the player could know at that moment (its hand, the public \
