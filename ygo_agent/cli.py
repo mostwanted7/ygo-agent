@@ -147,6 +147,12 @@ def parser():
                                      "([decks] user_dir; `train` puts new decks there)")
     p.add_argument("--config", metavar="FILE", help="use FILE instead of config.local.toml")
 
+    p = sub.add_parser("doctor", help="check the setup: Python, config, EDOPro and its core, mono and WindBot, "
+                                      "backends, decks, ports (exit 1 when something fails)")
+    p.add_argument("--json", action="store_true", help="print the results as JSON (name, status, detail, hint)")
+    p.add_argument("--edopro-dir", help="EDOPro install folder")
+    p.add_argument("--config", metavar="FILE", help="use FILE instead of config.local.toml")
+
     p = sub.add_parser("web", help="the web panel on its own: browse and replay recorded games, or a live demo")
     p.add_argument("--demo", metavar="GAME_DIR", help="replay a recorded game (games/<dir>) live, as if it were "
                                                        "being played now")
@@ -504,6 +510,9 @@ def run_tests(args, cfg, names):
 def main(argv=None):
     sys.stdout.reconfigure(line_buffering=True)
     args = parser().parse_args(argv)
+    if args.cmd == "doctor":  # loads the config itself, so a broken config is a finding rather than an exit
+        from .doctor import main as doctor
+        sys.exit(doctor(args))
     try:
         cfg = configure(args)
     except ConfigError as e:
