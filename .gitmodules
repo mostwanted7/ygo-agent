@@ -1,0 +1,4 @@
+[submodule "windbot-src"]
+	path = windbot-src
+	url = https://github.com/mostwanted7/windbot.git
+	branch = brain-bridge

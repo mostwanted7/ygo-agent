@@ -504,3 +504,7 @@ Usage window nearly exhausted, so this waits for the reset. Then:
   rooms a human joins (debatable, left as is), everything else is loopback; secrets never reach logs.
 - Debatable items were listed for the user rather than changed (the session's final report).
 - Publishing (the WindBot fork, the submodule, the public repo) still waits for the user's confirmation.
+
+## Published 2026-10-22
+Public at https://github.com/mostwanted7/ygo-agent. `windbot-src` is a submodule pointing at
+https://github.com/mostwanted7/windbot (branch `brain-bridge`, a fork of ProjectIgnis/windbot).
