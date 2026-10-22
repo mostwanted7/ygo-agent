@@ -205,6 +205,15 @@ class Policy:
             return bool(t & SPELL) and not t & QUICKPLAY
         return True  # effects of cards already on the field, in the GY or banished
 
+    def hand_trap(self, card):
+        """A monster whose effect is used from the hand in response to something (Ghost Ogre, Ash Blossom): Setting or
+        summoning it throws that effect away."""
+        try:
+            return any(e.range and e.range & 0x2 and (e.code or "").startswith("EVENT_") and not e.hint
+                       for e in self.db.scripts.effects(int((card or {}).get("id") or 0)))
+        except Exception:   # no database or no scripts (tests): treat it as an ordinary monster
+            return False
+
     def summon_score(self, card, state):
         atk, lv = self.atk(card), card.get("lv") or 0
         tributes = 0 if lv <= 4 else 1 if lv <= 6 else 2
@@ -234,19 +243,19 @@ class Policy:
         sps = [i for i in by["spsummon"] if ok(i)]
         if sps:
             return pick(max(sps, key=lambda i: self.atk(opts[i]["card"])), "Special Summon the strongest monster")
-        summons = [i for i in by["summon"] if ok(i)]
+        summons = [i for i in by["summon"] if ok(i) and not self.hand_trap(opts[i].get("card"))]
         if summons:
             best = max(summons, key=lambda i: self.summon_score(opts[i]["card"], s))
             card = opts[best]["card"]
             stronger = self.opp_best_atk(s) > self.atk(card)
-            sets = [i for i in by["set_monster"] if ok(i)]
+            sets = [i for i in by["set_monster"] if ok(i) and not self.hand_trap(opts[i].get("card"))]
             if self.summon_score(card, s) > 0 and not (stronger and sets):
                 return pick(best, "Normal Summon the strongest monster")
             if sets:
                 return pick(max(sets, key=lambda i: self.defense(opts[i]["card"])),
                             "Set a monster: the opponent has a stronger one")
         elif by["set_monster"] and not self.monsters(s, "me"):
-            sets = [i for i in by["set_monster"] if ok(i)]
+            sets = [i for i in by["set_monster"] if ok(i) and not self.hand_trap(opts[i].get("card"))]
             if sets:
                 return pick(max(sets, key=lambda i: self.defense(opts[i]["card"])), "Set a monster as a wall")
         for i in by["reposition"]:
