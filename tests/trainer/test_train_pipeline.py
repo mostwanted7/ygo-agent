@@ -45,6 +45,9 @@ def policy(calls):
     def answer(req):
         calls.append(req["task"])
         t = req["task"]
+        if t == "interview":
+            assert "## Dossier" in req["prompt"]
+            return {"questions": [{"question": "Which Rank 4 first?", "why": "the Xyz priority"}]}
         if t == "study":
             return {"playbook": PLAYBOOK, "go_first": False, "go_first_reason": "traps want the opponent to commit",
                     "open_questions": ["does Geargiarmor's flip miss timing?"],
@@ -76,14 +79,15 @@ def policy(calls):
     return answer
 
 
-def make(cfg_dir, calls, budget=None, resume=False, rounds=2, games=1, cost=0.5, engine=None, db=None):
+def make(cfg_dir, calls, budget=None, resume=False, rounds=2, games=1, cost=0.5, engine=None, db=None,
+         interview="skip"):
     from ygo_agent.config import load_config
     cfg = load_config(local=None, overrides={"games_dir": str(cfg_dir / "games"), "chat": "off"})
     cfg["backends"]["fake"] = {"type": "scripted", "policy": policy(calls), "cost_per_call": cost}
     o = Options(ydk=os.path.join(engine.install.deck_dir, "Geargia.ydk"), name="geartest", backend="fake",
                 player_backend="heuristic", opponents=["heuristic:saffira", "windbot:Dark Magician"], lab_hands=3,
                 games=games, max_rounds=rounds, budget=budget, lab_parallel=2, parallel=1, test_repeat=1, echo="off")
-    return Trainer(o, cfg, db=db, engine=engine, resume=resume, quiet=True)
+    return Trainer(o, cfg, db=db, engine=engine, resume=resume, quiet=True, interview=interview, interactive=False)
 
 
 @pytest.fixture
@@ -94,7 +98,7 @@ def geargia(engine):
 
 def test_dry_run_of_the_whole_pipeline(tmp_path, decks_dir, engine, agent_db, geargia, quiet):
     calls = []
-    t = make(tmp_path, calls, engine=engine, db=agent_db)
+    t = make(tmp_path, calls, engine=engine, db=agent_db, interview="ask")  # no terminal: questions written only
     assert t.run() == "done"
     deck = decks_dir / "geartest"
     train = deck / "train"
@@ -104,8 +108,12 @@ def test_dry_run_of_the_whole_pipeline(tmp_path, decks_dir, engine, agent_db, ge
     assert "RULES = []" in (deck / "rules.py").read_text()
     for f in ("dossier.md", "cards.json", "scripts/c73428497.lua", "study/playbook-draft.md", "study/card-checks.md",
               "round-1/lab/lab-results.md", "round-1/lab/hand-01/game.md", "round-1/playbook.md",
-              "general-proposals.md", "train-report.md", "calls/study.prompt.md", "calls/study.reply.json"):
+              "general-proposals.md", "train-report.md", "calls/study.prompt.md", "calls/study.reply.json",
+              "interview.json"):
         assert (train / f).exists(), f
+    assert calls[0] == "interview" and not (deck / "tips.md").exists()
+    assert [q["id"] for q in json.loads((train / "interview.json").read_text())["questions"]] == ["q1",
+                                                                                                 "anything-else"]
     assert calls.count("study") == 1 and calls.count("lab-review") == 1  # round 2: L1 verified, no lab
     assert calls.count("review") == 2
     text = (deck / "playbook.md").read_text()

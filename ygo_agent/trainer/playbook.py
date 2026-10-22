@@ -3,8 +3,9 @@ evidence check that keeps unverified lessons out.
 
 A playbook is Markdown split by "## " headings, principles first (TEMPLATE). The last section, Known pitfalls, holds
 the specific mistakes from reviewed games (newest on top); the trainer adds them there itself, so a section
-replacement can never rewrite or drop them. Older playbooks (decks/saffira, decks/blackwing) keep their lessons
-section on top; it counts as the same section.
+replacement can never rewrite or drop them. Older playbooks (decks/blackwing) keep their lessons section on top; it
+counts as the same section. A section the deck's owner writes (Saffira's "Coaching lessons") is theirs: no edit,
+condense or pitfall ever goes into it (`is_owner`, `keep_owner`).
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ TEMPLATE = (("## How to use this playbook", True), ("## Game plan", True), ("## 
             ("## Situational considerations", True), ("## Lethal check", False),
             ("## Going second / breaking boards", False), ("## Example sequences", False), (LESSONS_HEADING, True))
 REQUIRED = ("how to use", "game plan", "card roles", "situational considerations")
+OWNER = ("coaching lessons", "owner")  # headings of sections the deck's owner writes
 TARGET_KB = (5, 8)
 LIMIT_BYTES = 8704  # above this (8.5 KB) a condense pass tightens it
 
@@ -63,6 +65,24 @@ def is_lessons(heading: str | None) -> bool:
     return k.startswith(("lessons", "coaching lessons", "known pitfalls", "pitfalls"))
 
 
+def is_owner(heading: str | None) -> bool:
+    """A section the deck's owner writes, in their words (Saffira's "Coaching lessons"): never edited by the trainer."""
+    k = key(heading)
+    return bool(k) and (k.startswith(OWNER[0]) or any(word in k for word in OWNER[1:]))
+
+
+def keep_owner(before: str, after: str) -> str:
+    """`after` (a condensed or revised whole playbook) with the owner's sections exactly as they are in `before`, at
+    the same place."""
+    owned = [(i, h, b) for i, (h, b) in enumerate(split(before)) if is_owner(h)]
+    if not owned:
+        return after
+    sections = [(h, b) for h, b in split(after) if not is_owner(h)]
+    for i, h, b in owned:
+        sections.insert(min(i, len(sections)), (h, b))
+    return join(sections)
+
+
 def find(sections, heading) -> int | None:
     k = key(heading)
     for i, (h, _) in enumerate(sections):
@@ -87,10 +107,14 @@ def apply_sections(text: str, replacements: list[dict]) -> tuple[str, list[str]]
             continue
         if not heading.startswith("## "):
             heading = "## " + heading.lstrip("# ")
-        if is_lessons(heading):
-            changes.append(f"ignored a replacement of the lessons section ({heading})")
+        if is_lessons(heading) or is_owner(heading):
+            changes.append(f"ignored a replacement of the {'owner' if is_owner(heading) else 'lessons'} section "
+                           f"({heading})")
             continue
         i = find(sections, heading)
+        if i is not None and (is_lessons(sections[i][0]) or is_owner(sections[i][0])):
+            changes.append(f"ignored a replacement of {sections[i][0]} (as {heading})")  # "## Known" matched it
+            continue
         if i is None:
             if not content.strip():
                 continue
@@ -132,7 +156,10 @@ def add_lessons(text: str, tag: str, lessons: list[str], intro: str | None = Non
     if not lessons:
         return text
     sections = split(ensure_lessons(text))
-    i = next(k for k, (h, _) in enumerate(sections) if is_lessons(h))
+    i = next((k for k, (h, _) in enumerate(sections) if is_lessons(h) and not is_owner(h)), None)
+    if i is None:  # the only lessons section is the owner's: the pitfalls get their own, last
+        sections.append((LESSONS_HEADING, NO_LESSONS))
+        i = len(sections) - 1
     heading, body = sections[i]
     body = body.replace(NO_LESSONS, "").strip("\n")
     lead, rest = [], body
@@ -184,6 +211,18 @@ def problems(text: str) -> list[str]:
     return out
 
 
+def new_problems(before: str, after: str) -> list[str]:
+    """The problems `after` has that `before` didn't (size aside): a rewrite may not lose a section, but a hand-written
+    playbook outside the house style isn't held to it."""
+    old = set(problems(before))
+    return [p for p in problems(after) if "KB" not in p and p not in old]
+
+
+def house_style(text: str) -> bool:
+    """Has the house style's required sections (a trained playbook, or one rewritten in that style)."""
+    return not [p for p in problems(text) if p.startswith("no '")]
+
+
 def size_kb(text: str) -> float:
     return round(len(text.encode()) / 1024, 1)
 
@@ -211,11 +250,14 @@ def quote_found(quote: str, text: str) -> bool:
 class Evidence:
     """Checks the reviewer's evidence against the files it claims to quote.
 
-    scripts_dir: the deck's scripts (c<id>.lua). logs: {name: path} of game logs the reviewer saw (game.md; a
-    "decision" number must exist there). card_texts: {card name: text}."""
+    scripts_dir: the deck's scripts (c<id>.lua); more_scripts: other folders of scripts (e.g. the opponent's cards a
+    game showed). logs: {name: path} of game logs the reviewer saw (game.md; a "decision" number must exist there).
+    card_texts: {card name: text}."""
 
-    def __init__(self, scripts_dir: str, logs: dict[str, str] | None = None, card_texts: dict[str, str] | None = None):
+    def __init__(self, scripts_dir: str, logs: dict[str, str] | None = None, card_texts: dict[str, str] | None = None,
+                 more_scripts: list[str] | None = None):
         self.scripts_dir = scripts_dir
+        self.more_scripts = list(more_scripts or [])
         self.logs = logs or {}
         self.card_texts = card_texts or {}
         self._cache: dict[str, str] = {}
@@ -237,7 +279,10 @@ class Evidence:
         if not re.fullmatch(r"c\d+\.lua", name):
             m = re.search(r"c?(\d{3,})", name)
             name = f"c{m.group(1)}.lua" if m else name
-        return self._read(os.path.join(self.scripts_dir, name))
+        for folder in [self.scripts_dir] + self.more_scripts:
+            if os.path.isfile(os.path.join(folder, name)):
+                return self._read(os.path.join(folder, name))
+        return ""
 
     def check(self, item: dict) -> tuple[bool, str]:
         source = (item.get("source") or "").lower()

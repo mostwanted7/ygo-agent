@@ -94,8 +94,9 @@ def test_cli_options_resume_with_the_runs_own(tmp_path, monkeypatch):
     seen = []
 
     class FakeTrainer:
-        def __init__(self, opts, cfg, resume=False):
+        def __init__(self, opts, cfg, resume=False, **kw):
             seen.append((opts, resume))
+            self.cfg, self.kw = cfg, kw
 
         def run(self):
             return "done"
@@ -113,4 +114,10 @@ def test_cli_options_resume_with_the_runs_own(tmp_path, monkeypatch):
     args = cli.parser().parse_args(["train", "new.ydk", "--name", "other", "--games", "3"])
     args.handler(args, cli.configure(args))
     opts, resume = seen[-1]
-    assert not resume and opts.games == 3 and opts.lab_hands == 10 and opts.backend == "opus"  # [trainer] defaults
+    assert not resume and opts.games == 3 and opts.lab_hands == 6 and opts.backend == "opus"  # [trainer] defaults
+    assert opts.max_rounds == 1
+    args = cli.parser().parse_args(["train", "new.ydk", "--name", "third", "--backend", "sonnet"])
+    cfg = cli.configure(args)
+    args.handler(args, cfg)
+    opts, _ = seen[-1]
+    assert opts.backend == "sonnet" and cfg["agent"]["backend"] == "opus"  # the reviewer only, not the play model

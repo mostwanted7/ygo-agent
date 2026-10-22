@@ -46,14 +46,18 @@ class Reviewer:
 
     # ---- the sandbox (agentic) ----
 
-    def sync(self, workspace_dir: str, items: list[str]) -> str:
-        """Copy workspace files/folders (relative paths) into a fresh sandbox; returns its path."""
+    def sync(self, workspace_dir: str, items: list[str], extra: dict[str, str] | None = None) -> str:
+        """Copy workspace files/folders (relative paths) into a fresh sandbox, plus `extra` ({name in the sandbox:
+        absolute source path}); returns its path."""
         if os.path.isdir(self.sandbox):
             shutil.rmtree(self.sandbox)
         os.makedirs(self.sandbox)
-        for item in items:
-            src = os.path.join(workspace_dir, item)
-            dst = os.path.join(self.sandbox, item)
+        root = os.path.abspath(self.sandbox)
+        pairs = [(os.path.join(workspace_dir, item), item) for item in items]
+        for src, item in pairs + [(src, name) for name, src in (extra or {}).items()]:
+            dst = os.path.join(root, item)
+            if os.path.commonpath([os.path.abspath(dst), root]) != root:
+                continue  # an absolute or ../ name would land outside the sandbox
             if os.path.isdir(src):
                 shutil.copytree(src, dst, symlinks=False, ignore=shutil.ignore_patterns("*.yrpX", "latest"),
                                 dirs_exist_ok=True)

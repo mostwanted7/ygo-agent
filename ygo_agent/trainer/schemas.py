@@ -112,9 +112,39 @@ GAME_REVIEW = obj(
     general=arr(obj(text=STR, evidence=EVIDENCE)),
     rule_proposals=arr(RULE_PROPOSAL),
     settled_questions=SETTLED,
+    open_questions=arr({"type": "string", "description": "for a human, e.g. an owner's tip this game or a script "
+                                                         "contradicts; usually none"}),
 )
 
 CONDENSE = obj(
     playbook={"type": "string", "description": "the complete tightened playbook (Markdown)"},
     removed=arr({"type": "string", "description": "what was cut or merged, one line each"}),
+)
+
+INTERVIEW = obj(
+    questions=arr(obj(
+        question={"type": "string", "description": "one question the owner can answer in a sentence or two"},
+        why={"type": "string", "description": "what the answer changes in the playbook, one short sentence"},
+    )),
+)
+
+VERDICT = {"type": "string", "enum": ["applied", "already_covered", "disagree"]}
+
+LEARN = obj(
+    summary={"type": "string", "description": "two or three sentences: what this taught the playbook"},
+    notes=arr(obj(
+        note={"type": "integer", "description": "the note's number in the list"},
+        decision={"type": "integer", "description": "the decision it is about (0 if none)"},
+        verdict=VERDICT,
+        outcome={"type": "string", "description": "one line for the owner: what changed, or why not"},
+    )),
+    tips=arr(obj(
+        tip={"type": "integer", "description": "the NEW tip's number in the list"},
+        verdict=VERDICT,
+        outcome={"type": "string", "description": "one line for the owner: what changed, or why not"},
+    )),
+    sections=arr(SECTION),
+    lessons=arr(LESSON),
+    test_cases=arr(TEST_CASE),
+    open_questions=arr(STR),
 )

@@ -147,7 +147,9 @@ def test_train_writes_to_the_user_dir_unless_into_repo(roots, cfg):
         deck_folder(train_args(deck_key="geargia"), cfg)  # it would clash with the repo's deck
     # a resume continues the run where it is: here, a run from before the user dir existed, in decks/
     os.makedirs(repo / "geargia" / "train")
-    (repo / "geargia" / "train" / "state.json").write_text("{}")
+    (repo / "geargia" / "train" / "state.json").write_text('{"learn": {"runs": []}}')  # only `learn`'s: not a run
+    assert deck_folder(train_args(deck_key="geargia", resume=True), cfg) == os.path.join(str(user), "geargia")
+    (repo / "geargia" / "train" / "state.json").write_text('{"options": {"ydk": "Geargia.ydk"}}')
     assert deck_folder(train_args(deck_key="geargia", resume=True), cfg) == os.path.join(str(repo), "geargia")
 
 

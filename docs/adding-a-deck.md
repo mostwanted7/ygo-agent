@@ -7,15 +7,19 @@ it by hand.
 ## With the trainer
 
 ```sh
-ygo-agent train ~/Games/ProjectIgnis/deck/Chaos.ydk --name chaos --budget-usd 40
-ygo-agent play --deck chaos
+ygo-agent train ~/Games/ProjectIgnis/deck/Chaos.ydk --name chaos   # reads the cards, asks you a few questions
+ygo-agent play --deck chaos --web                                   # note its mistakes in the panel (or "!..." in chat)
+ygo-agent learn --deck chaos                                        # folds your notes into the playbook
 ```
 
-The trainer reads every card and its script, writes the playbook, tests its lines in a lab, plays and reviews games,
-and leaves the deck folder in your decks dir (`~/.local/share/ygo-agent/decks/chaos/`; `--into repo` puts it in
-`decks/` instead) with a `train/` folder and `train-report.md` explaining every lesson. Read the report, edit the
-playbook as you like, and carry on with the feedback loop below. [training.md](training.md) has the details, the
-options and the costs.
+The trainer reads every card and its script, asks you a few questions about how the deck plays (your answers go to
+the deck's `tips.md`), writes the playbook from both, tests it in a short lab and a couple of reviewed games, and
+leaves the deck folder in your decks dir (`~/.local/share/ygo-agent/decks/chaos/`; `--into repo` puts it in
+`decks/` instead) with a `train/` folder and `train-report.md` explaining every lesson. After that the deck improves
+from your notes: `ygo-agent learn` reads the notes you typed while it played, checks them against the log and the
+card scripts, fixes the playbook and saves a regression case for each decision. It works on hand-written decks too.
+Edit the playbook as you like. [training.md](training.md) has the loop, the options and the costs; every step is also
+in the web app (`ygo-agent web`).
 
 ## By hand
 
@@ -30,6 +34,7 @@ decks/chaos/
   deck.ydk        the deck list (EDOPro's format)
   deck.json       {"name": "Chaos", "ydk": "deck.ydk", "go_first": true}
   playbook.md     what the model reads on every decision
+  tips.md         your advice about the deck, in your words (optional; train and learn write the playbook from it)
   rules.py        hard rules (optional; RULES = [] to start)
   tests/          regression cases, *.json (created by ygo-agent replay --save)
 ```
@@ -66,10 +71,11 @@ about 8 KB. `decks/geargia/playbook.md` is the reference; its shape, in order:
    dated and naming the game.
 
 Principles first, because games vary too much for step-by-step scripts. A lesson that holds for every deck goes in
-`playbooks/general.md`, not the deck's playbook. `CLAUDE.md` describes how feedback from a game turns into a
-playbook fix: find the decision in `game.md`, decide whether the cause was judgment (the playbook), the way the state
-was presented (`ygo_agent/agent/describe.py`) or wrong card data (the script), and fix the section that was missing
-or wrong, generalised beyond that game.
+`playbooks/general.md`, not the deck's playbook. `ygo-agent learn --deck chaos` turns the notes you typed during
+games into playbook fixes on its own; `CLAUDE.md` describes the same loop done by hand: find the decision in
+`game.md`, decide whether the cause was judgment (the playbook), the way the state was presented
+(`ygo_agent/agent/describe.py`) or wrong card data (the script), and fix the section that was missing or wrong,
+generalised beyond that game.
 
 ### Hard rules
 

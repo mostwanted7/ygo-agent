@@ -138,13 +138,15 @@ type = "random"
 # seed = 1               # fixed seed for reproducible runs; unset = a new seed each run
 
 [trainer]
-# `ygo-agent train` (docs/training.md). Flags override these.
+# `ygo-agent train` and `ygo-agent learn` (docs/training.md). Flags override these. The defaults are light: the
+# trainer reads the deck, asks you, writes the playbook and plays it a couple of times; your notes from real games
+# (`ygo-agent learn`) do the rest. --lab-hands 10 --games 4 --max-rounds 3 is a deeper run.
 backend = "opus"                                     # the reviewer: writes and corrects the playbook (--backend)
 player_backend = ""                                  # plays the lab and the games (--player-backend); "" = agent.backend
 opponents = ["windbot:Blue-Eyes", "windbot:Dragunity"]  # WindBot deck AIs legal under the rules (no Link monsters)
-lab_hands = 10                                       # lab hands in round 1 (later rounds re-test what isn't verified)
-games = 4                                            # games per round
-max_rounds = 3
+lab_hands = 6                                        # lab hands in round 1 (later rounds re-test what isn't verified)
+games = 2                                            # games per round
+max_rounds = 1                                       # rounds of lab + games (more go on until one shows no major mistake)
 
 [coach]
 # `ygo-agent coach` (docs/coach.md): you play in EDOPro, the agent advises live and reviews the game. Flags override.

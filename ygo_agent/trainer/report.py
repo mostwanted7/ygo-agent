@@ -7,6 +7,7 @@ import os
 import re
 
 from . import playbook as pb
+from . import tips
 
 
 def money(x) -> str:
@@ -30,11 +31,25 @@ def write(trainer) -> str:
                f"{', '.join(st.get('pool') or opts.get('opponents') or [])}.")
     text = trainer.playbook()
     out.append(f"Playbook: `{os.path.relpath(trainer.playbook_path, os.path.dirname(trainer.deck_dir))}`, "
-               f"{pb.size_kb(text)} KB" + (f" ({'; '.join(pb.problems(text))})" if pb.problems(text) else "") + ".")
+               f"{pb.size_kb(text)} KB" + (f" ({'; '.join(pb.problems(text))})" if pb.problems(text) else "") + "."
+               if text else "Playbook: not written yet (the study writes it).")
     out.append(f"Spent {money(ws.spent)}" + (f" of a {money(ws.budget)} budget" if ws.budget is not None else "") +
                f" (API-price equivalents; a Claude Code subscription isn't billed per call) in "
                f"{minutes(st.get('elapsed_s'))} of running time.")
     out.append("")
+
+    interview = steps.get("interview", {}).get("result") or {}
+    owner_tips = tips.entries(trainer.deck_dir)
+    if interview or owner_tips or "interview.questions" in steps:
+        asked = {"asked": f"{interview.get('answered', 0)} of {interview.get('questions', 0)} questions answered",
+                 "no terminal": f"{interview.get('questions', 0)} questions written to `train/interview.json`, no "
+                                "terminal to ask them in",
+                 "tips file": "tips from a file (--tips)", "skipped": "skipped (--no-interview)"}
+        out += ["## The owner's tips", "",
+                f"- Interview: {asked.get(interview.get('mode'), 'questions in `train/interview.json`, not asked yet')}.",
+                f"- `tips.md`: {len(owner_tips)} tip(s)" + ("; the study wrote the playbook from them and every review "
+                                                           "saw them." if owner_tips else ". `ygo-agent learn --deck "
+                                                           f"{trainer.o.name} --tip \"...\"` adds one."), ""]
 
     study = steps.get("study", {}).get("result")
     if study:

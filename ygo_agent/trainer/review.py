@@ -82,12 +82,14 @@ def slug_name(name: str) -> str:
     return s[:40] or "case"
 
 
-def save_cases(profile, game_dir: str, cases: list[dict], prefix: str = "") -> tuple[list[dict], list[str]]:
-    """Check each proposed case against the logged decision (it exists, its choices are legal for it, and the choice
-    actually made is rejected or not expected) and save it with replay.save_case. Returns (saved, problems)."""
+def save_cases(profile, game_dir: str, cases: list[dict], prefix: str = "", limit: int = 3
+               ) -> tuple[list[dict], list[str]]:
+    """Check each proposed case (the first `limit`) against the logged decision (it exists, its choices are legal for
+    it, and the choice actually made is rejected or not expected) and save it with replay.save_case. Returns (saved,
+    problems)."""
     saved, problems = [], []
     tests_dir = os.path.join(profile.dir, "tests")
-    for case in (cases or [])[:3]:
+    for case in (cases or [])[:limit]:
         did = int(case.get("decision") or 0)
         d = logs.decision_message(game_dir, did)
         if d is None:

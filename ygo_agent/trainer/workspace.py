@@ -17,7 +17,7 @@ from ..agent.gamelog import BOLD, DIM, RED, YELLOW, emit, paint
 STATE_VERSION = 1
 # USD per step before the ledger has real numbers for that kind (claude-code reports API-price equivalents).
 DEFAULT_ESTIMATES = {"study": 3.0, "review": 1.5, "lab-review": 2.0, "condense": 1.0, "lab-hand": 0.5, "game": 3.0,
-                     "test": 0.1}
+                     "test": 0.1, "interview": 0.3, "learn": 1.5}
 
 
 class BudgetExhausted(Exception):
@@ -28,7 +28,20 @@ class TrainerError(Exception):
     """A problem the user can fix (a bad deck, a backend that can't review, a broken workspace)."""
 
 
+def has_run(deck_dir: str) -> bool:
+    """Does the deck folder hold a training run (train/state.json with the run's options)? `ygo-agent learn` keeps its
+    own state in the same file, under "learn", which isn't a run to resume or compare."""
+    try:
+        with open(os.path.join(deck_dir, "train", "state.json"), encoding="utf-8") as f:
+            return bool(json.load(f).get("options"))
+    except (OSError, ValueError, AttributeError):
+        return False
+
+
 class Workspace:
+    LOG = "trainer.log"
+    TAG = "[train] "
+
     def __init__(self, deck_dir: str, budget: float | None = None, quiet: bool = False):
         self.deck_dir = os.path.abspath(deck_dir)
         self.dir = os.path.join(self.deck_dir, "train")
@@ -47,6 +60,8 @@ class Workspace:
                 state = json.load(f)
             if state.get("version") != STATE_VERSION:
                 raise TrainerError(f"{self.state_path} is from another trainer version; start over without --resume")
+            state.setdefault("steps", {})  # a file `learn` wrote has only its own key
+            state.setdefault("ledger", [])
             return state
         return {"version": STATE_VERSION, "created": now(), "steps": {}, "ledger": [], "status": "new"}
 
@@ -163,10 +178,10 @@ class Workspace:
     def log(self, text: str, color: str | None = None) -> None:
         line = f"[{time.strftime('%H:%M:%S')}] {text}"
         with self._lock:
-            with open(os.path.join(self.dir, "trainer.log"), "a", encoding="utf-8") as f:
+            with open(os.path.join(self.dir, self.LOG), "a", encoding="utf-8") as f:
                 f.write(line + "\n")
         if not self.quiet:
-            emit([paint(color or BOLD, "[train] ") + (paint(color, text) if color else text)])
+            emit([paint(color or BOLD, self.TAG) + (paint(color, text) if color else text)])
 
     def warn(self, text: str) -> None:
         self.log(text, YELLOW)
@@ -176,6 +191,55 @@ class Workspace:
 
     def note(self, text: str) -> None:
         self.log(text, DIM)
+
+
+class LearnWorkspace(Workspace):
+    """The workspace of one `ygo-agent learn` run: its files in train/learn/<run>/, its state under "learn" in
+    train/state.json (beside a training run's, which it never touches), and a budget for this run alone.
+
+    `dir` is the run's folder (calls, gates, snapshots, the report); `train_dir` is train/, where the dossier and the
+    scripts are, shared with the training run if there was one."""
+
+    LOG = "learn.log"
+    TAG = "[learn] "
+
+    def __init__(self, deck_dir: str, run: str, budget: float | None = None, quiet: bool = False):
+        self.deck_dir = os.path.abspath(deck_dir)
+        self.train_dir = os.path.join(self.deck_dir, "train")
+        self.dir = os.path.join(self.train_dir, "learn", run)
+        os.makedirs(self.dir, exist_ok=True)
+        self.state_path = os.path.join(self.train_dir, "state.json")
+        self.run = run
+        self.budget = budget
+        self.quiet = quiet
+        self._lock = threading.RLock()
+        if os.path.isfile(self.state_path):
+            self.full = Workspace._load(self)
+        else:
+            self.full = {"version": STATE_VERSION, "created": now()}
+        self.state = self.full.setdefault("learn", {})
+        for key, empty in (("steps", {}), ("ledger", []), ("runs", [])):
+            self.state.setdefault(key, empty)
+
+    def save(self) -> None:
+        with self._lock:
+            self.state["updated"] = now()
+            tmp = self.state_path + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(self.full, f, indent=1)
+                f.write("\n")
+            os.replace(tmp, self.state_path)
+
+    @property
+    def spent(self) -> float:
+        """This run's spending: --budget-usd is per run."""
+        return round(sum(e.get("cost") or 0 for e in self.state["ledger"] if e.get("run") == self.run), 4)
+
+    def spend(self, step: str, kind: str, cost: float | None, seconds: float | None = None, **extra) -> None:
+        super().spend(step, kind, cost, seconds, run=self.run, **extra)
+
+    def run_ledger(self) -> list[dict]:
+        return [e for e in self.state["ledger"] if e.get("run") == self.run]
 
 
 def now() -> str:

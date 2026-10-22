@@ -10,6 +10,14 @@ See README.md for the architecture and `docs/plan.md` for where the project is g
 
 ## Turning feedback into improvements
 
+`ygo-agent learn --deck <deck>` does this loop automatically, for anyone who cloned the repo (docs/training.md): one
+reviewer call per game with pending notes checks each note against the log and the scripts, fixes the playbook through
+the trainer's checks (evidence, the case gate), saves a regression case, and marks the note in `feedback.md` with a
+`  - Learned <date>: <verdict>: …` line (older hand-written `  - Processed …` lines count too); a marked note is done.
+`<deck>/tips.md` is the owner's file: their advice about the deck in their own words, which train and learn write the
+playbook from. Don't edit it unless the user asks, and never let a playbook edit contradict it silently. The manual
+route below stays for the developer, and for what `learn` can't do (describe.py, card data, hard rules):
+
 1. Read `games/latest/game.md` (or the game the user names). If it exists, also read `games/latest/feedback.md`:
    notes the user typed as `!...` in duel chat (or in the web panel's note box), each tagged with the decision number
    it followed and with who typed it (`from Opponent NAME`, `from Spectator NAME`, `from Web panel`). In `play` the
@@ -98,11 +106,13 @@ For `decks/blackwing` the user is learning the deck and can't spot mistakes, so 
 - `ygo_agent/coach/`: `ygo-agent coach` (docs/coach.md): `live.py` watches the human's seat through a SeatWatcher
   and advises without ever blocking the duel, `brain.py` is the coach's DuelBrain (prompt mode `coach`), `review.py`
   writes review.md after the game (`coach --review games/<dir>` again), `detect.py` recognises the human's deck.
-- `ygo_agent/trainer/`: `ygo-agent train` (docs/training.md): dossier → study → lab (goldfish turns with stacked
-  hands) → games → reviews, checkpointed in `decks/<name>/train/state.json`. A trained deck's `train/` folder has the
-  scripts, logs and reviewer calls behind every lesson in its playbook, and `rule-proposals.md`. Every condense or
-  section rewrite is checked against the saved cases (`Trainer.gate`). `ygo_agent/agent/ablation.py`: `test
-  --ablate-rules`.
+- `ygo_agent/trainer/`: `ygo-agent train` (docs/training.md): dossier → interview (questions → `tips.md`) → study →
+  lab (goldfish turns with stacked hands) → games → reviews, checkpointed in `<deck>/train/state.json`. A trained
+  deck's `train/` folder has the scripts, logs and reviewer calls behind every lesson in its playbook, and
+  `rule-proposals.md`. Every condense or section rewrite is checked against the saved cases (`Trainer.gate`);
+  `Trainer.apply_reply` is the apply path a game review and `learn` share. `learn.py`: `ygo-agent learn` (notes.py
+  reads and marks the notes, tips.py the owner's tips; its runs are in `train/learn/`). `ygo_agent/agent/ablation.py`:
+  `test --ablate-rules`.
 - `windbot-src/`: WindBot fork, its own git repo, branch `brain-bridge` (`ExecutorBase/Game/BrainBridge.cs`, the
   `Brain` hooks in `ExecutorBase/Game/GameAI.cs` and `Game/GameBehavior.cs`, `Game/AI/Decks/AgentExecutor.cs`).
   Run `./build.sh` after editing C#, then `tests/run_bridge_test.sh` (real Claude calls, ~1 minute).

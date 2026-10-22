@@ -1,6 +1,9 @@
-"""The training run: setup, study, then rounds of lab + games + reviews until it converges, then the regression
-cases and the report. Every step is checkpointed in the workspace (workspace.py), so `--resume` picks up where a run
-stopped (Ctrl+C, the budget, a usage limit, a crash)."""
+"""The training run: setup, the dossier and the owner's interview, study, then rounds of lab + games + reviews until it
+converges, then the regression cases and the report. Every step is checkpointed in the workspace (workspace.py), so
+`--resume` picks up where a run stopped (Ctrl+C, the budget, a usage limit, a crash).
+
+`ygo-agent learn` (learn.py) reuses a Trainer for its reviewer calls and for applying a reply (`apply_reply`, `gate`,
+`condense`), with a LearnWorkspace."""
 
 from __future__ import annotations
 
@@ -14,18 +17,21 @@ import json
 import os
 import re
 import shutil
+import sys
 import time
 from dataclasses import asdict, dataclass, field
 
 from .. import decks, paths
-from ..agent.gamelog import GREEN
+from ..agent.gamelog import BOLD, DIM, GREEN, paint
 from ..match import MatchError, SeatSpec
 from . import dossier as dossier_mod
 from . import games as games_mod
 from . import goldfish, lab, logs, prompts, report, review, rulepolicy, schemas
 from . import playbook as pb
+from . import tips as tips_mod
+from .learn import tip_key
 from .llm import Reviewer
-from .workspace import BudgetExhausted, TrainerError, Workspace
+from .workspace import BudgetExhausted, TrainerError, Workspace, has_run
 
 EXAMPLE_DECKS = ("geargia", "saffira", "blackwing")  # the first is in the current house style
 MAX_EXAMPLES = 2
@@ -50,10 +56,10 @@ class Options:
     backend: str = "opus"              # the reviewer
     player_backend: str = ""           # lab and games; "" = the play model (config agent.backend)
     opponents: list[str] = field(default_factory=lambda: ["windbot:Blue-Eyes", "windbot:Dragunity"])
-    lab_hands: int = 10
+    lab_hands: int = 6
     second_hands: int | None = None
-    games: int = 4                     # per round
-    max_rounds: int = 3
+    games: int = 2                     # per round
+    max_rounds: int = 1
     budget: float | None = None
     seed: int = 1
     rules: str = "MR3"
@@ -70,8 +76,15 @@ class Options:
     play_model: str | None = None      # the backend rules are calibrated to (default: config agent.backend)
 
 
+INTERVIEW_MODES = ("ask", "skip", "only", "tips")
+
+
 class Trainer:
-    def __init__(self, opts: Options, cfg: dict, db=None, engine=None, resume: bool = False, quiet: bool = False):
+    def __init__(self, opts: Options, cfg: dict, db=None, engine=None, resume: bool = False, quiet: bool = False,
+                 interview: str = "ask", tips_file: str | None = None, interactive: bool | None = None):
+        """interview: "ask" (in a terminal; else the questions are only written to train/interview.json), "skip",
+        "only" (stop after interview.json) or "tips" (tips_file's text becomes the tips; no questions). These are
+        per invocation, never saved with the run's options, so a resume doesn't repeat them."""
         self.o = opts
         self.cfg = cfg
         # Lessons and the rules policy are calibrated to the model that plays, so by default the play model plays.
@@ -80,6 +93,11 @@ class Trainer:
         self.resume = resume
         self.deck_dir = os.path.abspath(opts.out or os.path.join(decks.user_dir(cfg), opts.name))
         self.quiet = quiet
+        if interview not in INTERVIEW_MODES:
+            raise TrainerError(f"interview must be one of {', '.join(INTERVIEW_MODES)}")
+        self.interview_mode = "tips" if tips_file else interview
+        self.tips_file = tips_file
+        self.interactive = terminal() if interactive is None else interactive
         self.ws: Workspace | None = None
         self.started = time.monotonic()
 
@@ -114,6 +132,20 @@ class Trainer:
             self._reviewer = Reviewer(self.backend_profile(self.o.backend), self.db, self.o.agentic, self.o.name)
         return self._reviewer
 
+    @property
+    def inline_reviewer(self) -> Reviewer:
+        """The reviewer without tools, for a task whose whole input is in the prompt (cheaper)."""
+        if not self.reviewer.agentic:
+            return self.reviewer
+        if not hasattr(self, "_inline"):
+            self._inline = Reviewer(self.backend_profile(self.o.backend), self.db, False, self.o.name)
+        return self._inline
+
+    @property
+    def train_dir(self) -> str:
+        """<deck>/train: the dossier and the scripts (a LearnWorkspace keeps its own files in a subfolder)."""
+        return getattr(self.ws, "train_dir", self.ws.dir)
+
     def profile(self):
         from ..agent.profile import Profile
         if decks.location_of(self.deck_dir, self.cfg):  # decks/<name> or the user decks dir
@@ -141,11 +173,16 @@ class Trainer:
     # ---- the run ----
 
     def run(self) -> str:
+        """The status: "done", "interview ready" (interview="only") or "stopped: <why>"."""
         self.setup()
         ws = self.ws
         ws.set("status", "running")
         status = "done"
         try:
+            self.interview()
+            if self.interview_mode == "only":
+                status = "interview ready"
+                return status
             if "study" in self.o.phases:
                 self.study()
             rounds = self.o.max_rounds if {"lab", "games"} & set(self.o.phases) else 0
@@ -190,15 +227,16 @@ class Trainer:
 
     def setup(self):
         o = self.o
-        state_file = os.path.join(self.deck_dir, "train", "state.json")
         if os.path.isdir(self.deck_dir) and not self.resume:
-            if os.path.isfile(state_file):
+            if has_run(self.deck_dir):
                 raise TrainerError(f"{self.deck_dir} already has a training run: add --resume to continue it, or "
                                    "remove its train/ folder to start over")
             if os.path.isfile(os.path.join(self.deck_dir, "playbook.md")):
                 raise TrainerError(f"{self.deck_dir} is an existing deck with a playbook; train into a new --name")
-        if self.resume and not os.path.isfile(state_file):
+        if self.resume and not has_run(self.deck_dir):  # train/state.json may hold only `ygo-agent learn`'s state
             raise TrainerError(f"nothing to resume in {self.deck_dir}")
+        if self.tips_file and not os.path.isfile(os.path.expanduser(self.tips_file)):
+            raise TrainerError(f"tips file not found: {self.tips_file}")
         if o.out and not decks.location_of(self.deck_dir, self.cfg) and set(o.phases) - {"study"}:
             raise TrainerError("--out (a deck folder outside decks/ and the user decks dir) only works with --phases "
                                "study")
@@ -251,14 +289,18 @@ class Trainer:
 
     # ---- reviewer calls ----
 
-    def ask(self, step: str, kind: str, prompt: str, schema: dict, sync: list[str] | None = None) -> dict:
-        """One reviewer call, with the budget check, the sandbox, the transcript and one retry."""
+    def ask(self, step: str, kind: str, prompt: str, schema: dict, sync: list[str] | None = None,
+            files: dict[str, str] | None = None, inline: bool = False) -> dict:
+        """One reviewer call, with the budget check, the sandbox, the transcript and one retry. The sandbox gets the
+        scripts, the dossier, the examples and the playbook, plus `sync` (paths in the workspace) and `files` ({name
+        in the sandbox: absolute path}). inline: no tools and no sandbox, whatever the reviewer."""
         ws = self.ws
         ws.check_budget(kind)
-        rv = self.reviewer
+        rv = self.inline_reviewer if inline else self.reviewer
         ws.write(f"calls/{step}.prompt.md", prompt)
         if rv.agentic:
-            rv.sync(ws.dir, ["scripts", "dossier.md", "examples"] + (sync or []))
+            extra = {item: os.path.join(ws.dir, item) for item in sync or []}
+            rv.sync(self.train_dir, ["scripts", "dossier.md", "examples"], {**extra, **(files or {})})
             with open(os.path.join(rv.sandbox, "playbook.md"), "w", encoding="utf-8") as f:
                 f.write(self.playbook())
         system = prompts.system(self.o.rules, rv.agentic)
@@ -306,21 +348,139 @@ class Trainer:
                 break
         return out
 
-    def dossier(self):
-        if not hasattr(self, "_dossier"):
-            if os.path.isfile(os.path.join(self.ws.dir, "cards.json")):
-                self._dossier = dossier_mod.load(self.ws.dir, self.deck_display(), self.db)
+    def dossier(self, rebuild: bool = False):
+        """The deck dossier in train/ (built on first use; `rebuild` after the deck list changed)."""
+        if rebuild or not hasattr(self, "_dossier"):
+            if not rebuild and os.path.isfile(os.path.join(self.train_dir, "cards.json")):
+                self._dossier = dossier_mod.load(self.train_dir, self.deck_display(), self.db)
             else:
                 from ..core.install import EdoproInstall
                 dirs = EdoproInstall.find(paths.resolve(self.cfg["edopro_dir"])).script_dirs
-                self._dossier = dossier_mod.build(os.path.join(self.deck_dir, "deck.ydk"), self.db, dirs,
-                                                  self.ws.dir, self.deck_display())
+                self._dossier = dossier_mod.build(self.deck_ydk(), self.db, dirs, self.train_dir,
+                                                  self.deck_display())
         return self._dossier
+
+    def deck_ydk(self) -> str:
+        """The deck list played: deck.json's (a [decks.<name>] ydk in the config wins), else the folder's copy."""
+        if os.path.isfile(os.path.join(self.deck_dir, "deck.json")):
+            try:
+                return self.profile().ydk
+            except (OSError, ValueError):
+                pass
+        return os.path.join(self.deck_dir, "deck.ydk")
 
     def evidence(self, log_files: dict[str, str] | None = None) -> pb.Evidence:
         d = self.dossier()
-        return pb.Evidence(os.path.join(self.ws.dir, "scripts"), log_files,
+        return pb.Evidence(os.path.join(self.train_dir, "scripts"), log_files,
                            {c.name: c.text for c in d.cards})
+
+    def tips(self) -> list[dict]:
+        """The owner's tips (tips.md in the deck folder), for every prompt that writes the playbook."""
+        return tips_mod.entries(self.deck_dir)
+
+    def remember_tips(self) -> None:
+        """Record the tips the study wrote the playbook from (state.json "learn", which `ygo-agent learn` keeps), so
+        learn only folds in the ones added later."""
+        self.ws.state.setdefault("learn", {}).update(tips_digest=tips_mod.digest(self.deck_dir),
+                                                     tips_seen=[tip_key(t) for t in self.tips()])
+        self.ws.save()
+
+    # ---- the interview ----
+
+    def interview(self):
+        """Ask the owner a few questions about the deck before the study writes the playbook (tips.md). Skipped
+        once the study is done."""
+        ws = self.ws
+        if ws.done("interview") or ws.done("study"):
+            if self.interview_mode == "tips":
+                ws.warn("--tips: the interview is already done; add tips with `ygo-agent learn --tip`")
+            return
+        mode = self.interview_mode
+        if mode == "skip":
+            ws.finish("interview", {"mode": "skipped", "tips": len(self.tips())})
+            return
+        if mode == "tips":
+            n = self.add_tips_file()
+            ws.log(f"Interview: {n} tip(s) from {self.tips_file} saved to {tips_mod.path(self.deck_dir)}.")
+            ws.finish("interview", {"mode": "tips file", "tips": n})
+            return
+        questions = self.interview_questions()
+        path = os.path.join(self.train_dir, "interview.json")
+        if mode == "only":
+            ws.log(f"Interview questions: {path}")
+            return
+        if not self.interactive:
+            ws.log(f"Interview: {len(questions)} questions in {path}, but no terminal to ask them in; training goes on "
+                   f"without answers. Tips can be added any time with `ygo-agent learn --deck {self.o.name} --tip "
+                   "\"...\"`.")
+            ws.finish("interview", {"mode": "no terminal", "questions": len(questions), "answered": 0})
+            return
+        answers = self.ask_questions(questions)
+        saved = tips_mod.save_answers(self.deck_dir, answers, self.deck_display())
+        ws.log(f"Interview: {saved} of {len(questions)} questions answered"
+               + (f"; saved to {tips_mod.path(self.deck_dir)}." if saved else "."))
+        ws.finish("interview", {"mode": "asked", "questions": len(questions), "answered": saved})
+
+    def interview_questions(self) -> list[dict]:
+        """The reviewer's questions about the deck (inline: the dossier is the whole input), plus the fixed last one;
+        written to train/interview.json."""
+        ws = self.ws
+        if ws.done("interview.questions"):
+            return ws.result("interview.questions")
+        d = self.dossier()
+        out = self.ask("interview", "interview", prompts.interview(self.deck_display(), d.text, self.tips()),
+                       schemas.INTERVIEW, inline=True)
+        questions = []
+        for q in out.get("questions") or []:
+            text = tips_mod.one_line(q.get("question") or "", 400)
+            if text and text.lower() != prompts.LAST_QUESTION["question"].lower():
+                questions.append({"id": f"q{len(questions) + 1}", "question": text,
+                                  "why": tips_mod.one_line(q.get("why") or "", 300)})
+        questions = questions[:6] + [dict(prompts.LAST_QUESTION)]
+        with open(os.path.join(self.train_dir, "interview.json"), "w", encoding="utf-8") as f:
+            json.dump({"deck": self.o.name, "created": time.strftime("%Y-%m-%d %H:%M:%S"),
+                       "backend": self.inline_reviewer.label, "questions": questions}, f, indent=1, ensure_ascii=False)
+            f.write("\n")
+        ws.finish("interview.questions", questions)
+        return questions
+
+    def ask_questions(self, questions: list[dict]) -> list[dict]:
+        """Ask in the terminal: Enter skips a question, Ctrl+D (end of input) ends the interview."""
+        print(paint(BOLD, f"\nA few questions about {self.deck_display()}, so the playbook starts from how you play "
+                          "it."))
+        print(paint(DIM, "Answer in a sentence or two. Enter skips a question; Ctrl+D ends the interview."))
+        answers = []
+        for n, q in enumerate(questions, 1):
+            print("\n" + paint(BOLD, f"{n}/{len(questions)}. {q['question']}"))
+            if q.get("why"):
+                print(paint(DIM, f"   ({q['why']})"))
+            try:
+                answer = input("> ").strip()
+            except EOFError:
+                print()
+                break
+            if answer:
+                answers.append({"question": q["question"], "answer": answer})
+        return answers
+
+    def add_tips_file(self) -> int:
+        """--tips FILE: its tips (a tips.md's "## title" sections) or its whole text as one, titled "Owner's notes"."""
+        with open(os.path.expanduser(self.tips_file), encoding="utf-8") as f:
+            text = f.read()
+        found, preamble, current = [], [], None
+        for line in text.splitlines():
+            m = tips_mod.SECTION.match(line)
+            if m:
+                current = {"question": m.group(1).strip(), "answer": ""}
+                found.append(current)
+            elif current is not None:
+                current["answer"] += line + "\n"
+            elif not line.startswith("# "):  # a title line
+                preamble.append(line)
+        intro = "\n".join(preamble).strip()
+        if intro and intro != tips_mod.HEADER.split("\n\n", 1)[1].strip():  # not a tips.md's own header
+            found.insert(0, {"question": "Owner's notes", "answer": intro})
+        return tips_mod.save_answers(self.deck_dir, found, self.deck_display())
 
     def study(self):
         ws = self.ws
@@ -335,8 +495,9 @@ class Trainer:
         rv = self.reviewer
         general = self.profile().general_playbook
         prompt = prompts.study(self.deck_display(), d.text, general, examples, rv.agentic,
-                               None if rv.agentic else dossier_mod.scripts_text(d))
+                               None if rv.agentic else dossier_mod.scripts_text(d), self.tips())
         out = self.ask("study", "study", prompt, schemas.STUDY)
+        self.remember_tips()
         text = pb.ensure_lessons((out.get("playbook") or "").strip() + "\n")
         problems = pb.problems(text)
         checks = self.check_card_facts(out.get("card_checks") or [])
@@ -502,7 +663,7 @@ class Trainer:
         prompt = prompts.lab_review(self.deck_display(), self.playbook(), results_md, under_test, r,
                                     self.o.player_backend, goldfish.COMMON_BOARD_TEXT, rv.agentic,
                                     None if rv.agentic else dossier_mod.scripts_text(self.dossier(), names),
-                                    hands_dir=f"round-{r}/lab/", open_questions=questions)
+                                    hands_dir=f"round-{r}/lab/", open_questions=questions, tips=self.tips())
         out = self.ask(step, "lab-review", prompt, schemas.LAB_REVIEW, sync=[f"round-{r}/lab"])
         status = dict(ws.state.get("verification") or {})
         by_key = {x["id"]: x for x in lines} | {x["name"].lower(): x for x in lines}
@@ -633,20 +794,14 @@ class Trainer:
         prompt = prompts.game_review(self.deck_display(), self.playbook(), {**g, "backend": self.o.player_backend},
                                      log_ref, logs.problems(md), rv.agentic,
                                      None if rv.agentic else dossier_mod.scripts_text(self.dossier(), names),
-                                     recent, questions)
+                                     recent, questions, self.tips())
         out = self.ask(step, "review", prompt, schemas.GAME_REVIEW, sync=[g["log"], cond_rel])
         evidence = self.evidence({g["id"]: os.path.join(game_dir, "game.md"), g["log"]: os.path.join(game_dir,
                                                                                                    "game.md")})
-        before = self.playbook()
         tag = f"{time.strftime('%Y-%m-%d')}, {g['id']} vs {g.get('opponent_text') or g.get('opponent')}"
-        base, accepted, rejected = review.apply_lessons(before, out.get("lessons"), tag, evidence)
-        base, marked = pb.mark_verified(base, out.get("confirmed_lines") or [], "verified in game")
-        edited, changes = review.apply_sections(base, out.get("sections"))
-        saved, case_problems = review.save_cases(self.profile(), game_dir, out.get("test_cases"))
-        for p in case_problems:
-            ws.warn(p)
-        text, gate = self.gate(step, base, edited, "section edits") if changes else (base, None)
-        self.write_playbook(text, f"round-{r}/playbook-after-{g['id']}.md")
+        applied = self.apply_reply(step, out, evidence, tag, game_dir, f"round-{r}/playbook-after-{g['id']}.md")
+        before, accepted, rejected = applied["before"], applied["accepted"], applied["rejected"]
+        marked, changes, saved, gate = applied["marked"], applied["changes"], applied["saved"], applied["gate"]
         mistakes = out.get("mistakes") or []
         majors = [m for m in mistakes if m.get("severity") == "major"]
         major_ok = sum(1 for m in majors if m.get("verified") and evidence.verify(m.get("evidence") or [])[0])
@@ -671,6 +826,7 @@ class Trainer:
         ws.state.setdefault("rejected_lessons", []).extend({"round": r, "source": g["id"], **a} for a in rejected)
         ws.state.setdefault("tests_saved", []).extend({"round": r, "game": g["id"], **s} for s in saved)
         self.settle(out.get("settled_questions"), questions, g["id"])
+        self.add_questions(out.get("open_questions") or [], g["id"])
         ws.save()
         ws.write_json(f"round-{r}/reviews/{g['id']}.json", out)
         result = {"significant": significant, "major_with_evidence": major_ok, "mistakes": len(mistakes),
@@ -681,6 +837,25 @@ class Trainer:
                f"{len(rejected)} rejected for evidence; {len(saved)} test case(s); {len(changes)} section edit(s)"
                + (f" ({gate['kept']} kept after the case check)" if gate else "") + ".")
         return result
+
+    def apply_reply(self, step: str, out: dict, evidence: pb.Evidence, tag: str, game_dir: str | None = None,
+                    snapshot: str | None = None, max_cases: int = 3) -> dict:
+        """Apply a review's playbook edits (a game review's, or learn's): the lessons whose quoted evidence checks out
+        become Known pitfalls tagged *(tag)*, Example sequences it saw working are marked, the section rewrites are
+        kept only if the saved cases still pass as often (gate), and the proposed regression cases of `game_dir` are
+        checked and saved (before the gate, so it measures them too). Writes the playbook."""
+        before = self.playbook()
+        base, accepted, rejected = review.apply_lessons(before, out.get("lessons"), tag, evidence)
+        base, marked = pb.mark_verified(base, out.get("confirmed_lines") or [], "verified in game")
+        edited, changes = review.apply_sections(base, out.get("sections"))
+        saved, problems = review.save_cases(self.profile(), game_dir, out.get("test_cases"), limit=max_cases) \
+            if game_dir else ([], [])
+        for p in problems:
+            self.ws.warn(p)
+        text, gate = self.gate(step, base, edited, "section edits") if changes else (base, None)
+        self.write_playbook(text, snapshot)
+        return {"before": before, "text": text, "accepted": accepted, "rejected": rejected, "marked": marked,
+                "changes": changes, "saved": saved, "case_problems": problems, "gate": gate}
 
     def rule_proposals(self, g: dict, proposals: list[dict], mistakes: list[dict], played_with: str) -> None:
         """Assess each proposal against the rules policy (rulepolicy.py); write the ones that qualify into rules.py
@@ -806,10 +981,10 @@ class Trainer:
         ws.warn(f"{step}: the {what} made saved cases fail more often ({score_text(base)} → {score_text(new)}: "
                 f"{', '.join(lost)}); asking the reviewer to fix it")
         failures = self.failure_details(lost, base, new)
-        out = self.ask(f"{step}.revise", "condense", prompts.revise(before, after, failures, pb.TARGET_KB[1], what),
-                       schemas.CONDENSE)
-        revised = pb.ensure_lessons((out.get("playbook") or "").strip() + "\n")
-        if out.get("playbook") and not [p for p in pb.problems(revised) if "KB" not in p]:
+        out = self.ask(f"{step}.revise", "condense", prompts.revise(
+            before, after, failures, pb.TARGET_KB[1], what, self.tips(), not pb.house_style(before)), schemas.CONDENSE)
+        revised = pb.keep_owner(before, pb.ensure_lessons((out.get("playbook") or "").strip() + "\n"))
+        if out.get("playbook") and not pb.new_problems(before, revised):
             again = self.case_score(revised, f"{step}.revised")
             record["revised"] = score_text(again)
             if not case_losses(base, again):
@@ -840,21 +1015,24 @@ class Trainer:
                         "before": f"{b.get('good', '?')}/{b.get('repeat', '?')}", "after": f"{n['good']}/{n['repeat']}"})
         return out
 
-    def condense(self, tag: str):
+    def condense(self, tag: str, folder: str | None = None):
         """Tighten the playbook when it's over the limit (after the study, each round, and at the end). Two tries;
-        the smaller result is kept as long as it lost no section and the saved cases still pass as often (gate)."""
+        the smaller result is kept as long as it lost no section and the saved cases still pass as often (gate). The
+        owner's sections are copied back as they were; a hand-written playbook keeps its own layout."""
         ws = self.ws
         step = f"{tag}.condense"
         text = self.playbook()
         if len(text.encode()) <= pb.LIMIT_BYTES or ws.done(step):
             return
         best, tries, removed = text, [], []
+        own_layout = not pb.house_style(text)
         for attempt in (1, 2):
             out = self.ask(step if attempt == 1 else f"{step}-2", "condense",
-                           prompts.condense(best, pb.TARGET_KB[1], previous_kb=tries[-1]["kb"] if tries else None),
+                           prompts.condense(best, pb.TARGET_KB[1], previous_kb=tries[-1]["kb"] if tries else None,
+                                            tips=self.tips(), keep_structure=own_layout),
                            schemas.CONDENSE)
-            new = pb.ensure_lessons((out.get("playbook") or "").strip() + "\n")
-            problems = [p for p in pb.problems(new) if "KB" not in p]
+            new = pb.keep_owner(text, pb.ensure_lessons((out.get("playbook") or "").strip() + "\n"))
+            problems = pb.new_problems(text, new)
             tries.append({"kb": pb.size_kb(new), "problems": problems})
             if not problems and len(new) < len(best):
                 best, removed = new, removed + (out.get("removed") or [])
@@ -868,8 +1046,8 @@ class Trainer:
         if kept is text:
             ws.finish(step, {"accepted": False, "tries": tries, "gate": gate})
             return
-        folder = {"study": "study", "final": "final"}.get(tag, f"round-{tag.lstrip('r')}")
-        self.write_playbook(kept, f"{folder}/playbook-condensed.md")
+        folder = folder or {"study": "study", "final": "final"}.get(tag, f"round-{tag.lstrip('r')}")
+        self.write_playbook(kept, os.path.join(folder, "playbook-condensed.md"))
         ws.finish(step, {"accepted": True, "from_kb": pb.size_kb(text), "to_kb": pb.size_kb(kept), "tries": tries,
                          "removed": removed, "gate": gate})
         ws.log(f"Condensed the playbook from {pb.size_kb(text)} to {pb.size_kb(kept)} KB"
@@ -942,3 +1120,11 @@ def normal_line(x: dict, n: int) -> dict:
 
 def strip_ansi(text: str) -> str:
     return re.sub(r"\x1b\[[0-9;]*m", "", text)
+
+
+def terminal() -> bool:
+    """Is someone at a terminal to answer the interview? (A job the web app starts has no stdin at all.)"""
+    try:
+        return bool(sys.stdin) and sys.stdin.isatty() and sys.stdout.isatty()
+    except (AttributeError, ValueError):
+        return False

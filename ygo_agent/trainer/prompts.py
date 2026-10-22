@@ -1,6 +1,7 @@
-"""What the reviewer is told: who it is, the house style of a playbook, and the tasks (study, lab review, game review,
-condense, and revise: the retry when an edit made saved regression cases fail). The tasks follow CLAUDE.md's
-coaching procedure ("Decks without a coach")."""
+"""What the reviewer is told: who it is, the house style of a playbook, and the tasks (the interview questions, study,
+lab review, game review, condense, revise: the retry when an edit made saved regression cases fail, and learn: the
+owner's notes on a game). The tasks follow CLAUDE.md's coaching procedure ("Decks without a coach"). Every task that
+writes the playbook sees the owner's tips (tips.py)."""
 
 from __future__ import annotations
 
@@ -101,8 +102,40 @@ def _questions(questions: list[str] | None) -> str:
     return "\n".join(f"{n}. {q}" for n, q in enumerate(questions, 1))
 
 
+TIPS_RULE = """The deck's owner wrote these tips: how they play this deck, in their own words. They win over your \
+own reading of the cards, so the playbook follows them and never contradicts one silently. Only a card's script (or \
+what the engine did in a log) beats a tip: then follow the script, and add an open question that names the tip and the \
+script line, so the owner can settle it."""
+TIPS_LIMIT = 12000
+
+
+def tips_text(tips: list[dict] | None, new: list[int] | None = None) -> str:
+    """The owner's tips (tips.entries()), numbered; `new` marks the numbers not folded into the playbook yet."""
+    out = []
+    for n, t in enumerate(tips or [], 1):
+        when = f" ({t['date']})" if t.get("date") else ""
+        mark = " **NEW**" if new and n in new else ""
+        out.append(f"{n}. **{t['title']}**{when}{mark}\n   " + t["text"].strip().replace("\n", "\n   "))
+    text = "\n".join(out)
+    return text if len(text) <= TIPS_LIMIT else text[:TIPS_LIMIT] + "\n   [… cut: the rest is in tips.md]"
+
+
+def _tips_section(tips: list[dict] | None, intro: str = "") -> str:
+    if not tips:
+        return ""
+    return f"\n\n## The owner's tips\n\n{TIPS_RULE}{' ' + intro if intro else ''}\n\n{tips_text(tips)}"
+
+
+STUDY_TIPS = ("Write the playbook from the dossier AND these tips: turn each one into principles in the sections where "
+              "the decision is made, in the house style and with its reason (not pasted verbatim); where a tip names a "
+              "line or a priority, that is the deck's main line or priority.")
+LAB_TIPS = ("A lab hand that shows a tip's line failing is a fact for an open question, not a reason to drop the tip "
+            "from the playbook silently.")
+REVIEW_TIPS = "A play that followed a tip is not a mistake unless the board made the tip's reason not apply."
+
+
 def study(name: str, dossier_text: str, general: str, examples: dict[str, str], agentic: bool,
-          scripts: str | None = None) -> str:
+          scripts: str | None = None, tips: list[dict] | None = None) -> str:
     parts = [f"""# Task: write the first playbook for the deck "{name}"
 
 Study the deck: the dossier below has the decklist with counts, every card's text, the archetypes, the Main Deck's \
@@ -125,8 +158,10 @@ are for testing only: the playbook keeps at most three of them, as Example seque
 - `card_checks`: the rulings you checked in the scripts, one per fact: the card, the script file (c<id>.lua), the \
 fact, and a short verbatim quote of the script line that proves it (e.g. `e1:SetCountLimit(1,id)`). At least one for \
 every key card. They are checked mechanically against the files; misquotes are dropped.
-- `go_first`: whether this deck should choose to go first when it wins the die roll, and `go_first_reason`.
-- `open_questions`: what you couldn't settle from the texts and scripts (the lab will test engine behaviour).
+- `go_first`: whether this deck should choose to go first when it wins the die roll, and `go_first_reason` (an \
+owner's tip about going first or second decides it, unless the scripts show it can't work).
+- `open_questions`: what you couldn't settle from the texts and scripts (the lab will test engine behaviour), and \
+every conflict between an owner's tip and a script.{_tips_section(tips, STUDY_TIPS)}
 
 ## The general playbook (the AI already gets it; don't repeat it)
 
@@ -146,7 +181,7 @@ every key card. They are checked mechanically against the files; misquotes are d
 
 def lab_review(name: str, playbook: str, results: str, lines: list[dict], round_no: int, player: str,
                board_text: str, agentic: bool, scripts: str | None = None, hands_dir: str = "",
-               open_questions: list[str] | None = None) -> str:
+               open_questions: list[str] | None = None, tips: list[dict] | None = None) -> str:
     kb = len(playbook.encode()) / 1024
     parts = [f"""# Task: check the playbook against the lab (round {round_no})
 
@@ -176,7 +211,8 @@ what the hands showed into conditions ("consider X when Y, because Z"), not new 
 3. `new_lines`: lines you added or changed that need a lab test next round (structured as below; keep the ids of \
 existing lines). `lessons`: only for a clear, repeatable mistake worth a Known pitfall, one or two sentences, with \
 evidence (a script or log quote; unverifiable lessons are dropped). `settled_questions`: the open questions below \
-that the logs or scripts now answer (number and one-line answer). `open_questions`: new ones for a human.
+that the logs or scripts now answer (number and one-line answer). `open_questions`: new ones for a human, including \
+an owner's tip the lab contradicts.{_tips_section(tips, LAB_TIPS)}
 
 ## Lines under test
 
@@ -202,7 +238,7 @@ that the logs or scripts now answer (number and one-line answer). `open_question
 
 def game_review(name: str, playbook: str, game: dict, log_ref: str, problems: list[str], agentic: bool,
                 scripts: str | None = None, recent_lessons: list[str] | None = None,
-                open_questions: list[str] | None = None) -> str:
+                open_questions: list[str] | None = None, tips: list[dict] | None = None) -> str:
     result = {"win": "won", "loss": "lost", "draw": "drew"}.get(game.get("result"), "finished")
     first = "first" if game.get("first") else "second"
     probs = "\n".join(f"- {p}" for p in problems) or "- none"
@@ -255,6 +291,8 @@ None or `Decide(choice, why)` (ctx is ygo_agent.agent.rules.Context: ctx.kind, c
 ctx.names(side, zone), ctx.my_turn, ctx.phase, ctx.chain_names()). Everything else belongs in the playbook.
 - `general`: lessons that hold for every deck (timing, rules), proposed for the general playbook (a human decides).
 - `settled_questions`: the open questions below that this game or the scripts answer (number and one-line answer).
+- `open_questions`: what a human must settle, e.g. an owner's tip (below) that this game or a script contradicts \
+(name both); usually none.{_tips_section(tips, REVIEW_TIPS)}
 
 ## Problems the engine and the agent flagged
 
@@ -286,10 +324,22 @@ short Example sequences.
 - Known pitfalls: fold the ones a principle now covers into that principle and drop them from the list; merge \
 pitfalls that say the same thing; keep each one or two sentences with its *(date, game)* tag.
 - Keep every checked ruling and "(script: ...)" note, every *(verified ...)* mark, and the Lethal check's numbers.
+- Keep the point of every owner's tip (when tips are listed below): cut its wording, never what it says.
+- Copy a section the deck's owner wrote (e.g. "Coaching lessons") exactly as it is: it is theirs.
 - Cut repetition, generic advice the general playbook covers, game anecdotes and restated card texts. Don't add claims."""
+KEEP_STRUCTURE = """- This playbook is hand-written, not in the house style: keep its own sections, headings and order, and \
+its lessons section where it is; tighten inside each section."""
 
 
-def condense(playbook: str, limit_kb: int, previous_kb: float | None = None) -> str:
+def condense_rules(keep_structure: bool = False) -> str:
+    """The condense rules; for a hand-written playbook, without the house style's layout."""
+    if not keep_structure:
+        return CONDENSE_RULES
+    return KEEP_STRUCTURE + "\n" + CONDENSE_RULES.split("\n", 1)[1]
+
+
+def condense(playbook: str, limit_kb: int, previous_kb: float | None = None, tips: list[dict] | None = None,
+             keep_structure: bool = False) -> str:
     budget = "\n".join(f"- {name}: about {kb} KB" for name, kb in BUDGET)
     again = (f"\n\nThis is a second pass: the first one only got it to {previous_kb} KB. Cut harder: use the section "
              "budgets as limits." if previous_kb else "")
@@ -299,14 +349,14 @@ The playbook below has grown past its size target. The AI player reads it on eve
 its place. Rewrite it whole, within these section budgets:
 {budget}
 
-{CONDENSE_RULES}
+{condense_rules(keep_structure)}
 
 The result is checked against the saved regression cases: a version that makes the player fail a case it passed is \
 rejected. Return the whole playbook in `playbook` and a line per cut or merge in `removed`.{again}
 
 ## The house style
 
-{SECTIONS}
+{SECTIONS}{_tips_section(tips)}
 
 ## The playbook ({len(playbook.encode()) / 1024:.1f} KB)
 
@@ -325,7 +375,8 @@ def failures_text(failures: list[dict]) -> str:
     return "\n\n".join(out)
 
 
-def revise(before: str, after: str, failures: list[dict], limit_kb: int, what: str = "edit") -> str:
+def revise(before: str, after: str, failures: list[dict], limit_kb: int, what: str = "edit",
+           tips: list[dict] | None = None, keep_structure: bool = False) -> str:
     return f"""# Task: fix a playbook {what} that broke saved regression cases
 
 The playbook was changed (the {what} below). Replayed against the saved regression cases (past decisions with a known \
@@ -333,7 +384,7 @@ right answer), the AI player now gets these wrong more often than it did with th
 playbook with what the player needs to get them right restored: put the missing principle or pitfall back, in the \
 house style, without undoing the {what}'s other improvements, and stay within {limit_kb} KB.
 
-{CONDENSE_RULES}
+{condense_rules(keep_structure)}
 
 Return the whole playbook in `playbook` and a line per change in `removed`.
 
@@ -343,7 +394,7 @@ Return the whole playbook in `playbook` and a line per change in `removed`.
 
 ## The house style
 
-{SECTIONS}
+{SECTIONS}{_tips_section(tips)}
 
 ## The previous playbook ({len(before.encode()) / 1024:.1f} KB)
 
@@ -352,3 +403,154 @@ Return the whole playbook in `playbook` and a line per change in `removed`.
 ## The changed playbook ({len(after.encode()) / 1024:.1f} KB)
 
 {after.strip()}"""
+
+
+# ---- the interview ----
+
+LAST_QUESTION = {"id": "anything-else", "question": "Anything else the agent should know about this deck?",
+                 "why": "Whatever the questions above missed: a pet line, a matchup, a habit to avoid."}
+
+
+def interview(name: str, dossier_text: str, tips: list[dict] | None = None) -> str:
+    said = f"\n\n## What the owner already told you (don't ask it again)\n\n{tips_text(tips)}" if tips else ""
+    return f"""# Task: interview the deck's owner
+
+Before you write the playbook for "{name}", you can ask its owner, an experienced player of this deck, a few \
+questions. Read the dossier below (every card, its text, and what its script does), then write 3 to 6 questions that \
+someone who plays this deck can answer in a sentence or two, and whose answers would change how the playbook tells the \
+AI to play. Ask what the cards alone don't tell you, for example:
+- how the deck wins, and how fast;
+- its main lines and their key cards, and which starter it prefers;
+- going first or second, and what changes;
+- which Extra Deck monsters matter, and when;
+- what not to do: the traps a new player of this deck falls into;
+- choices between cards: what to search, what to keep in hand, what to send to the GY.
+
+Name the cards. One thing per question, in plain words. Don't ask what the card texts answer. Most important first. \
+For each, `why`: what the answer changes in the playbook, in one short sentence the owner reads (e.g. "So the playbook \
+knows which Rank 4 to make first."). A last question, "{LAST_QUESTION['question']}", is always added: don't write \
+it.{said}
+
+## Dossier
+
+{dossier_text.strip()}"""
+
+
+# ---- learn: the owner's notes and tips ----
+
+MODES = {
+    "play": "The owner played against the AI player",
+    "selfplay": "The owner watched the AI player in a game against another AI",
+    "teach": "The owner watched the AI player play and explain its moves",
+    "coach": "The owner played this game themselves while the AI coached them. Every move in the log is the owner's; "
+             "the coach's advice is the line under each decision marked as the coach's, and the coach reads the same "
+             "playbook, so a note about the advice is a note about the playbook. In the game",
+}
+LEARN_STYLE = """- Keep the playbook's style: principles first, each a condition with its reason ("**Consider X when Y**, \
+because Z") that the player may override when the board calls for it, generalised beyond this game, exact card names, \
+no step-by-step scripts."""
+LEARN_STYLE_OWN = """- This playbook is hand-written, not in the house style: keep its own sections, order and voice; \
+still phrase what you add as a condition with its reason, generalised beyond this game."""
+LEARN_RULES = """- Never edit the Known pitfalls section or a section the owner wrote (e.g. "Coaching lessons"): \
+pitfalls go in `lessons`, and the owner's sections are theirs.
+- The playbook is {kb:.1f} KB of an 8 KB budget: when you add, cut what matters less in the same section.
+- `open_questions`: what a human must settle (a note or a tip that a script contradicts: name both); usually none.
+- `summary`: two or three sentences on what this taught the playbook."""
+NEW_TIPS = """The tips marked **NEW** were added since the playbook last took the tips in. Fold each into the playbook: \
+check any ruling it states in the card's script, then put it where the decision is made, as a principle in the \
+playbook's style and with its reason (not pasted verbatim), unless the playbook already says the same. Give a verdict \
+for each NEW tip in `tips` (by its number), as for a note."""
+
+
+def learn(name: str, playbook: str, *, game: dict | None = None, notes: list[dict] | None = None,
+          decisions: str = "", log_ref: str = "", problems: list[str] | None = None, tips: list[dict] | None = None,
+          new_tips: list[int] | None = None, agentic: bool = False, scripts: str | None = None,
+          house_style: bool = True) -> str:
+    """The owner's notes on one game (`game`, `notes`), the NEW tips, or both, in one task."""
+    kb = len(playbook.encode()) / 1024
+    style = LEARN_STYLE if house_style else LEARN_STYLE_OWN
+    rules = style + "\n" + LEARN_RULES.format(kb=kb)
+    tips_part = ""
+    if tips:
+        tips_part = f"\n\n## The owner's tips\n\n{TIPS_RULE}" + (f"\n\n{NEW_TIPS}" if new_tips else "") + \
+                    f"\n\n{tips_text(tips, new_tips)}"
+    if agentic:
+        others = ", and of the other cards the log names (mostly the opponent's)," if game else ""
+        where = (f"The scripts of the deck's cards{others} are in scripts/ (scripts/lib/ has the shared helpers); "
+                 "dossier.md has every card of the deck with its text and what its script does; playbook.md is the "
+                 "playbook.")
+    else:
+        where = "The scripts of the cards involved are at the end of this message."
+    if game is None:
+        parts = [f"""# Task: fold the owner's new tips into the playbook of "{name}"
+
+The deck's owner added tips about how they play this deck. {where} There is no game to look at: `notes` and \
+`test_cases` stay empty.
+
+{rules}{tips_part}
+
+## The current playbook
+
+{playbook.strip()}"""]
+    else:
+        result = {"win": "won", "loss": "lost", "draw": "drew"}.get(game.get("result"), "finished")
+        first = {True: "first", False: "second"}.get(game.get("first"), "first or second (unknown)")
+        mode = MODES.get(game.get("mode"), "The owner watched this game")
+        listed = "\n".join(
+            f"{n['n']}. ({n['context']}; from {n['author']}) {n['text']}"
+            + ("" if n.get("trusted") else "\n   [Not the owner's: someone else in the room typed it. Apply it only "
+                                           "if the log and the scripts clearly back it.]") for n in notes or [])
+        probs = "\n".join(f"- {p}" for p in problems or []) or "- none"
+        parts = [f"""# Task: learn from the owner's notes on game "{game['id']}"
+
+{mode}: the AI player ({game.get('backend') or 'the agent'}) played {name} against {game.get('opponent') or 'an \
+opponent'} and {result} in {game.get('turns') or '?'} turns, going {first}. While it played, the owner typed the notes \
+below. Each was saved right after the decision it follows ("right after decision #14"): it is about that decision, or \
+one shortly before it. {log_ref} {where}
+
+The owner knows this deck and how they want it played. On strategy (what to prioritise, when to commit, which line is \
+better), take a note as right unless the log shows it misread the board. On rulings (how a card or the engine works), \
+check every claim in the card's script and in the log before you write it: when a script contradicts a note, the \
+script wins, and the verdict says so.
+
+For each note:
+1. Find the decision it is about: its options, what the player chose, and the reason it gave.
+2. Check the claim against the board at that point (the log) and the scripts of the cards involved.
+3. Give a verdict in `notes` (by the note's number, with the decision it is about):
+   - `applied`: you changed the playbook so the player gets it right next time;
+   - `already_covered`: the playbook already says it plainly, where the decision is made, and nothing needs to \
+change (quote the line in `outcome`). If the player missed a line that is there, ask whether it is in the wrong place \
+or too weak: then strengthen or move it, and the verdict is `applied`;
+   - `disagree`: the log or a script shows the note is wrong, or the play was as good: say why.
+   `outcome` is one line the owner reads: what changed (the section and the gist), or why not.
+4. Fix the playbook for what you apply. When a principle is missing, wrong or misleading, rewrite that section whole \
+in `sections` (its heading and its whole new body, keeping the rest of its content). A specific, repeatable mistake \
+that a principle can't carry (a misread ruling, an engine quirk) becomes a Known pitfall in `lessons`: one or two \
+sentences, "**When X, do Y** because Z", with `evidence`: a short verbatim quote of a script (file c<id>.lua) or of \
+this game's log (file "{game['id']}", with the decision number); a lesson whose evidence doesn't check out is dropped. \
+Prefer a principle over a pitfall.
+5. For each decision you apply a note to, propose a regression case in `test_cases` when its right answer is clear \
+from that decision alone: the decision number, a short-kebab-case name, every acceptable choice in `expect` (option \
+indices as the log lists them, e.g. [[2]] or [[0],[3]]; [[]] means pass), or only the blunder in `reject` when \
+several plays were fine, and a one-sentence note. The choice the player made can't be in `expect`.
+
+{rules}{tips_part}
+
+## The notes
+
+{listed}
+
+## The decisions they follow (as the log shows them, every option listed)
+
+{decisions.strip() or "(not found in the log)"}
+
+## Problems the engine and the agent flagged
+
+{probs}
+
+## The current playbook
+
+{playbook.strip()}"""]
+    if scripts:
+        parts.append(f"## Scripts of the cards involved (comments stripped)\n\n{scripts}")
+    return "\n\n".join(parts)

@@ -121,6 +121,23 @@ def problems(md: str) -> list[str]:
     return out
 
 
+def decision_text(md: str, decision_id: int, before: int = 0) -> str:
+    """The raw game.md text of a decision (its question, every option, the reason), and of the `before` decisions
+    before it with the events in between; "" when it isn't in the log."""
+    lines = md.splitlines()
+    starts = [(int(m.group(1)), i) for i, line in enumerate(lines) if (m := DECISION.match(line))]
+    at = next((k for k, (did, _) in enumerate(starts) if did == decision_id), None)
+    if at is None:
+        return ""
+    first = starts[max(0, at - before)][1]
+    end = starts[at + 1][1] if at + 1 < len(starts) else len(lines)
+    for i in range(starts[at][1] + 1, end):  # stop at the next turn heading too
+        if lines[i].startswith("## "):
+            end = i
+            break
+    return "\n".join(lines[first:end]).strip()
+
+
 def decision_count(md: str) -> int:
     return sum(1 for kind, _ in blocks(md) if kind == "decision")
 

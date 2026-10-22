@@ -13,7 +13,7 @@ from .. import paths
 from ..match import MatchError, SeatSpec
 from . import games as games_mod
 from . import review
-from .workspace import BudgetExhausted, TrainerError, Workspace
+from .workspace import BudgetExhausted, TrainerError, Workspace, has_run
 
 NO_PLAYBOOK = "(no playbook yet)\n"
 
@@ -55,7 +55,7 @@ def compare(cfg: dict, name: str, *, backend: str | None = None, opponent: str =
         deck_dir = decks.find(name, cfg).dir
     except decks.DeckError as e:
         raise TrainerError(str(e)) from None
-    if not os.path.isfile(os.path.join(deck_dir, "train", "state.json")):
+    if not has_run(deck_dir):
         raise TrainerError(f"{deck_dir} has no training run to compare")
     ws = Workspace(deck_dir)
     ws.budget = None if budget is None else ws.spent + budget  # the ledger already holds the training's costs
