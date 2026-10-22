@@ -522,3 +522,92 @@ https://github.com/mostwanted7/windbot (branch `brain-bridge`, a fork of Project
   rewrite); the study draft was left out because it was written for the pre-Gadget list.
 - **Decision (user): training stays part of the project.** It is cheap and it works. For firmer numbers later, a
   few pairs against a longer-game deck (Time Thief, Dragunity) say more than more Blue-Eyes games.
+
+## Stage 10: training as the user defined it, the web app, release 0.1.0b1 (2026-10-22) ◐
+
+### What "training" means (the user's definition, agreed)
+A **trained deck is a guidebook**: `playbook.md`, the strategy the play model reads on every decision, so it doesn't
+spend time on the basics or make basic mistakes. Next to it: `tips.md` (the owner's own advice, verbatim),
+`tests/*.json` (regression cases) and, rarely, `rules.py`. No weights, no fine-tuning. The loop:
+
+1. **You give the deck** (`.ydk`).
+2. **The bot interviews you.** It reads the deck (the dossier: every card, its script) and asks a few deck-specific
+   questions (how the deck wins, the main lines, going first or second, what to avoid, which Extra Deck monsters
+   matter), plus "anything else?". Your answers are saved to `<deck>/tips.md`. Skippable.
+3. **It writes the guidebook**: the study (one reviewer session) writes `playbook.md` from the dossier and your tips.
+   Your tips win over its own reading unless a card script contradicts them; then it follows the script and lists
+   the conflict as an open question for you.
+4. **It practises**: a few goldfish turns with stacked hands (the lab) and a couple of games against WindBot deck AIs,
+   each reviewed, and the guidebook corrected. Defaults are light (6 lab hands, 2 games, 1 round: about $8-10 of
+   API-price usage and half an hour with Opus); `--games`, `--max-rounds`, `--lab-hands` go deeper.
+5. **You play it**, and type notes about obvious mistakes in the web panel's note box (or `!note` in EDOPro's chat).
+6. **`ygo-agent learn --deck NAME`** (or the Learn button): one reviewer session per game with pending notes reads
+   the notes, the decision each one follows, the playbook, your tips and the scripts; it fixes the playbook (a
+   principle when one is missing or wrong, a Known pitfall for a specific repeatable mistake), saves a regression
+   case for the decision, and marks each note learned in that game's `feedback.md` (or says why it disagrees). Tips
+   added since the last learn are folded in the same way. Every edit goes through the existing evidence check and
+   the case gate. Learn never plays games.
+
+This replaces nothing: CLAUDE.md's manual loop (Claude Code reading the notes) stays for the developer; `learn` is
+the same loop for anyone who cloned the repo.
+
+**Seam (in main, written by the orchestrator, with tests in `tests/trainer/test_tips_notes.py`):**
+- `ygo_agent/trainer/tips.py`: `read(deck_dir)`, `entries(deck_dir)`, `add(deck_dir, text, title)`,
+  `save_answers(deck_dir, [{"question", "answer"}], name)`, `digest(deck_dir)`. Format: `## <question or Tip>
+  (date)` sections under a header.
+- `ygo_agent/trainer/notes.py`: `Note` (game_dir, game, index, line, context, author, text, decision, turn, mode,
+  deck, learned; `.trusted`, `.pending`, `.key`, `.to_dict()`), `read(game_dir)`, `deck_games(deck, games_dir)`,
+  `for_deck(...)`, `pending(deck, games_dir, include_untrusted=False)`, `mark(note, outcome)`. A note is learned when
+  an indented `  - Learned <date>: …` (or the older `  - Processed …`) line sits under it. Trusted = `from Web panel`,
+  or `from Opponent …` in a `play` game; Spectator notes only with `--include-spectators`.
+- `<deck>/train/interview.json`: `{"deck", "created", "backend", "questions": [{"id", "question", "why"}]}`. The
+  last question is always the fixed "Anything else the agent should know about this deck?".
+
+**CLI (trainer agent):**
+- `ygo-agent train <ydk> --name N`: setup → dossier → **interview** (in a terminal: asks each question, Enter
+  skips; tips.md saved) → study → lab → games → report. `--tips FILE` uses that text as the tips (no questions);
+  `--no-interview` skips it (an existing tips.md is still used); `--interview-only` stops after writing
+  `train/interview.json` (prints the path; the web app uses this, then saves the answers itself and runs
+  `train --name N --resume --no-interview [options]`). Without a terminal and without those flags the questions are
+  written to interview.json and training continues without answers.
+- `ygo-agent learn --deck N [--backend opus] [--budget-usd X] [--game DIR] [--include-spectators] [--gate-repeat K]`;
+  `learn --deck N --list [--json]` (pending notes and whether tips changed, no model calls); `learn --deck N --tip
+  "text"` (append a tip; no model call). Output: `<deck>/train/learn/<time>/` (calls, reply, report) and a line per
+  run in `<deck>/train/learn.md`; `state.json` keeps `learn.tips_digest`. Works on any deck folder (repo or user),
+  trained or hand-written; it builds the dossier into `train/` if missing. Section edits never touch Known pitfalls
+  or the owner's own sections (Saffira's "Coaching lessons").
+
+### The web app (web agent)
+`ygo-agent web` becomes the whole app (the terminal commands all stay; the app runs them):
+- **Pages** (hash routes, vanilla JS, no build step, nothing from a CDN, same look as the panel): Home (start
+  something: duel the agent, watch AI vs AI, watch it teach, get coached; recent games; decks), Decks (list → a deck:
+  playbook rendered + edit, tips + add, pending notes with links to the decision, Learn button, train report, its
+  games), New deck (train wizard: pick a .ydk from EDOPro's deck folder or a path, name → "Read the deck" =
+  `train --interview-only` → the questions as text boxes → Start training with options → progress: trainer.log
+  live, the training games live, the report at the end), Games (the existing board/replay viewer), Jobs (running and
+  finished commands, their output, Stop), Setup (`doctor --json`, the backend profiles, the config paths).
+- **Jobs run the CLI** as subprocesses (`python -m ygo_agent <argv>`, cwd = the repo, stdin closed, own process
+  group, output to a log file), argv built server-side from validated parameters only (never free-form argv, never a
+  shell). Stop = SIGINT to the group (graceful, like Ctrl+C: the trainer checkpoints), then SIGTERM, then SIGKILL.
+  One room-hosting job at a time (play, teach, coach, selfplay --spectate share the room port). The page shows the
+  equivalent terminal command for every job.
+- **Live games from jobs** reach the app's bus through a **relay**: the job gets `YGO_AGENT_RELAY` (URL) and
+  `YGO_AGENT_RELAY_TOKEN`; any command started with them activates its bus with a forwarding sink (batched POSTs,
+  dropped silently if the app is gone) instead of serving a panel. The app's `POST /api/relay` (token-checked,
+  bigger body limit) injects the already-rendered messages into its bus. Notes on a relayed live game go to that
+  game folder's feedback.md (the existing fallback through `seat_info(...)["dir"]`).
+- **Safety**: everything stays loopback-only by default (the existing Host/Origin checks); the job, edit and relay
+  endpoints also require a loopback client address whatever the bind address. Deck names must resolve through
+  `decks.find`; a .ydk path must exist and end in `.ydk`. A panel started by `play/selfplay/teach/coach --web` is
+  the old panel (no jobs); only `ygo-agent web` serves the app.
+
+### Release 0.1.0b1 (orchestrator, after both land)
+Version `0.1.0b1` (PEP 440) in pyproject and `ygo_agent.__version__` (`ygo-agent --version`), CHANGELOG.md, tag
+`v0.1.0-beta.1`, a GitHub pre-release "ygo-agent 0.1.0 beta 1". 1.0 comes after the user has used it for a while and
+trained a couple of decks with the new flow.
+
+## Research track (not release work)
+Local and open models are the user's own research, run on their desktop (RX 9070) through backend profiles in
+`config.local.toml`: no repo change is needed or wanted for that, and none of it gates a release. Notes are kept here
+for the user's portfolio: the model exam on local models → hybrid routing (a local model for routine decisions,
+escalating hard ones to Opus) → maybe distillation (fine-tune on logged Opus decisions).
