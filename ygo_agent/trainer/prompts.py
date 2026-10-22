@@ -501,10 +501,11 @@ The deck's owner added tips about how they play this deck. {where} There is no g
             + ("" if n.get("trusted") else "\n   [Not the owner's: someone else in the room typed it. Apply it only "
                                            "if the log and the scripts clearly back it.]") for n in notes or [])
         probs = "\n".join(f"- {p}" for p in problems or []) or "- none"
+        opponent = game.get("opponent") or "an opponent"
         parts = [f"""# Task: learn from the owner's notes on game "{game['id']}"
 
-{mode}: the AI player ({game.get('backend') or 'the agent'}) played {name} against {game.get('opponent') or 'an \
-opponent'} and {result} in {game.get('turns') or '?'} turns, going {first}. While it played, the owner typed the notes \
+{mode}: the AI player ({game.get('backend') or 'the agent'}) played {name} against {opponent} and {result} in \
+{game.get('turns') or '?'} turns, going {first}. While it played, the owner typed the notes \
 below. Each was saved right after the decision it follows ("right after decision #14"): it is about that decision, or \
 one shortly before it. {log_ref} {where}
 
