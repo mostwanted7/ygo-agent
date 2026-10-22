@@ -5,9 +5,8 @@ Trust the engine's options over this text. Known pitfalls (at the bottom) are re
 
 ## Game plan
 
-Rank 4 stun-beatdown. Each turn, turn a couple of Geargia or Gadgets into the bodies or Rank 4 Xyz the board needs,
-keep traps Set behind them, and grind with monsters that replace themselves. Win by attacking every turn and with
-sudden OTKs: Limiter Removal (one or two) on your Machines, finished with Gagaga Cowboy's burn.
+Rank 4 stun-beatdown: Geargia and Gadgets supply bodies or Rank 4 Xyz, backed by Set traps and monsters that replace
+themselves. Attack every turn; finish with Limiter Removal (one or two) on your Machines and Gagaga Cowboy's burn.
 
 ## Card roles
 
@@ -24,12 +23,11 @@ sudden OTKs: Limiter Removal (one or two) on your Machines, finished with Gagaga
 - **Gold / Silver Gadget** (Lv4 Machines, not Geargia): Normal or Special Summoned → a Lv4 Machine from your hand,
   either position. Destroyed by battle or effect → the other Gadget from the Deck. Both effects share
   one use per turn: after its summon effect it doesn't float that turn.
-- **Geargiagear** (Normal Trap, 1 per turn): two Geargiano-type monsters from the Deck at Lv4. Needs 2 still in the
-  Deck and 2 free Monster Zones. It changes Levels, not ATK/DEF: Geargiano has 1000 DEF, Mk-II only 500.
-  Check each body's actual stats before relying on them as blockers.
-- **Gear Gigant X**: detach → a Lv4-or-lower Machine (a Gadget too) from Deck or GY (once per turn per copy). When it
-  leaves the field face-up, its optional "When" effect can revive a Lv3-or-lower Geargia from your GY. Don't count
-  on this after it is Tributed for a summon or sent as a cost: leaving the field is not the last event, so it misses timing.
+- **Geargiagear** (Normal Trap, 1 per turn): two Geargiano-type monsters from Deck at Lv4; needs 2 in Deck and 2 free
+  Monster Zones. Only Levels change: check their stats as blockers (Geargiano 1000 DEF, Mk-II 500).
+- **Gear Gigant X**: detach → a Lv4-or-lower Machine (Gadgets too) from Deck or GY, once per turn per copy. Leaving
+  the field face-up → optional "When" revival of a Lv3-or-lower Geargia from your GY. Tributed for a summon or sent
+  as a cost, it misses timing: leaving the field isn't the last event.
 - **Other Rank 4s.** Answers: Dark Rebellion (its materials have no other use: halve their best monster the turn
   you make it; both changes last), Castel, Number 101, Tornado Dragon, Photon Papilloperative, Ouroboros. Walls:
   Cairngorgon, Steelswarm Roach, Abyss Dweller, Shock Master (locks the declared type for BOTH players: never Trap
@@ -41,11 +39,10 @@ sudden OTKs: Limiter Removal (one or two) on your Machines, finished with Gagaga
 
 ## Situational considerations
 
-- **Gear Gigant X or not.** It turns two bodies into one 2300 body plus a search, and gives a body back only if a Lv3
-  Geargia (Geargiano, Mk-II) is in your GY when it leaves. Consider it when one is there, or a free loop puts one
-  there (Arsenal → Geargiano → Tribute Geargiano → Arsenal back), or when you need its search or its ATK. Without a
-  float target, two bodies that replace themselves are often the better wall. When you can attack, attackers beat
-  walls: run the lethal check first.
+- **Gear Gigant X or not.** Two bodies become one 2300 body plus a search. Its float needs a Lv3 Geargia in your GY
+  (Geargiano, Mk-II): consider the free Arsenal → Geargiano → Tribute Geargiano → Arsenal loop to put one there.
+  Make it for its search, ATK or float; without a float target, two self-replacing bodies often defend better.
+  Run the lethal check first when you can attack.
 - **Gadget + Armor.** With a Gadget and Armor (or Arsenal, Tributed for Armor) in hand, consider ending on the Gadget
   and a face-down Armor: each replaces itself when removed (the Gadget floats, a flipped Armor searches), so you keep
   card advantage behind layered protection.
