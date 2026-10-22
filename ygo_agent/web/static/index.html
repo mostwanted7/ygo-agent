@@ -1,9 +1,10 @@
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="dark" data-mode="panel">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ygo-agent panel</title>
+<!-- data-mode: "panel" (a play/selfplay/teach/coach --web run), or "app" when `ygo-agent web` serves it (shell.js). -->
 <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/static/style.css">
 </head>
@@ -19,6 +20,13 @@
     </svg>
     <span class="name">ygo-agent</span>
   </div>
+  <nav id="nav" class="nav hidden" aria-label="App">
+    <a href="#/" data-route="home" title="Home"><svg viewBox="0 0 20 20"><path d="M3 9.2 10 3.5l7 5.7V16a1 1 0 0 1-1 1h-3.5v-4.5h-5V17H4a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>Home</span></a>
+    <a href="#/decks" data-route="decks" title="Decks"><svg viewBox="0 0 20 20"><rect x="3.5" y="4.5" width="9" height="12.5" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 2.8h7.4a2 2 0 0 1 2 2v10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>Decks</span></a>
+    <a href="#/games" data-route="games" title="Games: the board viewer"><svg viewBox="0 0 20 20"><rect x="2.5" y="4" width="15" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8.3 7.6v4.8l4-2.4z" fill="currentColor"/></svg><span>Games</span></a>
+    <a href="#/jobs" data-route="jobs" title="Jobs: the commands the app runs"><svg viewBox="0 0 20 20"><path d="M3.5 5.5l3.5 3-3.5 3M9 13.5h7.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Jobs</span><b id="nav-jobs" class="nav-count hidden"></b></a>
+    <a href="#/setup" data-route="setup" title="Setup"><svg viewBox="0 0 20 20"><path d="M10 6.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8zM10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>Setup</span></a>
+  </nav>
   <button id="game-btn" class="game-btn" title="Games (G)">
     <span id="status-chip" class="chip status idle">NO GAME</span>
     <span id="game-title" class="game-title">Open a game</span>
@@ -94,9 +102,12 @@
   <button id="live-btn" class="live-btn hidden" title="Follow the live game (L)"><span class="dot"></span>LIVE</button>
 </footer>
 
+<section id="page" class="page hidden"></section>
+
 <div id="preview" class="preview hidden"></div>
 <div id="modal" class="modal hidden"><div class="modal-card" id="modal-card"></div></div>
 <div id="toasts" class="toasts"></div>
 <script src="/static/app.js"></script>
+<script src="/static/shell.js"></script>
 </body>
 </html>

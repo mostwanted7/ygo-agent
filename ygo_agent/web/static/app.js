@@ -63,6 +63,10 @@ const app = {
   lastUpto: -1,
   prevLp: {},
   params: new URLSearchParams(location.search),
+  // `ygo-agent web` serves the app around this viewer (shell.js); it tells the viewer whether it is on screen.
+  appMode: document.documentElement.dataset.mode === "app",
+  viewer: true,
+  hooks: {},
 };
 
 class GameView {
@@ -1302,7 +1306,7 @@ function syncUrl() {
     if (g.cursor != null) { const r = currentRec(g); if (r) p.set("d", r.d.id); }
   }
   for (const k of ["theme", "tab", "seat", "width"]) if (app.params.get(k)) p.set(k, app.params.get(k));
-  history.replaceState(null, "", `${location.pathname}?${p}`);
+  history.replaceState(null, "", `${location.pathname}?${p}${location.hash}`);
 }
 
 function connect(id) {
@@ -1328,7 +1332,7 @@ function onStream(m, subscribed) {
   const g = app.game;
   if (m.type === "games") {
     app.live = m.games || [];
-    if (!g && !app.params.get("game")) {
+    if (!g && !app.params.get("game") && !app.appMode) {
       const live = app.live.find((x) => x.live);
       if (live) return openLive(live.game_id);
       showGames();
@@ -1339,7 +1343,7 @@ function onStream(m, subscribed) {
     if (g && g.id === m.game_id) {
       g.caughtUp = true;
       showCaughtUp();
-      if (!g.msgs.length && g.mode !== "recorded") { toast("That game isn't on this panel", "Pick one from the list.", "bad"); showGames(); app.awaiting = g.id; }
+      if (!g.msgs.length && g.mode !== "recorded" && app.viewer) { toast("That game isn't on this panel", "Pick one from the list.", "bad"); showGames(); app.awaiting = g.id; }
     }
     return;
   }
@@ -1353,6 +1357,7 @@ function onStream(m, subscribed) {
   if (["game_start", "meta", "game_end"].includes(m.type)) {
     clearTimeout(liveTimer);
     liveTimer = setTimeout(refreshGames, 300);
+    if (m.type === "game_start" && app.hooks.gameStart && app.hooks.gameStart(m)) return;  // the app's pages say so
     if (m.type === "game_start" && (!g || g.ended || g.mode === "recorded") && m.game_id !== (g && g.id)) {
       if (!g || (g.ended && g.mode !== "recorded")) setTimeout(() => openLive(m.game_id), 400);
       else toast("A live game started", "Open it from the games list (G).", "good");
@@ -1435,7 +1440,7 @@ function renderGames(open) {
   }).join("");
   const html = `<div class="modal-head"><h2>Games</h2><span class="sub">live games in this process, and every log under games/</span><div class="spacer"></div><button class="icon-btn" data-close title="Close (Esc)">✕</button></div>
     <div class="modal-body">
-      <div class="gsec"><h3>Live</h3>${live ? `<div class="glist">${live}</div>` : `<div class="empty-note" style="padding:14px 0;text-align:left">No live game. Start one with <code>ygo-agent play --web</code> (or <code>selfplay</code> / <code>teach</code> / <code>coach</code> with <code>--web</code>), or replay a log live with <code>ygo-agent web --demo games/&lt;dir&gt;</code>.</div>`}</div>
+      <div class="gsec"><h3>Live</h3>${live ? `<div class="glist">${live}</div>` : app.appMode ? `<div class="empty-note" style="padding:14px 0;text-align:left">No live game. Start one from <a href="#/" data-close>Home</a>: duel the agent, watch AI vs AI, a lesson, or get coached.</div>` : `<div class="empty-note" style="padding:14px 0;text-align:left">No live game. Start one with <code>ygo-agent play --web</code> (or <code>selfplay</code> / <code>teach</code> / <code>coach</code> with <code>--web</code>), or replay a log live with <code>ygo-agent web --demo games/&lt;dir&gt;</code>.</div>`}</div>
       <div class="gsec"><h3>Recorded</h3>${rec ? `<div class="glist">${rec}</div>` : `<div class="empty-note" style="padding:14px 0;text-align:left">No game logs found.</div>`}</div>
     </div>`;
   if (open || $("#modal")._kind === "games") openModal("games", html);
@@ -1637,6 +1642,7 @@ function wire() {
     }
     if (t && t.closest && t.closest("button") && (e.key === " " || e.key === "Enter")) return;
     if (e.ctrlKey || e.metaKey || e.altKey || e.isComposing) return;
+    if (!app.viewer && e.key !== "Escape") return;  // an app page is on screen, not the board
     if (e.key === "Escape") {
       if (!$("#modal").classList.contains("hidden")) return closeModal();
       if (pausedLive(app.game)) backToLive();

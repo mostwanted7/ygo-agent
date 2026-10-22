@@ -22,6 +22,21 @@ for the WindBot fork, and the `claude` CLI logged in (or another backend, see [d
 git clone --recursive https://github.com/mostwanted7/ygo-agent.git && cd ygo-agent
 ./build.sh                                                    # the WindBot fork in windbot-src/ (opponents, play --join)
 python3 -m venv .venv && .venv/bin/pip install -e '.[dev]'    # the ygo-agent command and pytest
+.venv/bin/ygo-agent web --open                                # the app, in your browser
+```
+
+The app opens on Home: duel the agent, watch two AIs (or an AI and a WindBot deck AI) play, watch it teach a deck,
+or get coached while you play yours. **Decks** shows each deck's playbook (edit it there), your tips and the notes
+you left on its games, with a **Learn** button that turns those notes into playbook fixes; **New deck** trains one
+from a `.ydk` (it reads the cards, asks you a few questions, writes the playbook and practises). **Setup** runs the
+checks below. Every game plays out live on the board under **Games**, and each thing you start is a job whose
+output and equivalent terminal command the app shows; Ctrl+C on `ygo-agent web` stops them all.
+
+![The app's Home: a running AI-vs-AI job, and the cards to start a duel, AI vs AI, a lesson or a coached game](docs/img/web-app-home.png)
+
+The same in a terminal, without the app:
+
+```sh
 .venv/bin/ygo-agent doctor                                    # checks the setup and says what is missing
 .venv/bin/ygo-agent play                                      # hosts a room and prints where it is
 ```
@@ -50,8 +65,9 @@ chat stays quiet apart from a few jokes per duel (`chat = "off"` in the config s
 note in the duel chat (`!don't Veiler my Stratos, save it`) to bookmark feedback at that moment; the bot confirms it
 and the note lands in the game's `feedback.md`. After the game, the log is in `games/latest/` (`game.md` to read,
 `feedback.md`, the raw `game.jsonl` and `prompts.jsonl`, `meta.json` with the stats, and `replay.yrpX` for EDOPro's
-replay menu). Open Claude Code in this folder and tell it what the AI got wrong: it fixes the deck's playbook or
-rules (the procedure is in `CLAUDE.md`), and the next game uses them.
+replay menu). Press **Learn** on the deck's page in the app (or run `ygo-agent learn --deck NAME`) and it turns
+your notes into playbook fixes; or open Claude Code in this folder and tell it what the AI got wrong: it fixes the
+deck's playbook or rules (the procedure is in `CLAUDE.md`). The next game uses them.
 
 ## Features
 
@@ -81,10 +97,12 @@ Every command takes `--deck NAME` (a deck `ygo-agent decks` lists, a `.ydk` file
   shows it in the panel. The deck is recognised from the list you submit (`--deck` names it); the opponent is a
   WindBot deck AI (`--opponent saffira:sonnet` for an AI deck). 1200 s per turn (`--time-limit`).
   `ygo-agent coach --review games/<dir>` reviews a coached game again. See [docs/coach.md](docs/coach.md).
-- **Web panel.** Add `--web` to any of the above (`[web] auto = true` makes it the default) for
-  http://127.0.0.1:7930/: the board with card pictures, every decision with its options, choice, reasoning and plan,
-  the event log, and a note box that works like a `!note`. `ygo-agent web` browses and replays recorded games;
-  `ygo-agent web --demo games/<dir>` replays one as if live. See [docs/web.md](docs/web.md).
+- **Web app.** `ygo-agent web --open` runs play, self-play, teach, coach, training and learning from the browser,
+  as jobs it starts and stops for you, and shows their games live on the board. `--web` on any of the commands
+  above (`[web] auto = true` makes it the default) serves that board on its own at http://127.0.0.1:7930/: the
+  board with card pictures, every decision with its options, choice, reasoning and plan, the event log, and a note
+  box that works like a `!note`. `ygo-agent web --demo games/<dir>` replays a recorded game as if live. See
+  [docs/web.md](docs/web.md).
 - **Train a new deck.** `ygo-agent train ~/Games/ProjectIgnis/deck/Geargia.ydk --name geargia --budget-usd 40`,
   then `ygo-agent play --deck geargia`. The trainer reads every card and its script, writes a playbook, tests its
   lines in a lab (stacked hands against a dummy that never acts), plays games against WindBot deck AIs, reviews them

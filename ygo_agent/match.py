@@ -857,7 +857,9 @@ class _Run:
         self.add_game(game)
 
     async def spectator_gate(self, room):
-        """Hold the match until someone watches: a spectator joins, or Enter is pressed."""
+        """Hold the match until someone watches: a spectator joins, or Enter is pressed (in a web-app job: the app's
+        "Start without a spectator" button)."""
+        from .web import relay
         if room.observers:
             return
         enter = _Enter.get()
@@ -868,11 +870,18 @@ class _Run:
         lines += [paint(YELLOW, line) for line in join_instructions(room.listen_port, spectator=True)]
         if enter:
             lines.append(paint(DIM, "Or press Enter to start without one."))
+        if relay.active():
+            lines.append(paint(DIM, "Or press \"Start without a spectator\" in the web app."))
+            relay.waiting(f"Waiting for a spectator before game {n}", "Start without a spectator")
         if self.result.web_url:
             lines.append(paint(DIM, f"The web panel shows the game too: {self.result.web_url}"))
         self.say(*lines)
-        while not room.observers and not (enter and enter.pressed.is_set()) and not self._stop.is_set():
-            await asyncio.sleep(0.2)
+        try:
+            while not room.observers and not (enter and enter.pressed.is_set()) and not self._stop.is_set() \
+                    and not relay.go_requested():
+                await asyncio.sleep(0.2)
+        finally:
+            relay.waiting(None)
         if room.observers:
             await asyncio.sleep(1.0)  # let the spectator's client settle into the room first
 
@@ -904,8 +913,13 @@ _PANEL = None
 
 
 def ensure_panel(cfg, db, port=None):
-    """The web panel of this process (started on first use). Live games publish to it."""
+    """The web panel of this process (started on first use). Live games publish to it. In a job of the web app the
+    app is the panel: the bus already relays to it (web/relay.py), so no server starts."""
     global _PANEL
+    from .web import relay
+    if _PANEL is None and relay.active():
+        relay.share_db(db)
+        _PANEL = relay.Stub(relay.url())
     if _PANEL is None:
         from .web import server
         try:

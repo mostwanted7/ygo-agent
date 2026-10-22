@@ -94,6 +94,7 @@ class Bus:
         self._games = collections.OrderedDict()
         self._subs = set()
         self._feedback = {}
+        self._sinks = []       # callables that get every message once it has its seq (a job's relay to the app)
 
     def activate(self, renderer=None):
         if renderer is not None:
@@ -106,8 +107,14 @@ class Bus:
             self._games.clear()
             self._subs.clear()
             self._feedback.clear()
+            self._sinks.clear()
         self.active = False
         self.renderer = None
+
+    def add_sink(self, sink):
+        """sink(msg) gets every message after it is stored. It must not block: the relay only queues it."""
+        with self._lock:
+            self._sinks.append(sink)
 
     # ---- publishing ----
 
@@ -122,6 +129,19 @@ class Bus:
                 msg = self.renderer(msg)
             except Exception as e:  # the panel must never break a duel
                 msg["render_error"] = str(e)
+        return self._add(msg)
+
+    def inject(self, msg):
+        """A message another process has already rendered (a job's relay, web/relay.py): stored and passed on as it
+        is, numbered in this bus's own sequence."""
+        if not self.active:
+            return None
+        msg = {"seat": 0, **msg}
+        msg.pop("seq", None)
+        msg.setdefault("ts", round(time.time(), 3))
+        return self._add(msg)
+
+    def _add(self, msg):
         with self._lock:
             game = self._games.get(msg["game_id"])
             if game is None:
@@ -132,8 +152,14 @@ class Bus:
             game.backlog.append(msg)
             game.note(msg)
             subs = list(self._subs)
+            sinks = list(self._sinks)
         for sub in subs:
             sub.offer(msg)
+        for sink in sinks:
+            try:
+                sink(msg)
+            except Exception:  # a sink must never break the publisher
+                pass
         return msg
 
     def _evict(self):
@@ -177,6 +203,17 @@ class Bus:
         with self._lock:
             game = self._games.get(game_id)
             return dict(game.seats.get(seat, {})) if game else {}
+
+    def last_decision(self, game_id, seat):
+        """(id, turn) of the seat's newest decision on the bus, or (None, None)."""
+        with self._lock:
+            game = self._games.get(game_id)
+            backlog = list(game.backlog) if game else []
+        for msg in reversed(backlog):
+            if msg.get("type") == "decision" and msg.get("seat", 0) == seat:
+                d = msg.get("decision") or {}
+                return d.get("id"), (d.get("state") or {}).get("turn")
+        return None, None
 
     # ---- feedback from the panel ----
 
