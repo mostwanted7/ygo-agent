@@ -2,6 +2,9 @@
 
 [![CI](https://github.com/mostwanted7/ygo-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/mostwanted7/ygo-agent/actions/workflows/ci.yml)
 
+**0.1.0 beta 1.** Everything below works and has been played from EDOPro; it stays a beta while it gets more
+use. What's in it: [CHANGELOG.md](CHANGELOG.md).
+
 An AI opponent for [EDOPro](https://projectignis.github.io/) that pilots a real deck and explains itself. It hosts a
 duel room on your machine; you join from EDOPro and play, while every decision, its reasoning and its plan for the
 turn appear in your terminal and in a local web panel. The same agent narrates its own games for someone learning a

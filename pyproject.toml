@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ygo-agent"
-version = "0.1.0"
+dynamic = ["version"]
 description = "LLM-driven Yu-Gi-Oh! players for EDOPro: play, teach, train and benchmark."
 readme = "README.md"
 license = "AGPL-3.0-or-later"
@@ -16,6 +16,9 @@ dev = ["pytest"]
 
 [project.scripts]
 ygo-agent = "ygo_agent.cli:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "ygo_agent.__version__" }
 
 [tool.setuptools.packages.find]
 include = ["ygo_agent*"]

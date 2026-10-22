@@ -523,7 +523,7 @@ https://github.com/mostwanted7/windbot (branch `brain-bridge`, a fork of Project
 - **Decision (user): training stays part of the project.** It is cheap and it works. For firmer numbers later, a
   few pairs against a longer-game deck (Time Thief, Dragunity) say more than more Blue-Eyes games.
 
-## Stage 10: training as the user defined it, the web app, release 0.1.0b1 (2026-10-22) ◐
+## Stage 10: training as the user defined it, the web app, release 0.1.0b1 (2026-10-22) ☑
 
 ### What "training" means (the user's definition, agreed)
 A **trained deck is a guidebook**: `playbook.md`, the strategy the play model reads on every decision, so it doesn't
@@ -605,6 +605,26 @@ the same loop for anyone who cloned the repo.
 Version `0.1.0b1` (PEP 440) in pyproject and `ygo_agent.__version__` (`ygo-agent --version`), CHANGELOG.md, tag
 `v0.1.0-beta.1`, a GitHub pre-release "ygo-agent 0.1.0 beta 1". 1.0 comes after the user has used it for a while and
 trained a couple of decks with the new flow.
+
+### Notes from Stage 10 (done 2026-10-22)
+- Built by two agents in parallel worktrees (trainer side; web side), merged and wired by the orchestrator.
+- **Trainer:** `train` interviews (`interview.questions` + `interview` steps; `--tips`, `--no-interview`,
+  `--interview-only`), tips in every reviewer prompt, defaults 6 lab hands / 2 games / 1 round. `learn.py`
+  (`Trainer.apply_reply` is the apply path shared with game reviews; owner sections like Coaching lessons are never
+  edited; a `train/learn.lock` per deck; learn's state under `learn` in state.json). The tips a playbook has taken in
+  are also kept in `deck.json` (`tips_seen`), so a shared deck carries them. `train --backend` no longer sets the play
+  model (dest `reviewer`); train and learn exit non-zero on failure under `python -m`.
+- **Web app:** `web/jobs.py` (argv from validated params, process groups, `.go` files for "press Enter" waits),
+  `web/relay.py` (installed by `cli.main` for every command but `web`), `web/app.py`, `static/shell.js`. Game ids of
+  runs in a caller-chosen folder carry a hash of its path (the trainer's `runs/r1-g1` repeated across decks).
+- **End-to-end check through the app** (scratch decks/games dirs, Sonnet): New deck on Rose Garden → interview (7
+  questions, Opus, $0.15, 11 s) → answers saved → training (study, 2 lab hands, 1 game vs Blue-Eyes, reviews; about
+  $1.6, 5 min; the games showed live through the relay) → a panel note on decision #19 → Learn (already covered,
+  quoting the playbook; $0.03) → the note marked in feedback.md. 708 tests pass.
+- Known gaps: the interview step uses the configured reviewer (the wizard picks backends only for training);
+  training games log under the deck's `train/`, so once they leave the app's bus (16 newest games) the Games list
+  can't reopen them; no lock between a train and a learn on the same deck at once (the app's deck lock covers jobs
+  started from the app).
 
 ## Research track (not release work)
 Local and open models are the user's own research, run on their desktop (RX 9070) through backend profiles in

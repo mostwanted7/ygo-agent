@@ -82,6 +82,8 @@ def add_room(p):
 
 def parser():
     ap = argparse.ArgumentParser(prog="ygo-agent", description="LLM-driven Yu-Gi-Oh! players for EDOPro.")
+    from . import __version__
+    ap.add_argument("--version", action="version", version=f"ygo-agent {__version__}")
     sub = ap.add_subparsers(dest="cmd", required=True, metavar="COMMAND")
 
     p = sub.add_parser("play", help="duel the agent: it hosts a room and you join it from EDOPro")
