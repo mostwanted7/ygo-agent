@@ -117,8 +117,8 @@ heuristic opponent and a scripted coach: a thoughtful human never gets late advi
 
 ## Known gaps
 
-- Untested with the real EDOPro GUI: the arena's view of a human seat is the same one an EDOPro client gets (the
-  protocol is tested with the Python client and was checked with EDOPro in Stage 2), but no person has played a
-  coached game yet.
+- Played from the real EDOPro GUI only a few times so far (two coached games on 2026-10-22, Geargia and Blackwing
+  against Blue-Eyes); the arena's view of a human seat is the same one an EDOPro client gets, and the protocol is
+  tested with the Python client.
 - An unselect (taking a card back in a multi-pick) has no option index, so the coach can't compare it.
 - The coach advises on the state it is given; its advice can be wrong, and the review is told it may be.

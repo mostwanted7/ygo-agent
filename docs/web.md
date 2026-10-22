@@ -82,8 +82,8 @@ DuelBrain ─▶ GameLog ─▶ Channel(game_id, seat) ─▶ Bus ──(Rendere
 ```
 
 - **Hook.** `GameLog` (`ygo_agent/agent/gamelog.py`) already sees every event, decision, reply and prompt, so it is
-  the only publisher: each log has a `web` Channel. Any seat that logs through a GameLog (the WindBot bridge today,
-  native arena seats in Stage 3/4) is on the panel for free. While no panel runs, `Channel.send` returns at once.
+  the only publisher: each log has a `web` Channel. Any seat that logs through a GameLog (native arena seats, the
+  WindBot bridge, the coached human's seat) is on the panel for free. While no panel runs, `Channel.send` returns at once.
   Quiet logs (replays, tests) don't publish unless created with `publish=True`.
 - **Ids.** `GameLog(..., game_id=, seat=)` and `DuelBrain(..., game_id=, seat=)`. The default game id is the log
   folder's first name; two seats of one game must pass the same `game_id` and their own `seat`.
@@ -147,13 +147,15 @@ A decision card in the panel is the `decision` plus whatever arrives later for t
 ## Screenshots
 
 `docs/img/` holds `web-panel.png` (1440×900), `web-panel-1024.png`, `web-panel-light.png` and `web-games.png`,
-taken from replays of real recorded games. To retake them, or to record frames of a demo for a GIF:
+taken from replays of real recorded games, and `demo.gif` (960 px wide, 8 fps, 15 s: the first turn of an Opus
+Blackwing game in the dark theme, 120 frames taken every 400 ms at 1440×900, the first two skipped). To retake
+them, or to record frames of a demo for a GIF:
 
 ```sh
 ygo-agent web --port 7931 &                     # or: ygo-agent web --demo games/<dir> --speed 2 --port 7931 &
 node tests/web/shoot.mjs "http://127.0.0.1:7931/?game=rec:<dir>&d=17&theme=dark" docs/img/web-panel.png 1440x900
 node tests/web/shoot.mjs frames.json            # [{"url": ..., "out": "frames/f%03d.png", "frames": 120, "every": 250}]
-ffmpeg -framerate 4 -i frames/f%03d.png -vf "fps=8,scale=960:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=128[p];[b][p]paletteuse" demo.gif
+ffmpeg -framerate 4 -start_number 2 -i frames/f%03d.png -vf "fps=8,scale=960:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=128:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:diff_mode=rectangle" docs/img/demo.gif
 ```
 
 `shoot.mjs` drives headless Firefox over WebDriver BiDi with Node 22's built-in WebSocket, so nothing needs
