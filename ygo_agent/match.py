@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import asyncio
 import dataclasses
+import hashlib
 import json
 import os
 import re
@@ -530,6 +531,9 @@ class _Run:
             self.out = os.path.abspath(base)  # results.json and log_dir hold absolute paths either way
         self.result.out = self.out
         self.name = os.path.basename(self.out)
+        # The web panel's game ids start with this. A folder the caller chose (the trainer's runs/r1-g1, a bench's)
+        # isn't unique on its own, and an app that relays several runs would merge their games.
+        self.tag = self.name if base is None else f"{self.name}-{hashlib.sha1(self.out.encode()).hexdigest()[:6]}"
         if self.web:
             self.result.web_url = ensure_panel(self.cfg, self.db, self.web_port).url
 
@@ -656,7 +660,7 @@ class _Run:
         agents = [self.agent_seat(s, game_tag) for s in self.seats]
         with self._lock:
             self._live |= set(agents)
-        link(*agents, match_id=f"{self.name}-m{n}")
+        link(*agents, match_id=f"{self.tag}-m{n}")
         decks = (self.decks[0], self.decks[1])
         seed = None if self.seed is None else self.seed + n - 1
         arena_log = ArenaLog(os.path.join(self.out, f"match-{n:03d}.log"), self.engine.cards)
@@ -756,7 +760,7 @@ class _Run:
                 seat.close()
             raise MatchError(str(e)) from None
         if agents:
-            link(*agents.values(), match_id=self.name + (f"-r{room_no + 1}" if self.parallel > 1 else ""))
+            link(*agents.values(), match_id=self.tag + (f"-r{room_no + 1}" if self.parallel > 1 else ""))
         if self.spectate:
             room.gate = self.spectator_gate
         if self.on_room:

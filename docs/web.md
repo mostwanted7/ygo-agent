@@ -272,7 +272,7 @@ A decision card in the panel is the `decision` plus whatever arrives later for t
 - **Stage 4 (self-play, several seats), done.** `ygo_agent.match.run_games` links the two AI seats of every duel
   (`native_seat.link`), so each seat's `DuelBrain(..., game_id=G, seat=S)` shares `G`: `<run>-m<match>-g<game>`
   in-process, `<run>-g<game>` in a room (`<run>-r<room>-g<game>` with parallel rooms), where `<run>` is the run
-  folder's name. The panel shows both seats, seat tabs and god view. Parallel games are
+  folder's name (with a short hash of its path when the caller chose the folder, as the trainer and the bench do, so two runs never share an id). The panel shows both seats, seat tabs and god view. Parallel games are
   separate games in the list. A seat that logs quietly must pass `publish=True`; the terminal's `--quiet` (echo
   "key") still publishes everything.
 - **Stage 5 (coach), done.** The coached seat's GameLog publishes the `decision` (the human's own view) at once,
