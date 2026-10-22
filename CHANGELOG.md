@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- The train wizard showed the report instead of your questions after "Read the deck"; a deck page mid-training
+  now opens the wizard.
+
 ## 0.1.0 beta 1 (2026-10-22)
 
 The first release. Everything below works and has been played from EDOPro; it is a beta because it hasn't had much
