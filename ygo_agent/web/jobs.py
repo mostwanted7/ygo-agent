@@ -305,7 +305,8 @@ class Builder:
         budget = self.number(p, "budget_usd", 0.5, 200, None, float)
         if budget is not None:
             argv.append(f"--budget-usd={budget:g}")
-        return Plan("learn", argv, f"Learn from the notes on {deck}", deck=deck, deck_lock=True)
+        return Plan("learn", argv + self.common("config", "edopro_dir", "games_dir"), f"Learn from the notes on {deck}",
+                    deck=deck, deck_lock=True)
 
     def build_doctor(self, p):
         return Plan("doctor", ["doctor", "--json"] + self.common("config", "edopro_dir"), "Check the setup")

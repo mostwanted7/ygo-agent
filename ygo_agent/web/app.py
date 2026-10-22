@@ -239,10 +239,7 @@ class App:
                 break
         games = [self.game_brief(os.path.basename(g)) for g in notes.deck_games(key, self.library.games_dir)]
         learn_md = read_text(os.path.join(folder, "train", "learn.md"))
-        # `learn` keeps the digest of the tips it last folded in (state.json's learn.tips_digest).
-        state = read_json(os.path.join(folder, "train", "state.json")) or {}
-        digest = tips.digest(folder)
-        learned = (state.get("learn") or {}).get("tips_digest") if isinstance(state, dict) else None
+        from ..trainer.learn import tips_status  # which tips the playbook hasn't taken in yet
         jobs = [j.to_dict() for j in self.runner.list() if j.deck and j.deck.lower() == key.lower()][:12]
         interview = read_json(os.path.join(folder, "train", "interview.json"))
         name = row.get("name") or key
@@ -252,7 +249,7 @@ class App:
             **row, "name": name, "key": key, "location": location, "dir": folder, "playbook": playbook,
             "playbook_sha": sha(playbook), "tips_entries": tips.entries(folder), "tips_path": tips.path(folder),
             "pending": pending, "other_pending": others, "report": report,
-            "tips_changed": bool(digest) and digest != learned,
+            "tips_changed": tips_status(folder)["changed"],
             "interview": interview,
             "train": train_status(folder), "games_list": [g for g in games if g][:RECENT_GAMES],
             "learn_log": learn_md[-4000:] if learn_md else None, "jobs": jobs,

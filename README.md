@@ -103,13 +103,15 @@ Every command takes `--deck NAME` (a deck `ygo-agent decks` lists, a `.ydk` file
   board with card pictures, every decision with its options, choice, reasoning and plan, the event log, and a note
   box that works like a `!note`. `ygo-agent web --demo games/<dir>` replays a recorded game as if live. See
   [docs/web.md](docs/web.md).
-- **Train a new deck.** `ygo-agent train ~/Games/ProjectIgnis/deck/Geargia.ydk --name geargia --budget-usd 40`,
-  then `ygo-agent play --deck geargia`. The trainer reads every card and its script, writes a playbook, tests its
-  lines in a lab (stacked hands against a dummy that never acts), plays games against WindBot deck AIs, reviews them
-  against the scripts and the engine log, and repeats until a round shows no significant mistakes. The deck goes to
-  your own decks dir (`~/.local/share/ygo-agent/decks/`; `--into repo` puts it in `decks/`). `--resume` continues a
-  stopped run; `ygo-agent train-compare --name geargia` shows what the training bought. See
-  [docs/training.md](docs/training.md) and [docs/adding-a-deck.md](docs/adding-a-deck.md).
+- **Train a new deck.** `ygo-agent train ~/Games/ProjectIgnis/deck/Geargia.ydk --name geargia` (or **New deck**
+  in the app). It reads every card and its script, asks you a few questions about how you play the deck (your
+  answers become its `tips.md`), writes a playbook from both, then plays a short lab of first turns and a couple of
+  games against WindBot deck AIs, reviews them against the scripts and the engine log, and corrects the playbook. A
+  trained deck is a guidebook the model reads on every decision (playbook, your tips, regression cases), not
+  weights. Then play it, type a note when it errs (the note box, or `!` in the duel chat), and `ygo-agent learn
+  --deck geargia` (**Learn** in the app) folds your notes into the playbook, each checked against the log and the
+  card scripts. The deck goes to your own decks dir (`~/.local/share/ygo-agent/decks/`; `--into repo` puts it in
+  `decks/`). See [docs/training.md](docs/training.md) and [docs/adding-a-deck.md](docs/adding-a-deck.md).
 - **Benchmark.** `ygo-agent bench readme` plays the README benchmark (same seeds for every backend, resumable);
   `ygo-agent bench exam` grades models on the same logged decisions with a blind judge; `ygo-agent bench smoke`
   checks the pipeline in a minute without an LLM. See [docs/bench.md](docs/bench.md).
@@ -180,7 +182,8 @@ play --join:  EDOPro room you host ◀── WindBot fork (windbot-src, BrainBri
   through the turn. The prompt holds the rules in force, `playbooks/general.md`, the deck list with card texts and
   the deck's `playbook.md`.
 - **Decks** live in `decks/<name>/` (the ones that ship) or your decks dir (the ones you train): `deck.ydk`,
-  `deck.json`, `playbook.md`, `rules.py` and `tests/` with past mistakes saved as regression cases.
+  `deck.json`, `playbook.md`, `tips.md` (your own advice about the deck), `rules.py` and `tests/` with past mistakes
+  saved as regression cases.
 - **The WindBot fork** (`windbot-src/`, branch `brain-bridge`) plays the deck AIs the agent trains and benchmarks
   against, and joins rooms you host in EDOPro (`play --join`), asking the agent for every decision over TCP.
 - **The coach** (`ygo_agent/coach`) watches a human's seat in the arena and advises without ever blocking the duel;

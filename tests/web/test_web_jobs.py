@@ -75,7 +75,7 @@ def test_training_learn_doctor_argv(builder, cfg, tmp_path):
         "--games=2", "--lab-hands=6", "--max-rounds=1", "--budget-usd=12.5", "--config=/x/my.toml"]
     assert argv(builder, "train", name="my-deck")[-2:] == ["--no-interview", "--config=/x/my.toml"]
     assert argv(builder, "learn", deck="geargia", backend="sonnet", budget_usd=5) == [
-        "learn", "--deck=geargia", "--backend=sonnet", "--budget-usd=5"]
+        "learn", "--deck=geargia", "--backend=sonnet", "--budget-usd=5", "--config=/x/my.toml", "--games-dir=/g"]
     assert argv(builder, "doctor") == ["doctor", "--json", "--config=/x/my.toml"]
     plan = builder.build("learn", {"deck": "geargia"})
     assert plan.deck == "geargia" and plan.deck_lock and plan.room is None

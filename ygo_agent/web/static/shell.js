@@ -590,7 +590,7 @@
       const range = (a, b, fmt) => (fmt(a) === fmt(b) ? fmt(a) : `${fmt(a)}–${fmt(b)}`);
       const mins = (a, b) => { const x = Math.max(1, Math.round(a / 60)), y = Math.max(1, Math.round(b / 60)); return x === y ? `${x} min` : `${x}–${y} min`; };
       $("#estimate", f).innerHTML = e.free ? `No API cost with these backends; about ${mins(e.lo.secs * 0.6, e.hi.secs)}.`
-        : `About <b>${range(e.lo.cost * 0.8, e.hi.cost * 1.25, money)}</b> of API-price usage and <b>${mins(e.lo.secs * 0.8, e.hi.secs * 1.3)}</b>, measured on a Geargia run (a later round is skipped when the games show no significant mistakes). A budget, say $${Math.ceil(e.hi.cost * 1.5)}, stops it cleanly before going over. A Claude Code login isn't billed per call.`;
+        : `About <b>${range(e.lo.cost * 0.8, e.hi.cost * 1.25, money)}</b> of API-price usage and <b>${mins(e.lo.secs * 0.8, e.hi.secs * 1.3)}</b> (an estimate from the steps of a Geargia run; a later round is skipped when the games show no significant mistakes). A budget, say $${Math.ceil(e.hi.cost * 1.5)}, stops it cleanly before going over. A Claude Code login isn't billed per call.`;
     };
     f.oninput = upd;
     f.onchange = upd;
