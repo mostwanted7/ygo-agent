@@ -17,6 +17,12 @@ DEFAULT_PROTOCOL_VERSION = 720937  # ClientVersion {41, 0, 11, 0}
 HOST_VERSION = re.compile(r"Host version data: ([0-9A-F]{2})-([0-9A-F]{2})-([0-9A-F]{2})-([0-9A-F]{2})")
 
 
+def ask(prompt, button):
+    """input(prompt) in a terminal; in a web-app job (no terminal), the app's button (Stop is the job's "q")."""
+    from .web import relay
+    return relay.wait_go(prompt, button) if relay.active() else input(prompt)
+
+
 def protocol_version(cfg):
     """The configured version, else the one EDOPro reported last time, else the default."""
     return cfg["bot"].get("protocol_version") or cache.get("protocol_version") or DEFAULT_PROTOCOL_VERSION
@@ -94,7 +100,7 @@ def play(runtime, brain_only=False):
         threading.Event().wait()
     while True:
         print(paint(YELLOW, "\nIn EDOPro: LAN mode → Host Duel (set a long or no time limit), then wait in the room."))
-        input(paint(BOLD, "Press Enter when the room is open... "))
+        ask(paint(BOLD, "Press Enter when the room is open... "), "The room is open: send the bot")
         runtime.duel_started.clear()
         version = protocol_version(cfg)
         code, host_version = run_bot(runtime, version)
@@ -110,6 +116,6 @@ def play(runtime, brain_only=False):
             print(paint(RED, f"The bot never got into a duel. Is a room open at {cfg['room']['host']}:"
                              f"{cfg['room']['port']}? If it joined but left, check the deck/banlist settings and "
                              f"{runtime.windbot_log}."))
-        again = input(paint(BOLD, "Play again? [Enter = yes, q = quit] ")).strip().lower()
+        again = ask(paint(BOLD, "Play again? [Enter = yes, q = quit] "), "Play again").strip().lower()
         if again.startswith("q"):
             break

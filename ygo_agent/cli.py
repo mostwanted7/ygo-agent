@@ -1,5 +1,6 @@
 """ygo-agent: command line.
 
+    ygo-agent web [--open] [--port 7930]   # the web app: start games, train decks, learn from notes, watch live
     ygo-agent play [--deck saffira] [--backend opus] [--web]   # the agent hosts a room, you join it from EDOPro
     ygo-agent play --join          # legacy: host a LAN room in EDOPro, the agent's bot (WindBot fork) joins it
     ygo-agent selfplay --a saffira:opus --b blackwing:sonnet [--games N] [--parallel K] [--spectate --pace 2]
@@ -9,7 +10,9 @@
     ygo-agent replay games/latest 14 [--save NAME --expect '[[2]]' --note "..."]
     ygo-agent test [NAME ...]      # re-run saved regression cases
     ygo-agent decks                # every deck profile: where it lives, playbook, rules, saved cases, .ydk
-    ygo-agent web [--demo games/<dir> --speed 2]   # the web panel: recorded games, or one replayed live
+
+The web app runs these same commands as jobs (ygo_agent/web/jobs.py); a job's games reach the app through the relay
+(ygo_agent/web/relay.py), which main() switches on when the app's environment variables are set.
 """
 
 import argparse
@@ -153,16 +156,24 @@ def parser():
     p.add_argument("--edopro-dir", help="EDOPro install folder")
     p.add_argument("--config", metavar="FILE", help="use FILE instead of config.local.toml")
 
-    p = sub.add_parser("web", help="the web panel on its own: browse and replay recorded games, or a live demo")
-    p.add_argument("--demo", metavar="GAME_DIR", help="replay a recorded game (games/<dir>) live, as if it were "
+    p = sub.add_parser("web", help="the web app: duel the agent, watch AI vs AI or a lesson, get coached, train a "
+                                   "new deck, learn from your notes, browse and replay games (it runs the commands "
+                                   "below for you)",
+                       description="The web app on http://127.0.0.1:7930/: start a duel, AI vs AI, a lesson or a "
+                                   "coached game, train a deck, learn from your notes, edit playbooks and tips, check "
+                                   "the setup, and watch every game live on the board. Everything it starts is one of "
+                                   "these terminal commands, run as a job; Ctrl+C stops the app and its jobs. "
+                                   "See docs/web.md.")
+    p.add_argument("--demo", metavar="GAME_DIR", help="also replay a recorded game (games/<dir>) live, as if it were "
                                                        "being played now")
     p.add_argument("--speed", type=float, default=2.0, help="demo speed (default 2: about twice real time)")
     p.add_argument("--loop", action="store_true", help="restart the demo when it ends")
     p.add_argument("--port", dest="web_port", type=int, help="port (default from the config: 7930)")
-    p.add_argument("--host", dest="web_host", help="bind address (default 127.0.0.1)")
-    p.add_argument("--open", action="store_true", help="open the panel in your browser")
+    p.add_argument("--host", dest="web_host", help="bind address (default 127.0.0.1; starting jobs and editing "
+                                                    "decks stay limited to this machine either way)")
+    p.add_argument("--open", action="store_true", help="open the app in your browser")
     p.add_argument("--edopro-dir", help="EDOPro install folder")
-    p.add_argument("--games-dir", help="where game logs are")
+    p.add_argument("--games-dir", help="where game logs are (the games the app starts go there too)")
     p.add_argument("--config", metavar="FILE", help="use FILE instead of config.local.toml")
     from .bench.cli import register as register_bench  # ygo-agent bench (ygo_agent/bench/cli.py)
     register_bench(sub)
@@ -233,9 +244,11 @@ def mode_of(args):
 
 def load_db(cfg):
     from .agent.carddb import CardDB
+    from .web import relay
     db = CardDB(cfg["edopro_dir"])
     if not db.cards:
         sys.exit(f"No EDOPro card databases found in {db.root} (set edopro_dir in config.local.toml or --edopro-dir).")
+    relay.share_db(db)  # a web-app job renders its games with this one
     return db
 
 
@@ -328,26 +341,48 @@ def cmd_decks(args, cfg):
 
 
 def cmd_web(args, cfg):
+    """The web app: the panel plus the pages that run the other commands as jobs (ygo_agent/web/app.py)."""
     import os
     import threading
-    from .agent.gamelog import paint, DIM
-    from .web import demo
+    from .agent.gamelog import paint, BOLD, CYAN, DIM, YELLOW
+    from .web import demo, server
     db = load_db(cfg)
     if args.demo and not os.path.isfile(os.path.join(args.demo, "game.jsonl")):
         sys.exit(f"{args.demo} is not a game log folder (no game.jsonl)")
-    srv = start_panel(cfg, db)
+    from . import paths
+    # The app's own flags go on to the jobs it starts, read the way the app read them (paths in the config and
+    # --games-dir/--edopro-dir are relative to the repo; --config to the current folder).
+    forward = {"config": os.path.abspath(args.config) if args.config else None,
+               "edopro_dir": paths.resolve(args.edopro_dir) if args.edopro_dir else None,
+               "games_dir": paths.resolve(args.games_dir) if args.games_dir else None}
+    try:
+        srv = server.start(cfg, db, app={"forward": forward})
+    except OSError as e:
+        sys.exit(str(e))
+    print(paint(BOLD + ";" + CYAN, f"ygo-agent web app: {srv.url}"))
+    if cfg["web"].get("open_browser"):
+        import webbrowser
+        webbrowser.open(srv.url)
     if args.demo:
         demo.Demo(args.demo, db, speed=args.speed, loop=args.loop).start()
-        print(paint(DIM, f"Demo: replaying {args.demo} at {args.speed:g}x speed as a live game. Ctrl+C stops."))
-    else:
-        games = len(srv.panel.library.names())
-        print(paint(DIM, f"{games} recorded game(s) in {srv.panel.library.games_dir}. Live games show up in the "
-                         "panel of the process that plays them (play/teach/coach --web). Ctrl+C stops."))
+        print(paint(DIM, f"Demo: replaying {args.demo} at {args.speed:g}x speed as a live game."))
+    games = len(srv.panel.library.names())
+    print(paint(DIM, f"{games} recorded game(s) in {srv.panel.library.games_dir}. Games, training and the other "
+                     f"commands you start in the app run as jobs (output in {srv.panel.app.runner.dir}). "
+                     "Ctrl+C stops the app and its jobs."))
     try:
         threading.Event().wait()
     except KeyboardInterrupt:
         print()
     finally:
+        running = srv.panel.app.runner.running()
+        if running:
+            print(paint(YELLOW, f"Stopping {len(running)} running job(s) like Ctrl+C (up to 25 s; Ctrl+C again "
+                                "kills them)..."))
+        try:
+            srv.panel.app.shutdown()
+        except KeyboardInterrupt:
+            srv.panel.app.shutdown(quick=True)
         srv.stop()
 
 
@@ -517,6 +552,9 @@ def main(argv=None):
         cfg = configure(args)
     except ConfigError as e:
         sys.exit(f"config error: {e}")
+    if args.cmd != "web":
+        from .web import relay
+        relay.install(cfg)  # a job of the web app: its games go to the app (a no-op otherwise)
     if args.cmd == "play" and not args.join:
         return cmd_play_arena(args, cfg)
     if args.cmd == "teach" and not args.join:
