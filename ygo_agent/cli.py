@@ -24,7 +24,7 @@ def add_common(p):
     p.add_argument("--deck", help="deck profile: a deck in decks/ or your decks dir (`ygo-agent decks`), a .ydk file "
                                   "or a deck in EDOPro's deck folder (default from the config)")
     p.add_argument("--backend", help="backend profile: a [backends.NAME] table in the config (e.g. opus, sonnet, "
-                                     "api-opus, local, heuristic, random)")
+                                     "api-opus, local, heuristic, random; default agent.backend: opus)")
     p.add_argument("--model", help="override the backend's model (e.g. opus, sonnet, qwen3:14b)")
     p.add_argument("--effort", help="override the backend's effort level (low, medium, high, xhigh, max)")
     p.add_argument("--edopro-dir", help="EDOPro install folder")

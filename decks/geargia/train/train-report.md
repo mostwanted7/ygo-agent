@@ -1,5 +1,7 @@
 # Training report: Geargia
 
+> **Note (2026-10-22):** after this training the deck list was switched to the user's Gadget Geargia (`~/Games/ProjectIgnis/deck/Gadget Geargia.ydk`: +2 Gold Gadget, +2 Silver Gadget; -2 Monster Reborn, -1 Graceful Charity, -1 Fiendish Chain). The playbook was adapted by hand (Gadget roles, Gadget + Armor, Limiter Removal floats; the Monster Reborn pitfall removed), not retrained. The case `loop-reborn-arsenal-before-xyz` depended on Monster Reborn and was moved to `train/retired-tests/`; the other six still pass (sonnet, 1 run each).
+
 Status: **done**. Reviewer: opus; player: sonnet; rules MR3; opponents: windbot:Blue-Eyes, windbot:Dragunity.
 Playbook: `geargia/playbook.md`, 13.9 KB.
 Spent $14.32 of a $45.00 budget (API-price equivalents; a Claude Code subscription isn't billed per call) in 32 min of running time.

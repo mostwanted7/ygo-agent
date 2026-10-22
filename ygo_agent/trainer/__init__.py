@@ -1,6 +1,6 @@
 """The trainer: turn a new .ydk into a deck folder with a playbook the agent can play from.
 
-    ygo-agent train path/to/Deck.ydk --name deck [--backend opus] [--player-backend sonnet] [--budget-usd 40]
+    ygo-agent train path/to/Deck.ydk --name deck [--backend opus] [--player-backend opus] [--budget-usd 40]
 
 Phases (pipeline.py), each one checkpointed in decks/<name>/train/state.json so `--resume` continues:
 

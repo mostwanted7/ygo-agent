@@ -73,6 +73,7 @@ history_lines = 500              # duel-log lines replayed when a session starts
 card_texts = "full"
 # On the "Go to the Battle Phase" option, in your Main Phase 1, when the opponent controls no monster or your
 # Attack Position monsters' total ATK reaches their LP: the total ATK, their LP and monster count (facts, no advice).
+# Monsters a face-up card stops from attacking (Fiendish Chain, by the card's script) are left out and named.
 attack_note = true
 
 # ---- Backend profiles ----
@@ -139,7 +140,7 @@ type = "random"
 [trainer]
 # `ygo-agent train` (docs/training.md). Flags override these.
 backend = "opus"                                     # the reviewer: writes and corrects the playbook (--backend)
-player_backend = "sonnet"                            # plays the lab turns and the games (--player-backend)
+player_backend = ""                                  # plays the lab and the games (--player-backend); "" = agent.backend
 opponents = ["windbot:Blue-Eyes", "windbot:Dragunity"]  # WindBot deck AIs legal under the rules (no Link monsters)
 lab_hands = 10                                       # lab hands in round 1 (later rounds re-test what isn't verified)
 games = 4                                            # games per round

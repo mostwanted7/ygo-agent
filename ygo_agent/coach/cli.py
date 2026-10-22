@@ -17,7 +17,8 @@ def register(sub):
     p.add_argument("--deck", dest="coach_deck", metavar="DECK",
                    help="the deck you play: one `ygo-agent decks` lists, a .ydk or an EDOPro deck name (default: "
                         "recognised from the deck you submit in EDOPro)")
-    p.add_argument("--backend", help="the coach's backend profile (e.g. opus, sonnet, haiku)")
+    p.add_argument("--backend", help="the coach's backend profile (default agent.backend: opus; e.g. sonnet, "
+                                     "haiku)")
     p.add_argument("--model", help="override the backend's model")
     p.add_argument("--effort", help="override the backend's effort level")
     p.add_argument("--opponent", metavar="SEAT", help="who you play against (default from the config: "

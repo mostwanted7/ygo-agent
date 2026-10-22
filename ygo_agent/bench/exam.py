@@ -1049,6 +1049,7 @@ def summarize(data: dict) -> dict:
             rows.append({"position": pid, "candidate": c, "deck": p["deck"], "group": p["group"], "sub": p["sub"],
                          "grade": g.get("grade"), "score": J.SCORE.get(g.get("grade")), "label": g.get("label"),
                          "reason": g.get("reason"), "key": keys[c],
+                         "shown_from": (r["mapping"].get(g.get("label")) or {}).get("why_from"),
                          "agree": keys[c] == r.get("own_key") or g.get("label") in r["result"]["equivalent"],
                          "unique": sum(1 for x in cands if keys[x] == keys[c]) == 1})
     rows = [x for x in rows if x["score"] is not None]
@@ -1079,7 +1080,7 @@ def summarize(data: dict) -> dict:
         "exam": {k: exam.get(k) for k in ("seed", "n", "decks", "sources", "pool", "created")},
         "models": models, "pairs": pairs,
         "judge_checks": judge_checks(rows, main, run, cands, primary),
-        "cross_judges": cross_judges(graded, primary, cands, answers),
+        "cross_judges": cross_judges(graded, primary, cands, run),
         "prompt_mismatch": sorted({a["position"] for a in answers.values() if a.get("status") == "done"
                                    and a.get("same_prompt") is False}),
         "incomplete": sorted(pid for pid in asked if any((answers.get((pid, c)) or {}).get("status") != "done"
@@ -1157,7 +1158,9 @@ def judge_checks(rows: list[dict], main: dict, run: dict, cands: list[str], prim
             "confidence": _count(r["result"].get("confidence") for r in main.values())}
 
 
-def cross_judges(graded: dict, primary: str | None, cands: list[str], answers: dict) -> list[dict]:
+def cross_judges(graded: dict, primary: str | None, cands: list[str], run: dict) -> list[dict]:
+    """Each extra judge's grades of the same answers: agreement with the primary judge, and the models' mean grades
+    and paired differences by that judge alone (a judge of another model is the self-preference cross-check)."""
     out = []
     base = graded.get(primary) or {}
     for judge, records in graded.items():
@@ -1177,8 +1180,19 @@ def cross_judges(graded: dict, primary: str | None, cands: list[str], answers: d
                     n += 1
                     same += g == h
                     within += abs(J.SCORE[g] - J.SCORE[h]) <= 1
-        out.append({"judge": judge, "positions": len(records), "compared": n, "same": _rate(same, n),
-                    "within_one": _rate(within, n), "mean_score": {c: mean(v) for c, v in scores.items()}})
+        by_pos = {pid: {c: J.SCORE[g["grade"]] for c, g in J.unblind(r["mapping"], r["result"]["grades"]).items()
+                        if g.get("grade")} for pid, r in records.items()}
+        pairs = []
+        for a, b in itertools.combinations(cands, 2):
+            diffs = [v[a] - v[b] for v in by_pos.values() if a in v and b in v]
+            wins, losses = sum(1 for d in diffs if d > 0), sum(1 for d in diffs if d < 0)
+            pairs.append({"a": a, "b": b, "n": len(diffs), "diff": mean(diffs), "ci95": bootstrap_ci(diffs, seed=1),
+                          "a_better": wins, "b_better": losses, "p_sign": sign_test(wins, losses)})
+        means = {c: mean(v) for c, v in scores.items()}
+        ranked = [c for c in sorted(means, key=lambda c: -(means[c] if means[c] is not None else -1))]
+        out.append({"judge": judge, "model": model_of((run.get("judge_profiles") or {}).get(judge)),
+                    "positions": len(records), "compared": n, "same": _rate(same, n),
+                    "within_one": _rate(within, n), "mean_score": means, "ranking": ranked, "pairs": pairs})
     return out
 
 
@@ -1207,7 +1221,7 @@ def disagreements(rows: list[dict], main: dict, positions: dict, answers: dict, 
                     "confidence": r["result"].get("confidence"),
                     "answers": [{"candidate": x["candidate"], "grade": x["grade"], "reason": x["reason"],
                                  "answer": answers[(pid, x["candidate"])]["answer"],
-                                 "why": answers[(pid, x["candidate"])].get("why")}
+                                 "why": answers[(pid, x["candidate"])].get("why"), "shown_from": x.get("shown_from")}
                                 for x in sorted(by[pid], key=lambda y: -y["score"])]})
     return out
 
@@ -1290,24 +1304,38 @@ def recommend(s: dict) -> dict:
             lines.append(f"{c} scores below {best}: {diff:+.2f} grade points"
                          + (f" (95% CI {ci[0]:+.2f} to {ci[1]:+.2f})" if ci else "") + f" over {n} positions.")
     others = [c for c in models if c != choice]
-    separated = []
+    separated, significant = [], []
     for c in others:
         diff, ci, n = versus(choice, c)
         if ci and (ci[0] > 0 or ci[1] < 0):
             separated.append(c)
+        p = pair.get((choice, c)) or pair.get((c, choice)) or {}
+        if p.get("p_sign") is not None and p["p_sign"] < 0.05:
+            significant.append(c)
     n = models[choice]["graded"]
     checks = s["judge_checks"]
-    if n < 20 or checks.get("self_preference"):
+    # A second judge of another model that also puts the same model first answers the self-preference question.
+    backed = [x for x in s.get("cross_judges") or [] if x.get("model") != checks.get("judge_model")
+              and x.get("ranking") and x["ranking"][0] == best]
+    doubt = checks.get("self_preference") and not backed
+    if n < 20 or doubt:
         confidence = "low"
-    elif len(separated) == len(others) and n >= 30:
+    elif len(separated) == len(others) and len(significant) == len(others) and n >= 30:
         confidence = "high"
     else:
         confidence = "medium"
     why = []
     if n < 20:
         why.append(f"only {n} graded positions")
-    if checks.get("self_preference"):
+    if doubt:
         why.append("a possible self-preference of the judge")
+    elif checks.get("self_preference"):
+        x = backed[0]
+        why.append(f"the self-preference flag is answered: the second judge ({x['judge']}) also ranks "
+                   + " > ".join(f"{c} {x['mean_score'][c]:.2f}" for c in x["ranking"]))
+    loose = [c for c in separated if c not in significant]
+    if loose:
+        why.append(f"the sign test vs {', '.join(loose)} is not below 0.05 (the interval excludes 0)")
     if checks.get("probes") and checks["probes_same"] / checks["probes"] < 0.6:
         why.append(f"the judge gave the same move the same grade only {checks['probes_same']}/{checks['probes']} "
                    "times")
@@ -1419,7 +1447,10 @@ def report_md(s: dict) -> str:
     for x in s["cross_judges"]:
         out.append(f"- **Second judge {x['judge']}** ({x['positions']} positions): the same grade as {s['judge']} "
                    f"{_pct(x['same'])}, within one {_pct(x['within_one'])}; mean grades "
-                   + ", ".join(f"{c} {_num(v)}" for c, v in x["mean_score"].items()) + ".")
+                   + ", ".join(f"{c} {_num(x['mean_score'][c])}" for c in x["ranking"]) + "; paired: "
+                   + "; ".join(f"{p['a']} − {p['b']} {_num(p['diff'], '{:+.2f}')}{_ci_text(p['ci95'], '{:+.2f}')} "
+                               f"({p['a_better']}–{p['b_better']}, p {_num(p['p_sign'], '{:.3f}')})"
+                               for p in x.get("pairs") or []) + ".")
     if s["disagreements"]:
         out += ["", "## The most instructive disagreements", ""]
         for d in s["disagreements"]:
@@ -1433,7 +1464,9 @@ def report_md(s: dict) -> str:
             for a in d["answers"]:
                 out.append(f"- **{a['candidate']}: {a['grade']}** — {a['answer']}")
                 out.append(f"  - its reason: \"{(a.get('why') or '').strip()}\"")
-                out.append(f"  - judge: {a.get('reason')}")
+                seen = a.get("shown_from")
+                out.append(f"  - judge: {a.get('reason')}" if not seen or seen == a["candidate"] else
+                           f"  - judge (it graded this move once, shown with {seen}'s reason): {a.get('reason')}")
             out.append("")
     g = s.get("games")
     if g:

@@ -1,8 +1,9 @@
-"""What a card's Lua script says about its effects, for describe.py: which card string labels which effect, and where
-each effect works from (SetRange). An option's text is the label the script gave the effect (SetDescription), and
-scripts sometimes reuse one label for different effects, or give an effect the wrong one (Blackwing - Vata's
-on-field effect is labelled "Special Summon this card"). Only s.initial_effect is read, line by line, the way the
-official scripts are written; anything it can't follow is simply left out.
+"""What a card's Lua script says about its effects, for describe.py: which card string labels which effect, where
+each effect works from (SetRange) and what it does (SetCode, e.g. EFFECT_CANNOT_ATTACK). An option's text is the
+label the script gave the effect (SetDescription), and scripts sometimes reuse one label for different effects, or
+give an effect the wrong one (Blackwing - Vata's on-field effect is labelled "Special Summon this card"). Only
+s.initial_effect is read, line by line, the way the official scripts are written; anything it can't follow is simply
+left out.
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ _CREATE = re.compile(r"^\s*(?:local\s+)?(\w+)\s*=\s*Effect\.CreateEffect\(")
 _CLONE = re.compile(r"^\s*(?:local\s+)?(\w+)\s*=\s*(\w+):Clone\(\)")
 _DESC = re.compile(r"^\s*(\w+):SetDescription\(\s*aux\.Stringid\(\s*(id|\d+)\s*,\s*(\d+)\s*\)\s*\)")
 _RANGE = re.compile(r"^\s*(\w+):SetRange\(([^)]*)\)")
+_CODE = re.compile(r"^\s*(\w+):SetCode\(\s*(\w+)\s*\)")
 _HINT = re.compile(r"^\s*(\w+):SetProperty\(.*EFFECT_FLAG_CLIENT_HINT")
 _REGISTER = re.compile(r"^\s*c:RegisterEffect\(\s*(\w+)")
 
@@ -30,6 +32,7 @@ class Effect:
     label: tuple[int, int] | None = None   # (card code, string index) of its SetDescription
     range: int | None = None          # SetRange as location bits
     hint: bool = False                # a client hint (EFFECT_FLAG_CLIENT_HINT), not something to activate
+    code: str | None = None           # SetCode, as written (EFFECT_DISABLE, EVENT_SUMMON_SUCCESS, ...)
     registered: bool = False
 
 
@@ -49,7 +52,7 @@ def parse(source: str, code: int) -> list[Effect]:
         elif m := _CLONE.match(line):
             src = current.get(m.group(2))
             if src is not None:
-                current[m.group(1)] = Effect(src.family, src.label, src.range, src.hint)
+                current[m.group(1)] = Effect(src.family, src.label, src.range, src.hint, src.code)
                 effects.append(current[m.group(1)])
         elif m := _DESC.match(line):
             if m.group(1) in current:
@@ -59,6 +62,9 @@ def parse(source: str, code: int) -> list[Effect]:
             if m.group(1) in current:
                 bits = [RANGES.get(part.strip()) for part in re.split(r"[+|]", m.group(2))]
                 current[m.group(1)].range = None if None in bits else sum(bits)
+        elif m := _CODE.match(line):
+            if m.group(1) in current:
+                current[m.group(1)].code = m.group(2)
         elif m := _HINT.match(line):
             if m.group(1) in current:
                 current[m.group(1)].hint = True
@@ -109,3 +115,7 @@ class ScriptIndex:
     def labelled(self, code: int, label: tuple[int, int]) -> list[Effect]:
         """The card's effects that carry this label."""
         return [e for e in self.effects(code) if e.label == label]
+
+    def codes(self, code: int) -> set[str]:
+        """The SetCode of every effect the card registers on itself."""
+        return {e.code for e in self.effects(code) if e.code}

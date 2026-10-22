@@ -18,8 +18,9 @@ See README.md for the architecture and `docs/plan.md` for where the project is g
    `match` points back at the run. Both seats' mistakes count: fix the deck the seat played.
    Decisions are numbered (`Decision #N`). `game.jsonl` has the raw state for each one and the reply that was sent,
    `prompts.jsonl` has the exact prompt the model saw and its reply, and `meta.json` says which deck and backend
-   played (with the game's stats). The default backend is Claude Code (`claude -p`); `--backend NAME` picks
-   another profile from the config (docs/backends.md).
+   played (with the game's stats). The default backend is Opus through Claude Code (`claude -p`;
+   `agent.backend = "opus"`, the play model a blind model exam chose, docs/bench.md); `--backend NAME` picks another
+   profile from the config (docs/backends.md).
 2. For each mistake, find the decision and work out why it happened:
    - Bad strategy or judgment → fix the deck's playbook. **Playbook style** (`decks/geargia/playbook.md` is the
      reference): principles first, phrased as conditions with their reason ("consider X when Y, because Z"), which
@@ -31,7 +32,7 @@ See README.md for the architecture and `docs/plan.md` for where the project is g
      tight (≤ 8 KB): the model reads all of it on every decision. A lesson that holds for every deck goes in
      `playbooks/general.md`.
    - **Hard rules** (`decks/<deck>/rules.py`, Context helpers in `ygo_agent/agent/rules.py`) are only for a mistake
-     with no judgment in it that the **play model** (the default backend, `agent.backend`) repeats even with a
+     with no judgment in it that the **play model** (the default backend, `agent.backend`: Opus) repeats even with a
      playbook lesson. Rules are calibrated to that model: save the case that proves the rule, mark the rule with
      `@cases("<case>")` (`@shortcut` for a rule that only skips prompts that never matter) and list it in RULES. If a
      weaker model made the mistake, check the case with `--backend <play model>` before writing a rule. When the

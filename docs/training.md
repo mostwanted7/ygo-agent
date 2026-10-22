@@ -5,7 +5,7 @@ Saffira and Blackwing: read every card and its script, write a guide, try the li
 against the scripts and the engine log, and correct itself until a round of games shows no significant mistakes.
 
 ```sh
-ygo-agent train ~/Games/ProjectIgnis/deck/Geargia.ydk --name geargia            # defaults: opus reviews, sonnet plays
+ygo-agent train ~/Games/ProjectIgnis/deck/Geargia.ydk --name geargia            # defaults: opus reviews, the play model (opus) plays
 ygo-agent train ~/Games/ProjectIgnis/deck/Geargia.ydk --name geargia --budget-usd 40 \
     --lab-hands 9 --games 2 --max-rounds 2 --opponents windbot:Blue-Eyes,windbot:Dragunity
 ygo-agent train --name geargia --resume                                         # continue a stopped run
@@ -13,7 +13,12 @@ ygo-agent train ~/Games/ProjectIgnis/deck/Chaos.ydk --name chaos --phases study 
 ygo-agent train-compare --name geargia --games 2                                 # trained vs draft vs no playbook
 ```
 
-Then play it like any other deck: `ygo-agent play --deck geargia`, `ygo-agent selfplay --a geargia:sonnet ...`.
+Then play it like any other deck: `ygo-agent play --deck geargia`, `ygo-agent selfplay --a geargia ...`.
+
+The player defaults to the **play model** (`agent.backend`, Opus; `[trainer] player_backend` or `--player-backend`
+picks another), so the lessons, the case gate and the rules policy are calibrated to the model that will play the
+deck. A cheaper player (`--player-backend sonnet`) costs about half per decision, but its mistakes are then not
+necessarily the play model's.
 
 ## The playbook it writes
 
@@ -120,8 +125,9 @@ regression case must prove it. For every mistake the review records whether it n
 playbook line that already covered it (checked against the playbook the game was played with); the report counts
 mistakes by model. A rule proposal is assessed against those conditions (`trainer/rulepolicy.py`): all of them go to
 `train/rule-proposals.md` with the reasons, and the ones that qualify are written into rules.py (with `@cases`) only
-with `--write-rules`. With the defaults (Sonnet plays, Opus is the play model) nothing qualifies by itself: check
-the case with `ygo-agent test --deck <name> <case> --backend opus` first. Since rules are calibrated to one model,
+with `--write-rules`. With the defaults the player is the play model; with another player (`--player-backend
+sonnet`) nothing qualifies by itself: check the case with `ygo-agent test --deck <name> <case> --backend opus`
+first. Since rules are calibrated to one model,
 `ygo-agent test --deck <name> --ablate-rules` replays each rule's cases with that rule disabled (or, for a rule with
 no case, the decisions it answered in the game logs) and reports the rules the model no longer needs.
 
@@ -150,7 +156,7 @@ no case, the decisions it answered in the game logs) and reports the rules the m
 
 ## Costs and times observed
 
-Geargia (2026-10-21, before the principle-first style and the case gate), Opus reviewing through Claude Code
+Geargia (2026-10-21, before the principle-first style, the case gate and Opus as the default player), Opus reviewing through Claude Code
 (agentic), Sonnet playing, 2 rounds of 2 games against WindBot Blue-Eyes and Dragunity, a 9-hand lab in round 1 and 6
 hands in round 2. In API-price dollars (a subscription isn't billed per call):
 
@@ -170,7 +176,8 @@ The case gate adds one replay of the saved cases per checked edit: 7 cases x2 on
 two. A study-only run (`--phases study`) is one Opus call: about $1.2 and 4-5
 minutes.
 
-Still to run after a usage reset (it plays 6 Sonnet games, about $6-10 and 20 minutes):
+Still to run after a usage reset (it plays 6 games with the play model, Opus by default; with Sonnet that was
+estimated at $6-10 and 20 minutes; Opus cost 1.4x Sonnet per game in the README benchmark):
 
 ```sh
 ygo-agent train-compare --name geargia --games 2 --opponent windbot:Blue-Eyes --parallel 3

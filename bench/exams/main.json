@@ -1,0 +1,912 @@
+{
+ "name": "main",
+ "created": "2026-10-22 01:41:00",
+ "seed": 1,
+ "n": 40,
+ "decks": [
+  "saffira",
+  "blackwing"
+ ],
+ "weights": {
+  "idle": 0.3,
+  "chain": 0.2,
+  "select_card": 0.2,
+  "battle": 0.125,
+  "effect_yn": 0.1,
+  "other": 0.075
+ },
+ "sources": [
+  "games"
+ ],
+ "pool": {
+  "games": 35,
+  "decisions": 1982,
+  "by_stratum": {
+   "blackwing/battle": 71,
+   "blackwing/chain": 372,
+   "blackwing/effect_yn": 55,
+   "blackwing/idle": 216,
+   "blackwing/other": 42,
+   "blackwing/select_card": 141,
+   "saffira/battle": 61,
+   "saffira/chain": 480,
+   "saffira/effect_yn": 118,
+   "saffira/idle": 186,
+   "saffira/other": 109,
+   "saffira/select_card": 131
+  },
+  "by_backend": {
+   "haiku": 13,
+   "opus": 5,
+   "sonnet": 17
+  }
+ },
+ "positions": [
+  {
+   "id": "p01",
+   "game": "games/2026-10-21_211059_saffira-vs-mostwanted",
+   "decision": 31,
+   "deck": "saffira",
+   "kind": "idle",
+   "group": "idle",
+   "sub": "main1",
+   "turn": 7,
+   "my_turn": true,
+   "choices": 11,
+   "score": 4.5,
+   "source_backend": "opus",
+   "original": [
+    5
+   ],
+   "heuristic": [
+    0
+   ],
+   "contested": true,
+   "sha": "d7fe0396f1f9"
+  },
+  {
+   "id": "p02",
+   "game": "games/bench/2026-10-21_212557_readme/saffira--haiku--windbot-blue-eyes--003/2026-10-21_214659_saffira-vs-blue-eyes-ai",
+   "decision": 82,
+   "deck": "saffira",
+   "kind": "idle",
+   "group": "idle",
+   "sub": "main1",
+   "turn": 5,
+   "my_turn": true,
+   "choices": 8,
+   "score": 4.5,
+   "source_backend": "haiku",
+   "original": [
+    4
+   ],
+   "heuristic": [
+    3
+   ],
+   "contested": true,
+   "sha": "56a63e6fac7d"
+  },
+  {
+   "id": "p03",
+   "game": "games/bench/2026-10-21_212557_readme/saffira--haiku--windbot-time-thief--002/2026-10-21_214046_saffira-vs-time-thief-ai",
+   "decision": 26,
+   "deck": "saffira",
+   "kind": "idle",
+   "group": "idle",
+   "sub": "main1",
+   "turn": 4,
+   "my_turn": true,
+   "choices": 4,
+   "score": 3.75,
+   "source_backend": "haiku",
+   "original": [
+    2
+   ],
+   "heuristic": [
+    0
+   ],
+   "contested": true,
+   "sha": "91d5b0b693c9"
+  },
+  {
+   "id": "p04",
+   "game": "games/bench/2026-10-21_212557_readme/saffira--opus--windbot-time-thief--001/2026-10-21_212835_saffira-vs-time-thief-ai",
+   "decision": 39,
+   "deck": "saffira",
+   "kind": "idle",
+   "group": "idle",
+   "sub": "main1",
+   "turn": 3,
+   "my_turn": true,
+   "choices": 8,
+   "score": 4.5,
+   "source_backend": "opus",
+   "original": [
+    6
+   ],
+   "heuristic": [
+    3
+   ],
+   "contested": true,
+   "sha": "6a2349391358"
+  },
+  {
+   "id": "p05",
+   "game": "games/bench/2026-10-21_212557_readme/saffira--sonnet--windbot-blue-eyes--001/2026-10-21_212608_saffira-vs-blue-eyes-ai",
+   "decision": 55,
+   "deck": "saffira",
+   "kind": "idle",
+   "group": "idle",
+   "sub": "main1",
+   "turn": 5,
+   "my_turn": true,
+   "choices": 9,
+   "score": 4.5,
+   "source_backend": "sonnet",
+   "original": [
+    10
+   ],
+   "heuristic": [
+    0
+   ],
+   "contested": true,
+   "sha": "2539f80f51d4"
+  },
+  {
+   "id": "p06",
+   "game": "games/native-smoke/2026-10-21_195052_saffira-vs-blue-eyes-ai",
+   "decision": 58,
+   "deck": "saffira",
+   "kind": "idle",
+   "group": "idle",
+   "sub": "main2",
+   "turn": 5,
+   "my_turn": true,
+   "choices": 9,
+   "score": 4.5,
+   "source_backend": "sonnet",
+   "original": [
+    5
+   ],
+   "heuristic": [
+    0
+   ],
+   "contested": true,
+   "sha": "4b7c05cc23e5"
+  },
+  {
+   "id": "p07",
+   "game": "games/bench/2026-10-21_212557_readme/saffira--haiku--windbot-time-thief--003/2026-10-21_214920_saffira-vs-time-thief-ai",
+   "decision": 53,
+   "deck": "saffira",
+   "kind": "battle",
+   "group": "battle",
+   "sub": "direct",
+   "turn": 3,
+   "my_turn": true,
+   "choices": 6,
+   "score": 2.0,
+   "source_backend": "haiku",
+   "original": [
+    1
+   ],
+   "heuristic": [
+    3
+   ],
+   "contested": false,
+   "sha": "5a547824cfad"
+  },
+  {
+   "id": "p08",
+   "game": "games/bench/2026-10-21_212557_readme/saffira--sonnet--windbot-blue-eyes--001/2026-10-21_212608_saffira-vs-blue-eyes-ai",
+   "decision": 39,
+   "deck": "saffira",
+   "kind": "select_card",
+   "group": "battle",
+   "sub": "attack-target",
+   "turn": 3,
+   "my_turn": true,
+   "choices": 3,
+   "score": 4.0,
+   "source_backend": "sonnet",
+   "original": [
+    1
+   ],
+   "heuristic": [
+    0
+   ],
+   "contested": true,
+   "sha": "43b16a61264e"
+  },
+  {
+   "id": "p09",
+   "game": "games/bench/2026-10-21_212557_readme/saffira--haiku--windbot-time-thief--003/2026-10-21_214920_saffira-vs-time-thief-ai",
+   "decision": 61,
+   "deck": "saffira",
+   "kind": "chain",
+   "group": "chain",
+   "sub": "own-turn",
+   "turn": 3,
+   "my_turn": true,
+   "choices": 2,
+   "score": 1.0,
+   "source_backend": "haiku",
+   "original": [],
+   "heuristic": [],
+   "contested": false,
+   "sha": "eb1c283113d6"
+  },
+  {
+   "id": "p10",
+   "game": "games/bench/2026-10-21_212557_readme/saffira--opus--windbot-blue-eyes--001/2026-10-21_212608_saffira-vs-blue-eyes-ai",
+   "decision": 23,
+   "deck": "saffira",
+   "kind": "chain",
+   "group": "chain",
+   "sub": "opp-activation",
+   "turn": 2,
+   "my_turn": false,
+   "choices": 3,
+   "score": 4.5,
+   "source_backend": "opus",
+   "original": [
+    1
+   ],
+   "heuristic": [
+    0
+   ],
+   "contested": true,
+   "sha": "6b4d89f32c01"
+  },
+  {
+   "id": "p11",
+   "game": "games/bench/2026-10-21_212557_readme/saffira--opus--windbot-blue-eyes--001/2026-10-21_212608_saffira-vs-blue-eyes-ai",
+   "decision": 48,
+   "deck": "saffira",
+   "kind": "chain",
+   "group": "chain",
+   "sub": "own-turn",
+   "turn": 3,
+   "my_turn": true,
+   "choices": 2,
+   "score": 2.5,
+   "source_backend": "opus",
+   "original": [
+    0
+   ],
+   "heuristic": [],
+   "contested": true,
+   "sha": "63281ec9924c"
+  },
+  {
+   "id": "p12",
+   "game": "games/bench/2026-10-21_212557_readme/saffira--sonnet--windbot-time-thief--003/2026-10-21_214738_saffira-vs-time-thief-ai",
+   "decision": 45,
+   "deck": "saffira",
+   "kind": "chain",
+   "group": "chain",
+   "sub": "opp-attack",
+   "turn": 2,
+   "my_turn": false,
+   "choices": 2,
+   "score": 4.0,
+   "source_backend": "sonnet",
+   "original": [],
+   "heuristic": [
+    0
+   ],
+   "contested": true,
+   "sha": "396edf8ac6d6"
+  },
+  {
+   "id": "p13",
+   "game": "games/bench/2026-10-21_212557_readme/saffira--haiku--windbot-blue-eyes--003/2026-10-21_214659_saffira-vs-blue-eyes-ai",
+   "decision": 55,
+   "deck": "saffira",
+   "kind": "select_card",
+   "group": "select_card",
+   "sub": "search",
+   "turn": 3,
+   "my_turn": true,
+   "choices": 4,
+   "score": 4.0,
+   "source_backend": "haiku",
+   "original": [
+    0
+   ],
+   "heuristic": [
+    1
+   ],
+   "contested": true,
+   "sha": "7e88a48d9430"
+  },
+  {
+   "id": "p14",
+   "game": "games/bench/2026-10-21_212557_readme/saffira--haiku--windbot-time-thief--001/2026-10-21_213017_saffira-vs-time-thief-ai",
+   "decision": 74,
+   "deck": "saffira",
+   "kind": "select_card",
+   "group": "select_card",
+   "sub": "search",
+   "turn": 3,
+   "my_turn": true,
+   "choices": 6,
+   "score": 4.0,
+   "source_backend": "haiku",
+   "original": [
+    6
+   ],
+   "heuristic": [
+    2
+   ],
+   "contested": true,
+   "sha": "30c4de561aa0"
+  },
+  {
+   "id": "p15",
+   "game": "games/bench/2026-10-21_212557_readme/saffira--opus--windbot-time-thief--001/2026-10-21_212835_saffira-vs-time-thief-ai",
+   "decision": 27,
+   "deck": "saffira",
+   "kind": "select_card",
+   "group": "select_card",
+   "sub": "search",
+   "turn": 2,
+   "my_turn": false,
+   "choices": 3,
+   "score": 4.0,
+   "source_backend": "opus",
+   "original": [
+    0
+   ],
+   "heuristic": [
+    3
+   ],
+   "contested": true,
+   "sha": "47f01fb9e149"
+  },
+  {
+   "id": "p16",
+   "game": "games/bench/2026-10-21_212557_readme/saffira--sonnet--windbot-blue-eyes--002/2026-10-21_213744_saffira-vs-blue-eyes-ai",
+   "decision": 35,
+   "deck": "saffira",
+   "kind": "select_card",
+   "group": "select_card",
+   "sub": "cost",
+   "turn": 2,
+   "my_turn": true,
+   "choices": 3,
+   "score": 3.5,
+   "source_backend": "sonnet",
+   "original": [
+    2
+   ],
+   "heuristic": [
+    0
+   ],
+   "contested": true,
+   "sha": "5cdddf2234e7"
+  },
+  {
+   "id": "p17",
+   "game": "games/bench/2026-10-21_212557_readme/saffira--haiku--windbot-blue-eyes--003/2026-10-21_214659_saffira-vs-blue-eyes-ai",
+   "decision": 46,
+   "deck": "saffira",
+   "kind": "effect_yn",
+   "group": "effect_yn",
+   "sub": "optional",
+   "turn": 2,
+   "my_turn": false,
+   "choices": 2,
+   "score": 1.8,
+   "source_backend": "haiku",
+   "original": [
+    1
+   ],
+   "heuristic": [
+    1
+   ],
+   "contested": false,
+   "sha": "1b5074c1121d"
+  },
+  {
+   "id": "p18",
+   "game": "games/native-smoke/2026-10-21_195052_saffira-vs-blue-eyes-ai",
+   "decision": 22,
+   "deck": "saffira",
+   "kind": "effect_yn",
+   "group": "effect_yn",
+   "sub": "optional",
+   "turn": 2,
+   "my_turn": false,
+   "choices": 2,
+   "score": 1.8,
+   "source_backend": "sonnet",
+   "original": [
+    1
+   ],
+   "heuristic": [
+    1
+   ],
+   "contested": false,
+   "sha": "cb5b578da249"
+  },
+  {
+   "id": "p19",
+   "game": "games/bench/2026-10-21_212557_readme/saffira--sonnet--windbot-time-thief--002/2026-10-21_213845_saffira-vs-time-thief-ai",
+   "decision": 41,
+   "deck": "saffira",
+   "kind": "option",
+   "group": "other",
+   "sub": "option",
+   "turn": 9,
+   "my_turn": false,
+   "choices": 2,
+   "score": 1.5,
+   "source_backend": "sonnet",
+   "original": [
+    0
+   ],
+   "heuristic": [
+    0
+   ],
+   "contested": false,
+   "sha": "24a220bc9547"
+  },
+  {
+   "id": "p20",
+   "game": "games/2026-10-21_203748_blackwing-vs-saffira-sonnet",
+   "decision": 13,
+   "deck": "blackwing",
+   "kind": "idle",
+   "group": "idle",
+   "sub": "main1",
+   "turn": 1,
+   "my_turn": true,
+   "choices": 3,
+   "score": 3.5,
+   "source_backend": "sonnet",
+   "original": [
+    1
+   ],
+   "heuristic": [
+    0
+   ],
+   "contested": true,
+   "sha": "8a10c4994dec"
+  },
+  {
+   "id": "p21",
+   "game": "games/bench/2026-10-21_212557_readme/blackwing--haiku--windbot-blue-eyes--001/2026-10-21_213319_blackwing-vs-blue-eyes-ai",
+   "decision": 13,
+   "deck": "blackwing",
+   "kind": "idle",
+   "group": "idle",
+   "sub": "main1",
+   "turn": 1,
+   "my_turn": true,
+   "choices": 4,
+   "score": 3.75,
+   "source_backend": "haiku",
+   "original": [
+    1
+   ],
+   "heuristic": [
+    0
+   ],
+   "contested": true,
+   "sha": "8e3dadd6fa9b"
+  },
+  {
+   "id": "p22",
+   "game": "games/bench/2026-10-21_212557_readme/blackwing--haiku--windbot-blue-eyes--003/2026-10-21_215103_blackwing-vs-blue-eyes-ai",
+   "decision": 27,
+   "deck": "blackwing",
+   "kind": "idle",
+   "group": "idle",
+   "sub": "main1",
+   "turn": 3,
+   "my_turn": true,
+   "choices": 5,
+   "score": 4.0,
+   "source_backend": "haiku",
+   "original": [
+    2
+   ],
+   "heuristic": [
+    0
+   ],
+   "contested": true,
+   "sha": "7aaad7672690"
+  },
+  {
+   "id": "p23",
+   "game": "games/bench/2026-10-21_212557_readme/blackwing--opus--windbot-blue-eyes--001/2026-10-21_213058_blackwing-vs-blue-eyes-ai",
+   "decision": 37,
+   "deck": "blackwing",
+   "kind": "idle",
+   "group": "idle",
+   "sub": "main1",
+   "turn": 1,
+   "my_turn": true,
+   "choices": 3,
+   "score": 3.5,
+   "source_backend": "opus",
+   "original": [
+    1
+   ],
+   "heuristic": [
+    0
+   ],
+   "contested": true,
+   "sha": "4bca99b4e40d"
+  },
+  {
+   "id": "p24",
+   "game": "games/bench/2026-10-21_212557_readme/blackwing--opus--windbot-time-thief--001/2026-10-21_213441_blackwing-vs-time-thief-ai",
+   "decision": 17,
+   "deck": "blackwing",
+   "kind": "idle",
+   "group": "idle",
+   "sub": "main1",
+   "turn": 1,
+   "my_turn": true,
+   "choices": 8,
+   "score": 4.5,
+   "source_backend": "opus",
+   "original": [
+    2
+   ],
+   "heuristic": [
+    0
+   ],
+   "contested": true,
+   "sha": "43509c723ae4"
+  },
+  {
+   "id": "p25",
+   "game": "games/bench/2026-10-21_212557_readme/blackwing--sonnet--windbot-time-thief--003/2026-10-21_215210_blackwing-vs-time-thief-ai",
+   "decision": 5,
+   "deck": "blackwing",
+   "kind": "idle",
+   "group": "idle",
+   "sub": "main1",
+   "turn": 1,
+   "my_turn": true,
+   "choices": 8,
+   "score": 4.5,
+   "source_backend": "sonnet",
+   "original": [
+    3
+   ],
+   "heuristic": [
+    0
+   ],
+   "contested": true,
+   "sha": "87b0002c1a64"
+  },
+  {
+   "id": "p26",
+   "game": "games/bench/2026-10-21_212557_readme/blackwing--haiku--windbot-time-thief--002/2026-10-21_214423_blackwing-vs-time-thief-ai",
+   "decision": 50,
+   "deck": "blackwing",
+   "kind": "select_card",
+   "group": "battle",
+   "sub": "attack-target",
+   "turn": 4,
+   "my_turn": true,
+   "choices": 2,
+   "score": 2.5,
+   "source_backend": "haiku",
+   "original": [
+    0
+   ],
+   "heuristic": [
+    0
+   ],
+   "contested": false,
+   "sha": "a7cee754f816"
+  },
+  {
+   "id": "p27",
+   "game": "games/bench/2026-10-21_212557_readme/blackwing--opus--windbot-blue-eyes--001/2026-10-21_213058_blackwing-vs-blue-eyes-ai",
+   "decision": 51,
+   "deck": "blackwing",
+   "kind": "battle",
+   "group": "battle",
+   "sub": "direct",
+   "turn": 3,
+   "my_turn": true,
+   "choices": 5,
+   "score": 2.0,
+   "source_backend": "opus",
+   "original": [
+    1
+   ],
+   "heuristic": [
+    1
+   ],
+   "contested": false,
+   "sha": "6b341e30dd24"
+  },
+  {
+   "id": "p28",
+   "game": "games/bench/2026-10-21_212557_readme/blackwing--sonnet--windbot-blue-eyes--002/2026-10-21_214125_blackwing-vs-blue-eyes-ai",
+   "decision": 46,
+   "deck": "blackwing",
+   "kind": "select_card",
+   "group": "battle",
+   "sub": "attack-target",
+   "turn": 4,
+   "my_turn": true,
+   "choices": 2,
+   "score": 2.5,
+   "source_backend": "sonnet",
+   "original": [
+    0
+   ],
+   "heuristic": [
+    0
+   ],
+   "contested": false,
+   "sha": "32fb3e21e9f0"
+  },
+  {
+   "id": "p29",
+   "game": "games/2026-10-21_203748_blackwing-vs-saffira-sonnet",
+   "decision": 18,
+   "deck": "blackwing",
+   "kind": "chain",
+   "group": "chain",
+   "sub": "opp-activation",
+   "turn": 2,
+   "my_turn": false,
+   "choices": 3,
+   "score": 4.5,
+   "source_backend": "sonnet",
+   "original": [
+    1
+   ],
+   "heuristic": [
+    0
+   ],
+   "contested": true,
+   "sha": "f6be00ee97e3"
+  },
+  {
+   "id": "p30",
+   "game": "games/bench/2026-10-21_212557_readme/blackwing--haiku--windbot-time-thief--003/2026-10-21_215323_blackwing-vs-time-thief-ai",
+   "decision": 45,
+   "deck": "blackwing",
+   "kind": "chain",
+   "group": "chain",
+   "sub": "opp-activation",
+   "turn": 3,
+   "my_turn": true,
+   "choices": 2,
+   "score": 4.5,
+   "source_backend": "haiku",
+   "original": [],
+   "heuristic": [
+    0
+   ],
+   "contested": true,
+   "sha": "fd35360b82e1"
+  },
+  {
+   "id": "p31",
+   "game": "games/bench/2026-10-21_212557_readme/blackwing--haiku--windbot-time-thief--003/2026-10-21_215323_blackwing-vs-time-thief-ai",
+   "decision": 72,
+   "deck": "blackwing",
+   "kind": "chain",
+   "group": "chain",
+   "sub": "opp-activation",
+   "turn": 6,
+   "my_turn": false,
+   "choices": 2,
+   "score": 4.5,
+   "source_backend": "haiku",
+   "original": [],
+   "heuristic": [
+    0
+   ],
+   "contested": true,
+   "sha": "0fb1ffebd830"
+  },
+  {
+   "id": "p32",
+   "game": "games/bench/2026-10-21_212557_readme/blackwing--opus--windbot-blue-eyes--001/2026-10-21_213058_blackwing-vs-blue-eyes-ai",
+   "decision": 40,
+   "deck": "blackwing",
+   "kind": "chain",
+   "group": "chain",
+   "sub": "opp-activation",
+   "turn": 2,
+   "my_turn": false,
+   "choices": 2,
+   "score": 4.5,
+   "source_backend": "opus",
+   "original": [],
+   "heuristic": [
+    0
+   ],
+   "contested": true,
+   "sha": "29dc580c6ad6"
+  },
+  {
+   "id": "p33",
+   "game": "games/bench/2026-10-21_212557_readme/blackwing--haiku--windbot-time-thief--001/2026-10-21_213536_blackwing-vs-time-thief-ai",
+   "decision": 16,
+   "deck": "blackwing",
+   "kind": "select_unselect",
+   "group": "select_card",
+   "sub": "material",
+   "turn": 1,
+   "my_turn": true,
+   "choices": 2,
+   "score": 2.0,
+   "source_backend": "haiku",
+   "original": [
+    0
+   ],
+   "heuristic": [
+    0
+   ],
+   "contested": false,
+   "sha": "af32c522fc53"
+  },
+  {
+   "id": "p34",
+   "game": "games/bench/2026-10-21_212557_readme/blackwing--haiku--windbot-time-thief--002/2026-10-21_214423_blackwing-vs-time-thief-ai",
+   "decision": 34,
+   "deck": "blackwing",
+   "kind": "select_unselect",
+   "group": "select_card",
+   "sub": "material",
+   "turn": 4,
+   "my_turn": true,
+   "choices": 3,
+   "score": 3.5,
+   "source_backend": "haiku",
+   "original": [
+    1
+   ],
+   "heuristic": [
+    2
+   ],
+   "contested": true,
+   "sha": "462760551f98"
+  },
+  {
+   "id": "p35",
+   "game": "games/bench/2026-10-21_212557_readme/blackwing--opus--windbot-time-thief--001/2026-10-21_213441_blackwing-vs-time-thief-ai",
+   "decision": 23,
+   "deck": "blackwing",
+   "kind": "select_card",
+   "group": "select_card",
+   "sub": "cost",
+   "turn": 1,
+   "my_turn": true,
+   "choices": 11,
+   "score": 3.5,
+   "source_backend": "opus",
+   "original": [
+    6
+   ],
+   "heuristic": [
+    12
+   ],
+   "contested": true,
+   "sha": "b877972d49b8"
+  },
+  {
+   "id": "p36",
+   "game": "games/bench/2026-10-21_212557_readme/blackwing--sonnet--windbot-blue-eyes--001/2026-10-21_213309_blackwing-vs-blue-eyes-ai",
+   "decision": 8,
+   "deck": "blackwing",
+   "kind": "select_card",
+   "group": "select_card",
+   "sub": "search",
+   "turn": 1,
+   "my_turn": true,
+   "choices": 6,
+   "score": 4.0,
+   "source_backend": "sonnet",
+   "original": [
+    5
+   ],
+   "heuristic": [
+    0
+   ],
+   "contested": true,
+   "sha": "9fa61ee378c9"
+  },
+  {
+   "id": "p37",
+   "game": "games/bench/2026-10-21_212557_readme/blackwing--haiku--windbot-blue-eyes--002/2026-10-21_214202_blackwing-vs-blue-eyes-ai",
+   "decision": 32,
+   "deck": "blackwing",
+   "kind": "effect_yn",
+   "group": "effect_yn",
+   "sub": "optional",
+   "turn": 2,
+   "my_turn": true,
+   "choices": 2,
+   "score": 3.3,
+   "source_backend": "haiku",
+   "original": [
+    0
+   ],
+   "heuristic": [
+    1
+   ],
+   "contested": true,
+   "sha": "be24835e0aa0"
+  },
+  {
+   "id": "p38",
+   "game": "games/bench/2026-10-21_212557_readme/blackwing--sonnet--windbot-time-thief--002/2026-10-21_214253_blackwing-vs-time-thief-ai",
+   "decision": 89,
+   "deck": "blackwing",
+   "kind": "effect_yn",
+   "group": "effect_yn",
+   "sub": "optional",
+   "turn": 6,
+   "my_turn": true,
+   "choices": 2,
+   "score": 1.8,
+   "source_backend": "sonnet",
+   "original": [
+    1
+   ],
+   "heuristic": [
+    1
+   ],
+   "contested": false,
+   "sha": "f4aa76ea8b8e"
+  },
+  {
+   "id": "p39",
+   "game": "games/bench/2026-10-21_212557_readme/blackwing--haiku--windbot-blue-eyes--003/2026-10-21_215103_blackwing-vs-blue-eyes-ai",
+   "decision": 43,
+   "deck": "blackwing",
+   "kind": "option",
+   "group": "other",
+   "sub": "option",
+   "turn": 5,
+   "my_turn": true,
+   "choices": 2,
+   "score": 3.0,
+   "source_backend": "haiku",
+   "original": [
+    1
+   ],
+   "heuristic": [
+    0
+   ],
+   "contested": true,
+   "sha": "bd227e0e116b"
+  },
+  {
+   "id": "p40",
+   "game": "games/bench/2026-10-21_212557_readme/blackwing--sonnet--windbot-time-thief--002/2026-10-21_214253_blackwing-vs-time-thief-ai",
+   "decision": 23,
+   "deck": "blackwing",
+   "kind": "option",
+   "group": "other",
+   "sub": "option",
+   "turn": 4,
+   "my_turn": true,
+   "choices": 2,
+   "score": 3.0,
+   "source_backend": "sonnet",
+   "original": [
+    1
+   ],
+   "heuristic": [
+    0
+   ],
+   "contested": true,
+   "sha": "d8226e404328"
+  }
+ ]
+}

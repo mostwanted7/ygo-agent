@@ -47,7 +47,7 @@ class Options:
     ydk: str | None
     name: str
     backend: str = "opus"              # the reviewer
-    player_backend: str = "sonnet"     # lab and games
+    player_backend: str = ""           # lab and games; "" = the play model (config agent.backend)
     opponents: list[str] = field(default_factory=lambda: ["windbot:Blue-Eyes", "windbot:Dragunity"])
     lab_hands: int = 10
     second_hands: int | None = None
@@ -73,6 +73,8 @@ class Trainer:
     def __init__(self, opts: Options, cfg: dict, db=None, engine=None, resume: bool = False, quiet: bool = False):
         self.o = opts
         self.cfg = cfg
+        # Lessons and the rules policy are calibrated to the model that plays, so by default the play model plays.
+        opts.player_backend = opts.player_backend or cfg["agent"]["backend"]
         self._db, self._engine = db, engine
         self.resume = resume
         self.deck_dir = os.path.abspath(opts.out or os.path.join(decks.user_dir(cfg), opts.name))

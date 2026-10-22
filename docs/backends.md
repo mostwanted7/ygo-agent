@@ -4,8 +4,13 @@ A **backend** makes the decisions the deck rules leave open. Every seat chooses 
 `[backends.NAME]` table in the config with a `type`. Pick one with `--backend NAME`; `--model` and `--effort`
 override that profile's model and effort for the run.
 
+The default is `agent.backend = "opus"`, the **play model**: every command that plays or advises (`play`,
+`selfplay`, `teach`, `coach`, `replay`, `test`, and the trainer's player) uses it unless told otherwise, and the deck
+rules and lessons are calibrated to it. Opus was chosen by a blind decision exam ([docs/bench.md](bench.md#choosing-the-play-model));
+`sonnet` and `haiku` stay available for quicker or cheaper runs.
+
 ```sh
-ygo-agent play --join --backend sonnet         # Claude Code CLI, Sonnet
+ygo-agent play --backend sonnet               # Claude Code CLI, Sonnet instead of the default Opus
 ygo-agent test --backend local                 # a local model through Ollama
 ygo-agent test set-lance-before-ending --backend heuristic --repeat 1
 ```

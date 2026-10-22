@@ -18,7 +18,7 @@ def register(sub) -> None:
     p.add_argument("--display-name", help="the deck's name in prompts (default: the .ydk's file name)")
     p.add_argument("--backend", help="the reviewer's backend profile (default trainer.backend: opus)")
     p.add_argument("--player-backend", help="the backend that plays the lab and the games (default "
-                                            "trainer.player_backend: sonnet)")
+                                            "trainer.player_backend, else the play model agent.backend: opus)")
     p.add_argument("--opponents", help="comma-separated opponent seats: WindBot deck AIs legal under the rules, or "
                                        "heuristic:<deck> etc. (default trainer.opponents)")
     p.add_argument("--lab-hands", type=int, help="lab hands in round 1 (default trainer.lab_hands: 10)")
@@ -45,7 +45,7 @@ def register(sub) -> None:
     p = sub.add_parser("train-compare", help="play the same games with the trained playbook, the study draft and no "
                                              "playbook, to see what training bought")
     p.add_argument("--name", dest="deck_key", required=True, help="a trained deck (its name)")
-    p.add_argument("--backend", default=None, help="the player backend (default sonnet)")
+    p.add_argument("--backend", default=None, help="the player backend (default: the play model, agent.backend)")
     p.add_argument("--opponent", default="windbot:Blue-Eyes", help="the opponent seat (default windbot:Blue-Eyes)")
     p.add_argument("--games", type=int, default=3, help="games per variant (default 3)")
     p.add_argument("--variants", default="trained,draft,none", help="which playbooks (default trained,draft,none)")
@@ -131,7 +131,7 @@ def cmd_compare(args, cfg) -> int:
     from .workspace import TrainerError
     cfg["chat"] = "off"
     try:
-        path = compare(cfg, args.deck_key, backend=args.backend or "sonnet", opponent=args.opponent,
+        path = compare(cfg, args.deck_key, backend=args.backend, opponent=args.opponent,
                        games=args.games, variants=[v.strip() for v in args.variants.split(",") if v.strip()],
                        seed=args.seed, parallel=args.parallel, budget=args.budget_usd)
     except TrainerError as e:

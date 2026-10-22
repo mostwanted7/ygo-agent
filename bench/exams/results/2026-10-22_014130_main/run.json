@@ -1,0 +1,94 @@
+{
+ "exam": "main",
+ "created": "2026-10-22 01:41:30",
+ "prompts": {
+  "describe": "9c6914ae08eb",
+  "prompts": "b2dbe996da5f",
+  "general": "d2abd3505f54",
+  "saffira/playbook": "472d46ae1130",
+  "saffira/rules": "06e05a624969",
+  "blackwing/playbook": "82473112a47b",
+  "blackwing/rules": "0877fe171b91"
+ },
+ "invocations": [
+  {
+   "at": "2026-10-22 01:41:30",
+   "argv": [
+    "ygo-agent",
+    "bench",
+    "exam",
+    "main",
+    "--positions",
+    "40",
+    "--backends",
+    "opus,sonnet,haiku",
+    "--judge",
+    "opus,sonnet",
+    "--games",
+    "4",
+    "--parallel",
+    "4",
+    "--budget-usd",
+    "35"
+   ]
+  }
+ ],
+ "model_ids": {
+  "opus": [
+   "claude-opus-5-5"
+  ],
+  "sonnet": [
+   "claude-sonnet-5-5"
+  ],
+  "haiku": [
+   "claude-haiku-5-5"
+  ]
+ },
+ "candidates": {
+  "opus": {
+   "name": "opus",
+   "type": "claude-code",
+   "model": "opus",
+   "effort": "medium"
+  },
+  "sonnet": {
+   "name": "sonnet",
+   "type": "claude-code",
+   "model": "sonnet",
+   "effort": "medium"
+  },
+  "haiku": {
+   "name": "haiku",
+   "type": "claude-code",
+   "model": "haiku",
+   "effort": "medium"
+  }
+ },
+ "judges": [
+  "opus",
+  "sonnet"
+ ],
+ "judge_profiles": {
+  "opus": {
+   "name": "opus",
+   "type": "claude-code",
+   "model": "opus",
+   "effort": "medium"
+  },
+  "sonnet": {
+   "name": "sonnet",
+   "type": "claude-code",
+   "model": "sonnet",
+   "effort": "medium"
+  }
+ },
+ "settings": {
+  "parallel": 4,
+  "budget_usd": 35.0,
+  "judge_batch": 3,
+  "agentic": null,
+  "probe": 0.15,
+  "games": 4,
+  "games_from": null
+ }
+}

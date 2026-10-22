@@ -20,7 +20,7 @@ Without the venv, `python3 -m ygo_agent …` and `./play.sh` do the same thing f
 
 ## Playing a game
 
-1. In a terminal: `ygo-agent play` (options: `--deck blackwing`, `--backend sonnet`, `--best-of 3`, `--web`).
+1. In a terminal: `ygo-agent play` (options: `--deck blackwing`, `--best-of 3`, `--web`; Opus plays by default).
    The agent hosts a room (Master Rule 3 by default, `--rules MR5` etc.) and prints where it is.
 2. In EDOPro: **LAN Mode**, type the **Host address `127.0.0.1`** and **port `7911`** (`--port` changes it), and
    **Join**. Type the address rather than waiting for the room list: EDOPro may not list the room, and its LAN
@@ -28,7 +28,7 @@ Without the venv, `python3 -m ygo_agent …` and `./play.sh` do the same thing f
 3. Play as many matches as you like (EDOPro offers a rematch); Ctrl+C closes the room and prints the results.
 
 ```sh
-ygo-agent play --deck blackwing --backend sonnet --web     # with the browser panel at http://127.0.0.1:7930/
+ygo-agent play --deck blackwing --web     # with the browser panel at http://127.0.0.1:7930/
 ```
 
 You get 600 s per turn (`--time-limit`, or `[arena] time_limit` in the config); the AI has no limit. The older way
@@ -58,8 +58,8 @@ After the game:
 - Open Claude Code in this folder and tell it what the AI got wrong. It updates the deck's playbook and rules (see
   CLAUDE.md), and the next game uses them.
 
-Options: `--backend sonnet` (faster, a bit weaker; also `haiku`, `api-opus`, `local`, `heuristic`, `random` or
-your own profile), `--model`/`--effort` to override the profile's, `--deck blackwing` (any deck `ygo-agent decks` lists, a
+Options: `--backend NAME` (default `opus`, the play model the [model exam](#benchmark) chose; `sonnet` and `haiku`
+are faster or cheaper but make more mistakes; also `api-opus`, `local`, `heuristic`, `random` or your own profile), `--model`/`--effort` to override the profile's, `--deck blackwing` (any deck `ygo-agent decks` lists, a
 `.ydk` file, or a deck in EDOPro's deck folder), `--port`/`--password` for the room, `--chat off`, `--web` (the
 browser panel), `--games N` (close the room after N matches). With `--join`: `--host`, and `--brain-only` (run only
 the agent and print the bot command). `ygo-agent play --help` lists them all. At the end of a game the terminal
@@ -69,7 +69,7 @@ prints the decision stats (who decided, latency, invalid replies, tokens, cost),
 
 ```sh
 ygo-agent selfplay --a saffira:opus --b blackwing:sonnet            # one game, AI vs AI
-ygo-agent selfplay --a saffira:sonnet --b windbot:Blue-Eyes --games 10 --parallel 3 --quiet
+ygo-agent selfplay --a saffira --b windbot:Blue-Eyes --games 10 --parallel 3 --quiet   # the config's backend (opus)
 ygo-agent selfplay --a saffira:heuristic --b blackwing:random --games 50 --parallel 4 --quiet   # no LLM: seconds
 ygo-agent selfplay --a saffira:opus --b blackwing:opus --spectate --pace 2 --web   # watch it in EDOPro and the browser
 ```
@@ -130,7 +130,7 @@ everything it did and a `train-report.md`. It goes in your own decks dir, `~/.lo
 (`[decks] user_dir` in the config), so training never touches the checkout; `--into repo` puts it in `decks/` instead,
 for a deck you mean to share. `ygo-agent decks` lists every deck with where it lives, its playbook size, rules,
 saved cases and `.ydk`. A deck name may exist in only one of the two places (or set `[decks] prefer = "user"`).
-Opus reviews and Sonnet plays by default (`--backend`, `--player-backend`); `--resume` continues a stopped run. See
+Opus reviews and the play model (`agent.backend`, Opus) plays by default (`--backend`, `--player-backend`); `--resume` continues a stopped run. See
 [docs/training.md](docs/training.md).
 
 ## Benchmark
@@ -149,6 +149,17 @@ only, always going first), and 120 each for the baselines.
 | random (no LLM) | 120 | **2%** (0%–6%) | 0/4 | 6s | – | free | – |
 
 ![Win rate with 95% CI, and cost per game against win rate](docs/bench/chart.svg)
+
+**The play model is Opus**, chosen by a blind decision exam rather than by these few games: 40 logged positions
+re-asked of each model and graded blind (a second, Sonnet judge agreed), plus a blind review of 4 like-for-like games
+per model ([report](bench/exams/results/2026-10-22_014130_main/report.md),
+[method](docs/bench.md#choosing-the-play-model)).
+
+| Model | Mean grade (of 4) | Best move | Mistake or blunder | Cost / decision | Significant mistakes / game |
+|---|---:|---:|---:|---:|---:|
+| Opus 5.5 | **3.73** | 88% | 5% (0 blunders) | $0.071 | **0.25** |
+| Sonnet 5.5 | 3.30 | 72% | 15% | $0.031 | 1.0 |
+| Haiku 5.5 | 3.15 | 62% | 15% | $0.002 | 2.0 |
 
 Cost is the Claude Code CLI's figure at API prices (a subscription login isn't billed per call); no game needed a
 fallback. The full report, with every game's EDOPro replay, the per-matchup tables, ratings and versions, is in

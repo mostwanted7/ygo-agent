@@ -13,6 +13,7 @@ REASONS = [(0x1, "destroyed"), (0x2, "Tributed"), (0x20, "by battle"), (0x40, "b
 ATTRIBUTE_FLAGS = {0x1: "EARTH", 0x2: "WATER", 0x4: "FIRE", 0x8: "WIND", 0x10: "LIGHT", 0x20: "DARK", 0x40: "DIVINE"}
 
 HINT_ATTACK_TARGET = 549
+CANNOT_ATTACK = {"EFFECT_CANNOT_ATTACK", "EFFECT_CANNOT_ATTACK_ANNOUNCE"}
 OWN_PROCEDURE = "(by its own summoning procedure)"
 
 
@@ -63,8 +64,8 @@ class Describer:
         return f"{whose(ctrl)} {loc_name(loc)}"
 
     def stats(self, card):
-        """Battle stats and status for a monster on the field."""
-        if not card or not card.get("id") or card.get("l") != 0x4:
+        """Battle stats and status for a monster on the field (none for a short card object, which has no stats)."""
+        if not card or not card.get("id") or card.get("l") != 0x4 or "atk" not in card:
             return ""
         data = self.db.get(card["id"])
         bits = [POSITIONS.get(card.get("p"), "")]
@@ -180,8 +181,19 @@ class Describer:
                 lines.append(f"  CL{i}: {who} activated {self.name(link.get('card')) if link.get('card') else self.db.name(link['id'])}"
                              + (f" — {effect}" if effect else ""))
             if s.get("chain_targets"):
-                lines.append("  Targets: " + ", ".join(self.card_line(c, True) for c in s["chain_targets"] if c))
+                lines.append("  Targets: " + ", ".join(self.card_line(self.on_field(s, c), True)
+                                                       for c in s["chain_targets"] if c))
         return "\n".join(lines)
+
+    @staticmethod
+    def on_field(s, ref):
+        """The state's full card for a short card object (a chain target), if it's on the field there; else `ref`."""
+        side = s.get("me" if ref.get("c") == 0 else "opp") or {}
+        cards = side.get({0x4: "mz", 0x8: "sz"}.get(ref.get("l"))) or []
+        seq = ref.get("s", -1)
+        if 0 <= seq < len(cards) and cards[seq] and cards[seq].get("id") == ref.get("id"):
+            return cards[seq]
+        return ref
 
     def ids_in_state(self, s):
         ids = set()
@@ -288,24 +300,55 @@ class Describer:
                         lines[i] += f" ({note})"
         return lines
 
-    @staticmethod
-    def attack_summary(d):
+    def attack_summary(self, d):
         """Facts about a possible attack, or None. Only in your Main Phase 1 with the Battle Phase open to you, when
-        you have face-up Attack Position monsters that haven't attacked, and the opponent controls no monster or
-        their total ATK reaches the opponent's LP. Their total ATK, the opponent's LP and monster count, no advice."""
+        you have face-up Attack Position monsters that can attack, and the opponent controls no monster or their
+        total ATK reaches the opponent's LP. Their total ATK, the opponent's LP and monster count, no advice. Monsters
+        a card stops from attacking (attack_locks) are left out of the total, and named."""
         s = d.get("state") or {}
         if s.get("turn_player") != 0 or s.get("phase") != 0x4 or not any(
                 o.get("a") == "to_battle" for o in d.get("options", [])):
             return None
         me, opp = s.get("me") or {}, s.get("opp") or {}
-        attackers = [c for c in me.get("mz") or [] if c and c.get("id") and c.get("p") == 0x1 and not c.get("att")]
+        ready = [c for c in me.get("mz") or [] if c and c.get("id") and c.get("p") == 0x1 and not c.get("att")]
+        locks = self.attack_locks(s)
+        attackers = [c for c in ready if c.get("s") not in locks]
         total = sum(c.get("atk") or 0 for c in attackers)
         theirs = sum(1 for c in opp.get("mz") or [] if c)
         lp = opp.get("lp")
         if total <= 0 or (theirs and (lp is None or total < lp)):
             return None
-        return (f"attack available: your Attack Position monsters total {total} ATK; opponent LP {lp}; opponent has "
+        held = "; ".join(f"{self.name(locks[c['s']])} stops {self.name(c)} from attacking"
+                         for c in ready if c.get("s") in locks)
+        return (f"attack available: your Attack Position monsters total {total} ATK" + (f" ({held})" if held else "")
+                + f"; opponent LP {lp}; opponent has "
                 + ("no monsters" if not theirs else f"{theirs} monster{'s' if theirs > 1 else ''}"))
+
+    def attack_locks(self, s):
+        """{zone: the card} for your monsters that a face-up Spell/Trap stops from attacking, by its script
+        (EFFECT_CANNOT_ATTACK). An Equip Card names its monster (`eq`). A card that holds a monster by targeting it,
+        like Fiendish Chain, isn't linked to it in the decision; such a card that also negates the monster holds a
+        negated one, so while one is face-up every negated monster of yours counts as held. (`att` can't tell: in
+        Main Phase 1 it is never set.)"""
+        locks, holders = {}, []
+        for side in ("me", "opp"):
+            for c in (s.get(side) or {}).get("sz") or []:
+                if not c or not c.get("id") or c.get("p", 0) & 0xA or c.get("dis"):
+                    continue
+                codes = self.db.scripts.codes(c["id"])
+                if not codes & CANNOT_ATTACK:
+                    continue
+                eq = c.get("eq")
+                if eq:
+                    if eq.get("c") == 0 and eq.get("l") == 0x4:
+                        locks[eq.get("s")] = c
+                elif "EFFECT_DISABLE" in codes:
+                    holders.append(c)
+        if holders:
+            for c in (s.get("me") or {}).get("mz") or []:
+                if c and c.get("dis") and c.get("s") not in locks:
+                    locks[c.get("s")] = holders[0]
+        return locks
 
     @staticmethod
     def _number_repeats(options, lines):

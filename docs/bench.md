@@ -225,6 +225,35 @@ or more positions.
 Every exam decision is a turn's first message (the whole duel log) in a fresh session. So its cost and latency per
 decision are higher than in a game, where most decisions continue a session and pre-warming hides the start-up.
 
+### Choosing the play model
+
+On 2026-10-22 the exam picked the one Claude model the agent plays with
+([report](../bench/exams/results/2026-10-22_014130_main/report.md)). 40 positions were sampled from 1982 usable
+decisions in 35 logged games (19 Saffira, 21 Blackwing; from Haiku, Sonnet and Opus games). Opus, Sonnet and Haiku
+each answered every position, and a blind Opus judge graded the answers. A second judge (Sonnet) re-graded them, and
+4 like-for-like whole games per model from the README benchmark were reviewed blind.
+
+| model | mean grade (95% CI) | best | mistake or blunder | blunder | latency mean · p95 | cost / decision | wins | significant mistakes / game |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| **Opus** | **3.73** (3.48–3.95) | 88% | 5% | 0% | 9.9 s · 17.8 s | $0.071 | 4 of 4 | **0.25** (0 blunders) |
+| Sonnet | 3.30 (2.92–3.65) | 72% | 15% | 2.5% | 4.7 s · 7.6 s | $0.031 | 3 of 4 | 1.0 (0.25 blunders) |
+| Haiku | 3.15 (2.77–3.52) | 62% | 15% | 2.5% | 7.5 s · 16.1 s | $0.002 | 1 of 4 | 2.0 (0.25 blunders) |
+
+Exam latency and cost are for a turn's first message in a fresh session. In games, Opus cost $1.15 per game against
+Sonnet's $0.80.
+
+- **Paired, per position** (the same 40 positions): Opus − Sonnet +0.42 grade (95% CI +0.03 to +0.82; 10 better,
+  27 tied, 3 worse; sign test p 0.09). Opus − Haiku +0.57 (+0.17 to +1.02; 12–26–2; p 0.013). Sonnet − Haiku +0.15
+  (−0.30 to +0.60; p 0.79): no difference.
+- **Self-preference.** Where its answer differed from every other candidate's, the Opus judge graded Opus best in
+  75% of 8 positions, against 12% for Sonnet and 10% for Haiku. The Sonnet judge, which has no stake in Opus, ranks the
+  models the same way: Opus 3.75, Sonnet 3.48, Haiku 3.25, with Opus − Sonnet +0.28 (+0.05 to +0.53) and
+  Opus − Haiku +0.50 (+0.25 to +0.82, p 0.003). The two judges gave the same grade 68% of the time and grades
+  within one 92% of the time.
+- **Conclusion:** Opus is the default play model (`agent.backend`), also for teach, the coach and the trainer's
+  player, and the deck rules are calibrated to it (confidence medium). Sonnet and Haiku can't be told apart, and
+  both make several times more mistakes. Their profiles stay available for cheaper runs.
+
 ## Code and tests
 
 `ygo_agent/bench/`: `spec.py` (the plan, seeds), `runner.py` (games through `match.run_games()`, results.jsonl,

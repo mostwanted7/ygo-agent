@@ -5,7 +5,7 @@ short, teachable reason, and writes a review of the game afterwards. It replaces
 
 ```sh
 ygo-agent coach --web                                   # deck recognised from what you submit, vs windbot:Blue-Eyes
-ygo-agent coach --deck blackwing --backend sonnet --level intermediate --opponent saffira:sonnet --web
+ygo-agent coach --deck blackwing --level intermediate --opponent saffira:sonnet --web   # coach: opus (agent.backend)
 ygo-agent coach --review games/<dir> [--review-backend opus]   # review a finished coach game again
 ```
 

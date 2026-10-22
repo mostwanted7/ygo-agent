@@ -11,7 +11,7 @@ from ygo_agent.agent.profile import Profile
 
 SET_ASH = "set-ash-as-blocker-empty-field"  # turn 8: [1] Set Ash Blossom is right
 DARK_REBELLION = "use-dark-rebellion-effect-before-ending"  # turn 4: [1] use Dark Rebellion is right
-LOOP = "loop-reborn-arsenal-before-xyz"  # turn 1: no rule of this deck answers it
+LOOP = "switch-to-attack-for-lethal"  # turn 6: no rule of this deck answers it
 
 RULES = '''from ygo_agent.agent.rules import Decide, cases, shortcut
 

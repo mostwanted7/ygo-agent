@@ -11,10 +11,13 @@ before Stage 3 and re-taken on purpose since, each time with the count of messag
   The Summon wording didn't change here: these logs have no `window`, so their Summons read as done, as before; in
   the history the model reads (lines/flush), 11 response windows right after a Summon show it in progress
   (test_history_lines_keep_every_event_line).
+- 2026-10-22: a monster targeted by a chain link shows its stats from the state instead of "(ATK None / DEF None)"
+  (exam p10; 7 messages).
 After a deliberate change to describe.py: `python tests/native/test_native_describe.py` re-takes it and prints how
 many messages changed; say so in the change.
 """
 
+import copy
 import hashlib
 import json
 import os
@@ -390,3 +393,90 @@ def test_labels_that_dont_fit_get_a_qualifier(db, monkeypatch):
     assert option(on_field, 0).endswith("(the script's label, though this card is already on the field; see the card "
                                         "text)")
     assert option(in_gy, 2).endswith('effect: "Special Summon this card from your hand"')
+
+
+FIENDISH_CHAIN = """local s,id=GetID()
+function s.initial_effect(c)
+	aux.AddPersistentProcedure(c,nil,s.filter,CATEGORY_DISABLE,nil,nil,TIMINGS_CHECK_MONSTER,nil,nil,s.target)
+	--disable
+	local e3=Effect.CreateEffect(c)
+	e3:SetType(EFFECT_TYPE_FIELD)
+	e3:SetCode(EFFECT_DISABLE)
+	e3:SetRange(LOCATION_SZONE)
+	e3:SetTargetRange(LOCATION_MZONE,LOCATION_MZONE)
+	e3:SetTarget(aux.PersistentTargetFilter)
+	c:RegisterEffect(e3)
+	--cannot attack
+	local e4=e3:Clone()
+	e4:SetCode(EFFECT_CANNOT_ATTACK)
+	c:RegisterEffect(e4)
+	--Destroy
+	local e5=Effect.CreateEffect(c)
+	e5:SetType(EFFECT_TYPE_CONTINUOUS+EFFECT_TYPE_FIELD)
+	e5:SetRange(LOCATION_SZONE)
+	e5:SetCode(EVENT_LEAVE_FIELD)
+	c:RegisterEffect(e5)
+end
+"""
+EQUIP_LOCK = """local s,id=GetID()
+function s.initial_effect(c)
+	aux.AddEquipProcedure(c)
+	local e2=Effect.CreateEffect(c)
+	e2:SetType(EFFECT_TYPE_EQUIP)
+	e2:SetCode(EFFECT_CANNOT_ATTACK)
+	c:RegisterEffect(e2)
+end
+"""
+
+
+def exam_decision(name):
+    """A real decision from the 2026-10-22 model exam (bench/exams/main.json), saved with its source."""
+    with open(os.path.join(os.path.dirname(GOLDEN), name), encoding="utf-8") as f:
+        return json.load(f)["decision"]
+
+
+def test_the_attack_note_leaves_out_monsters_that_cant_attack(db, monkeypatch):
+    """Exam p01: Fiendish Chain held Honest, yet the note said 2500 ATK against 2050 LP, and Haiku went to the Battle
+    Phase for a lethal that wasn't there. The decision doesn't say which monster the Chain holds, but it negates it."""
+    from ygo_agent.agent.carddb import Card
+    from ygo_agent.agent.cardscripts import ScriptIndex
+    chain, accel, lock = 50078509, 47030842, 99000001
+    monkeypatch.setattr(db, "_scripts", ScriptIndex(sources={chain: FIENDISH_CHAIN, lock: EQUIP_LOCK}))
+    monkeypatch.setitem(db.cards, chain, Card(chain, "Fiendish Chain", "", [""] * 16, 0x20004, 0, 0, 0, 0, 0))
+    monkeypatch.setitem(db.cards, accel, Card(accel, "Geargiaccelerator", "", [""] * 16, 0x21, 4, 1400, 800, 0x20, 1))
+    monkeypatch.setitem(db.cards, lock, Card(lock, "Binding Equip", "", [""] * 16, 0x40002, 0, 0, 0, 0, 0))
+    d = Describer(db)
+    m = exam_decision("exam_p01_fiendish_chain.json")
+    assert m["options"][9] == {"a": "to_battle"}
+    assert d.options(m)[9] == ('Go to the Battle Phase (attack available: your Attack Position monsters total 1400 ATK '
+                               '("Fiendish Chain" stops "Honest" from attacking); opponent LP 2050; opponent has no '
+                               "monsters)")
+
+    def board(change):
+        new = copy.deepcopy(m)
+        change(new["state"])
+        return d.options(new)[9]
+    full = "total 2500 ATK; opponent LP 2050"
+    assert full in board(lambda s: s["opp"]["sz"].__setitem__(2, None))  # negated, but nothing stops its attacks
+    assert full in board(lambda s: s["opp"]["sz"][2].update(p=0xA))     # a Set Chain holds nothing
+    assert full in board(lambda s: s["opp"]["sz"][2].update(dis=True))   # nor a negated one
+    assert board(lambda s: s["me"]["mz"].__setitem__(1, None)) == "Go to the Battle Phase"  # no monster can attack
+
+    def equip(s):
+        s["opp"]["sz"][2] = None
+        s["me"]["sz"][0] = {"id": lock, "c": 0, "l": 8, "s": 0, "p": 5, "eq": {"id": accel, "c": 0, "l": 4, "s": 1}}
+    assert board(equip) == ('Go to the Battle Phase (attack available: your Attack Position monsters total 1100 ATK '
+                            '("Binding Equip" stops "Geargiaccelerator" from attacking); opponent LP 2050; opponent '
+                            "has no monsters)")
+
+
+def test_chain_targets_show_their_stats_from_the_state(db):
+    """Exam p10: a chain target (a short card object, without stats) read "(ATK None / DEF None)"."""
+    d = Describer(db)
+    s = exam_decision("exam_p10_chain_target.json")["state"]
+    text = d.state(s)
+    assert '  Targets: "Saffira, Queen of Dragons" (face-up Defense, ATK 2500 / DEF 2400) — your M2' in text
+    assert "None" not in text
+    gone = copy.deepcopy(s)
+    gone["me"]["mz"][1] = None  # not where the state has it: name and place only
+    assert '  Targets: "Saffira, Queen of Dragons" — your M2' in d.state(gone)

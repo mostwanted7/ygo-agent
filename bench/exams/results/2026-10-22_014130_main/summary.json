@@ -1,0 +1,2866 @@
+{
+ "name": "main",
+ "folder": "bench/exams/results/2026-10-22_014130_main",
+ "generated": "2026-10-22 01:57",
+ "positions": 40,
+ "asked": 40,
+ "graded": 40,
+ "excluded": {},
+ "candidates": [
+  "opus",
+  "sonnet",
+  "haiku"
+ ],
+ "judge": "opus",
+ "judges": [
+  "opus",
+  "sonnet"
+ ],
+ "run": {
+  "created": "2026-10-22 01:41:30",
+  "candidates": {
+   "opus": {
+    "name": "opus",
+    "type": "claude-code",
+    "model": "opus",
+    "effort": "medium"
+   },
+   "sonnet": {
+    "name": "sonnet",
+    "type": "claude-code",
+    "model": "sonnet",
+    "effort": "medium"
+   },
+   "haiku": {
+    "name": "haiku",
+    "type": "claude-code",
+    "model": "haiku",
+    "effort": "medium"
+   }
+  },
+  "judge_profiles": {
+   "opus": {
+    "name": "opus",
+    "type": "claude-code",
+    "model": "opus",
+    "effort": "medium"
+   },
+   "sonnet": {
+    "name": "sonnet",
+    "type": "claude-code",
+    "model": "sonnet",
+    "effort": "medium"
+   }
+  },
+  "model_ids": {
+   "opus": [
+    "claude-opus-5-5"
+   ],
+   "sonnet": [
+    "claude-sonnet-5-5"
+   ],
+   "haiku": [
+    "claude-haiku-5-5"
+   ]
+  },
+  "prompts": {
+   "describe": "9c6914ae08eb",
+   "prompts": "b2dbe996da5f",
+   "general": "d2abd3505f54",
+   "saffira/playbook": "472d46ae1130",
+   "saffira/rules": "06e05a624969",
+   "blackwing/playbook": "82473112a47b",
+   "blackwing/rules": "0877fe171b91"
+  },
+  "prompts_now": null,
+  "settings": {
+   "parallel": 4,
+   "budget_usd": 35.0,
+   "judge_batch": 3,
+   "agentic": null,
+   "probe": 0.15,
+   "games": 4,
+   "games_from": null
+  }
+ },
+ "exam": {
+  "seed": 1,
+  "n": 40,
+  "decks": [
+   "saffira",
+   "blackwing"
+  ],
+  "sources": [
+   "games"
+  ],
+  "pool": {
+   "games": 35,
+   "decisions": 1982,
+   "by_stratum": {
+    "blackwing/battle": 71,
+    "blackwing/chain": 372,
+    "blackwing/effect_yn": 55,
+    "blackwing/idle": 216,
+    "blackwing/other": 42,
+    "blackwing/select_card": 141,
+    "saffira/battle": 61,
+    "saffira/chain": 480,
+    "saffira/effect_yn": 118,
+    "saffira/idle": 186,
+    "saffira/other": 109,
+    "saffira/select_card": 131
+   },
+   "by_backend": {
+    "haiku": 13,
+    "opus": 5,
+    "sonnet": 17
+   }
+  },
+  "created": "2026-10-22 01:41:00"
+ },
+ "models": {
+  "opus": {
+   "candidate": "opus",
+   "model": "opus",
+   "model_ids": [
+    "claude-opus-5-5"
+   ],
+   "graded": 40,
+   "mean_score": 3.725,
+   "ci95": [
+    3.475,
+    3.95
+   ],
+   "best": 0.875,
+   "best_or_good": 0.9,
+   "mistake_rate": 0.05,
+   "mistake_ci": [
+    0.01382066726155863,
+    0.16503877495105868
+   ],
+   "blunder_rate": 0.0,
+   "blunder_ci": [
+    0.0,
+    0.08762160245846368
+   ],
+   "grades": {
+    "best": 35,
+    "good": 1,
+    "acceptable": 2,
+    "mistake": 2,
+    "blunder": 0
+   },
+   "agreement": 0.9,
+   "unique": 8,
+   "unique_best": 0.75,
+   "answered": 40,
+   "latency_mean_s": 9.87725,
+   "latency_p95_s": 17.84,
+   "cost_per_decision": 0.07115,
+   "cost_usd": 2.846,
+   "tokens_per_decision": {
+    "input": 2.0,
+    "output": 803.425,
+    "cache_read": 11124.7,
+    "cache_write": 6604.975
+   },
+   "invalid_replies": 0,
+   "by_group": {
+    "battle": {
+     "n": 5,
+     "mean_score": 4.0,
+     "mistake_rate": 0.0
+    },
+    "chain": {
+     "n": 8,
+     "mean_score": 3.375,
+     "mistake_rate": 0.125
+    },
+    "effect_yn": {
+     "n": 4,
+     "mean_score": 4.0,
+     "mistake_rate": 0.0
+    },
+    "idle": {
+     "n": 12,
+     "mean_score": 3.9166666666666665,
+     "mistake_rate": 0.0
+    },
+    "other": {
+     "n": 3,
+     "mean_score": 3.3333333333333335,
+     "mistake_rate": 0.0
+    },
+    "select_card": {
+     "n": 8,
+     "mean_score": 3.625,
+     "mistake_rate": 0.125
+    }
+   },
+   "by_deck": {
+    "blackwing": {
+     "n": 21,
+     "mean_score": 3.761904761904762,
+     "mistake_rate": 0.047619047619047616
+    },
+    "saffira": {
+     "n": 19,
+     "mean_score": 3.6842105263157894,
+     "mistake_rate": 0.05263157894736842
+    }
+   }
+  },
+  "sonnet": {
+   "candidate": "sonnet",
+   "model": "sonnet",
+   "model_ids": [
+    "claude-sonnet-5-5"
+   ],
+   "graded": 40,
+   "mean_score": 3.3,
+   "ci95": [
+    2.925,
+    3.65
+   ],
+   "best": 0.725,
+   "best_or_good": 0.75,
+   "mistake_rate": 0.15,
+   "mistake_ci": [
+    0.07061187676107432,
+    0.29072324495985025
+   ],
+   "blunder_rate": 0.025,
+   "blunder_ci": [
+    0.004426831453704344,
+    0.12881369088183614
+   ],
+   "grades": {
+    "best": 29,
+    "good": 1,
+    "acceptable": 4,
+    "mistake": 5,
+    "blunder": 1
+   },
+   "agreement": 0.725,
+   "unique": 8,
+   "unique_best": 0.125,
+   "answered": 40,
+   "latency_mean_s": 4.6770000000000005,
+   "latency_p95_s": 7.58,
+   "cost_per_decision": 0.031072499999999996,
+   "cost_usd": 1.2429,
+   "tokens_per_decision": {
+    "input": 2.0,
+    "output": 352.575,
+    "cache_read": 11124.7,
+    "cache_write": 6608.975
+   },
+   "invalid_replies": 0,
+   "by_group": {
+    "battle": {
+     "n": 5,
+     "mean_score": 3.4,
+     "mistake_rate": 0.2
+    },
+    "chain": {
+     "n": 8,
+     "mean_score": 3.375,
+     "mistake_rate": 0.125
+    },
+    "effect_yn": {
+     "n": 4,
+     "mean_score": 3.25,
+     "mistake_rate": 0.25
+    },
+    "idle": {
+     "n": 12,
+     "mean_score": 3.25,
+     "mistake_rate": 0.08333333333333333
+    },
+    "other": {
+     "n": 3,
+     "mean_score": 4.0,
+     "mistake_rate": 0.0
+    },
+    "select_card": {
+     "n": 8,
+     "mean_score": 3.0,
+     "mistake_rate": 0.25
+    }
+   },
+   "by_deck": {
+    "blackwing": {
+     "n": 21,
+     "mean_score": 3.0476190476190474,
+     "mistake_rate": 0.19047619047619047
+    },
+    "saffira": {
+     "n": 19,
+     "mean_score": 3.5789473684210527,
+     "mistake_rate": 0.10526315789473684
+    }
+   }
+  },
+  "haiku": {
+   "candidate": "haiku",
+   "model": "haiku",
+   "model_ids": [
+    "claude-haiku-5-5"
+   ],
+   "graded": 40,
+   "mean_score": 3.15,
+   "ci95": [
+    2.775,
+    3.525
+   ],
+   "best": 0.625,
+   "best_or_good": 0.7,
+   "mistake_rate": 0.15,
+   "mistake_ci": [
+    0.07061187676107432,
+    0.29072324495985025
+   ],
+   "blunder_rate": 0.025,
+   "blunder_ci": [
+    0.004426831453704344,
+    0.12881369088183614
+   ],
+   "grades": {
+    "best": 25,
+    "good": 3,
+    "acceptable": 6,
+    "mistake": 5,
+    "blunder": 1
+   },
+   "agreement": 0.65,
+   "unique": 10,
+   "unique_best": 0.1,
+   "answered": 40,
+   "latency_mean_s": 7.548,
+   "latency_p95_s": 16.13,
+   "cost_per_decision": 0.00211,
+   "cost_usd": 0.0844,
+   "tokens_per_decision": {
+    "input": 2.0,
+    "output": 1349.95,
+    "cache_read": 11124.7,
+    "cache_write": 6606.975
+   },
+   "invalid_replies": 0,
+   "by_group": {
+    "battle": {
+     "n": 5,
+     "mean_score": 3.4,
+     "mistake_rate": 0.2
+    },
+    "chain": {
+     "n": 8,
+     "mean_score": 3.75,
+     "mistake_rate": 0.0
+    },
+    "effect_yn": {
+     "n": 4,
+     "mean_score": 2.5,
+     "mistake_rate": 0.5
+    },
+    "idle": {
+     "n": 12,
+     "mean_score": 3.1666666666666665,
+     "mistake_rate": 0.08333333333333333
+    },
+    "other": {
+     "n": 3,
+     "mean_score": 3.3333333333333335,
+     "mistake_rate": 0.0
+    },
+    "select_card": {
+     "n": 8,
+     "mean_score": 2.625,
+     "mistake_rate": 0.25
+    }
+   },
+   "by_deck": {
+    "blackwing": {
+     "n": 21,
+     "mean_score": 3.2857142857142856,
+     "mistake_rate": 0.14285714285714285
+    },
+    "saffira": {
+     "n": 19,
+     "mean_score": 3.0,
+     "mistake_rate": 0.15789473684210525
+    }
+   }
+  }
+ },
+ "pairs": [
+  {
+   "a": "opus",
+   "b": "sonnet",
+   "n": 40,
+   "diff": 0.425,
+   "ci95": [
+    0.025,
+    0.825
+   ],
+   "a_better": 10,
+   "ties": 27,
+   "b_better": 3,
+   "p_sign": 0.09228515625
+  },
+  {
+   "a": "opus",
+   "b": "haiku",
+   "n": 40,
+   "diff": 0.575,
+   "ci95": [
+    0.175,
+    1.025
+   ],
+   "a_better": 12,
+   "ties": 26,
+   "b_better": 2,
+   "p_sign": 0.012939453125
+  },
+  {
+   "a": "sonnet",
+   "b": "haiku",
+   "n": 40,
+   "diff": 0.15,
+   "ci95": [
+    -0.3,
+    0.6
+   ],
+   "a_better": 8,
+   "ties": 26,
+   "b_better": 6,
+   "p_sign": 0.79052734375
+  }
+ ],
+ "judge_checks": {
+  "judge_model": "opus",
+  "same_model_candidates": [
+   "opus"
+  ],
+  "unique": {
+   "opus": {
+    "unique": 8,
+    "unique_best": 0.75
+   },
+   "sonnet": {
+    "unique": 8,
+    "unique_best": 0.125
+   },
+   "haiku": {
+    "unique": 10,
+    "unique_best": 0.1
+   }
+  },
+  "self_preference": "opus (the judge's own model) is graded best in 75% of the positions where its answer differs from every other candidate's, against at most 12% for the others. That gap may be real skill or self-preference: re-judge with another model (--judge sonnet on --resume) and compare.",
+  "positions_with_issues": 1,
+  "issues": [
+   [
+    "p02",
+    "answer A is called equivalent to its own choice but graded good"
+   ]
+  ],
+  "probes": 7,
+  "probes_same": 7,
+  "probes_within_one": 7,
+  "confidence": {
+   "high": 24,
+   "low": 1,
+   "medium": 15
+  }
+ },
+ "cross_judges": [
+  {
+   "judge": "sonnet",
+   "model": "sonnet",
+   "positions": 40,
+   "compared": 120,
+   "same": 0.6833333333333333,
+   "within_one": 0.9166666666666666,
+   "mean_score": {
+    "opus": 3.75,
+    "sonnet": 3.475,
+    "haiku": 3.25
+   },
+   "ranking": [
+    "opus",
+    "sonnet",
+    "haiku"
+   ],
+   "pairs": [
+    {
+     "a": "opus",
+     "b": "sonnet",
+     "n": 40,
+     "diff": 0.275,
+     "ci95": [
+      0.05,
+      0.525
+     ],
+     "a_better": 10,
+     "b_better": 3,
+     "p_sign": 0.09228515625
+    },
+    {
+     "a": "opus",
+     "b": "haiku",
+     "n": 40,
+     "diff": 0.5,
+     "ci95": [
+      0.25,
+      0.825
+     ],
+     "a_better": 12,
+     "b_better": 1,
+     "p_sign": 0.00341796875
+    },
+    {
+     "a": "sonnet",
+     "b": "haiku",
+     "n": 40,
+     "diff": 0.225,
+     "ci95": [
+      -0.075,
+      0.55
+     ],
+     "a_better": 8,
+     "b_better": 4,
+     "p_sign": 0.3876953125
+    }
+   ]
+  }
+ ],
+ "prompt_mismatch": [],
+ "incomplete": [],
+ "disagreements": [
+  {
+   "position": "p01",
+   "deck": "saffira",
+   "kind": "idle",
+   "sub": "main1",
+   "turn": 7,
+   "source": "games/2026-10-21_211059_saffira-vs-mostwanted #31",
+   "question": "Main Phase: choose your next action. Reply with exactly one option index.",
+   "spread": 4,
+   "assessment": "Opponent is at 2050 LP with no monsters and no Set cards. Fiendish Chain on Honest means it can't attack, so a plain Battle Phase only gets Geargiaccelerator's 1400 through. Overlaying Honest and the stolen Geargiaccelerator into Dark Rebellion (2500) gives a lethal direct attack. It also sends the Chain to the GY and keeps the stolen monster from going back to the opponent. That is the winning line.",
+   "own": "[5] Special Summon \"Dark Rebellion Xyz Dragon\" from your Extra Deck (by its own summoning procedure)",
+   "confidence": "high",
+   "answers": [
+    {
+     "candidate": "opus",
+     "grade": "best",
+     "reason": "Finds the lethal: 2500 direct beats 2050, and it clears both the Chain and the stolen monster.",
+     "answer": "[5] Special Summon \"Dark Rebellion Xyz Dragon\" from your Extra Deck (by its own summoning procedure)",
+     "why": "Fiendish Chain stops Honest from attacking, so I'll use it and the stolen Geargiaccelerator as material for Dark Rebellion Xyz Dragon. That gets rid of the Chain and puts the opponent's monster in their GY instead of letting it go back to them. A 2500 ATK direct attack is lethal against their 2050 LP, and they have no monsters and no Set cards.",
+     "shown_from": "opus"
+    },
+    {
+     "candidate": "sonnet",
+     "grade": "best",
+     "reason": "Finds the lethal: 2500 direct beats 2050, and it clears both the Chain and the stolen monster.",
+     "answer": "[5] Special Summon \"Dark Rebellion Xyz Dragon\" from your Extra Deck (by its own summoning procedure)",
+     "why": "Honest can't attack because of Fiendish Chain, and Geargiaccelerator alone deals only 1400. Xyz Summoning Dark Rebellion (2500 ATK) from Honest and Geargiaccelerator gives a fresh attacker that deals lethal against 2050 LP with no blockers.",
+     "shown_from": "opus"
+    },
+    {
+     "candidate": "haiku",
+     "grade": "blunder",
+     "reason": "Misreads Fiendish Chain, which stops Honest from attacking. Only 1400 damage gets through, so a lethal turn is thrown away and Geargiaccelerator goes back to the opponent.",
+     "answer": "[9] Go to the Battle Phase (attack available: your Attack Position monsters total 2500 ATK; opponent LP 2050; opponent has no monsters)",
+     "why": "The opponent has no monsters and 2050 LP. Honest (1100) and the Change of Heart-stolen Geargiaccelerator (1400) together deal 2500, which is lethal if unanswered. I'm keeping Ghost Ogre in hand as a hand trap, since it can destroy a card that activates in response.",
+     "shown_from": "haiku"
+    }
+   ]
+  },
+  {
+   "position": "p02",
+   "deck": "saffira",
+   "kind": "idle",
+   "sub": "main1",
+   "turn": 5,
+   "source": "games/bench/2026-10-21_212557_readme/saffira--haiku--windbot-blue-eyes--003/2026-10-21_214659_saffira-vs-blue-eyes-ai #82",
+   "question": "Main Phase: choose your next action. Reply with exactly one option index.",
+   "spread": 3,
+   "assessment": "The opponent is at 500 LP with one blocker, Blue-Eyes Alternative (3000). If Saffira attacks it with Honest still in hand, she goes to 5500 and deals 2500. That is lethal even if Return of the Dragon Lords in their GY saves the dragon. Going straight to battle is cleanest; switching Castel to Attack first is harmless.",
+   "own": "[6] Go to the Battle Phase (attack available: your Attack Position monsters total 2500 ATK; opponent LP 500; opponent has 1 monster)",
+   "confidence": "high",
+   "answers": [
+    {
+     "candidate": "opus",
+     "grade": "good",
+     "reason": "It keeps Honest in hand, so the lethal is intact. Switching Castel adds little: it can't attack directly while Blue-Eyes is on the field.",
+     "answer": "[4] Change the battle position of \"Castel, the Skyblaster Musketeer\" (face-up Defense, ATK 2000 / DEF 1500)",
+     "why": "The opponent is at 500 LP. Saffira attacks Blue-Eyes Alternative with Honest from hand (5500 vs 3000) for lethal. Switching Castel to Attack first gives me a second attacker for a direct hit if a trap stops the first line.",
+     "shown_from": "opus"
+    },
+    {
+     "candidate": "haiku",
+     "grade": "good",
+     "reason": "It keeps Honest in hand, so the lethal is intact. Switching Castel adds little: it can't attack directly while Blue-Eyes is on the field.",
+     "answer": "[4] Change the battle position of \"Castel, the Skyblaster Musketeer\" (face-up Defense, ATK 2000 / DEF 1500)",
+     "why": "Opponent is at 500 LP with one monster, Blue-Eyes Alternative White Dragon. Switching Castel to Attack Position gives me two attackers (Saffira 2500, Castel 2000), so one blocker can't stop 500 damage. If it blocks Saffira, Honest in hand can give her +3000 ATK in the Damage Step, and Castel's 2000 still hits for lethal.",
+     "shown_from": "opus"
+    },
+    {
+     "candidate": "sonnet",
+     "grade": "blunder",
+     "reason": "It assumes extra attackers can go around the blocker, but no attack can be direct while the opponent has a monster. Summoning Honest also throws away its hand boost, which was the guaranteed lethal.",
+     "answer": "[1] Normal Summon \"Honest\" (from hand)",
+     "why": "Opponent is at 500 with one blocker, so I want three attackers: Honest, Castel switched to Attack, and Saffira. Only one can be blocked, so the others get through for lethal.",
+     "shown_from": "sonnet"
+    }
+   ]
+  },
+  {
+   "position": "p07",
+   "deck": "saffira",
+   "kind": "battle",
+   "sub": "direct",
+   "turn": 3,
+   "source": "games/bench/2026-10-21_212557_readme/saffira--haiku--windbot-time-thief--003/2026-10-21_214920_saffira-vs-time-thief-ai #53",
+   "question": "Battle Phase: choose your next action. Reply with exactly one option index.",
+   "spread": 3,
+   "assessment": "The opponent already tributed Chronocorder, so the next battle damage they would take is sent to you. Attacking first with Witch (100) uses up the redirect cheaply. Then 2500+2500+1400 = 6400 goes into 4000 LP, a 2400 margin. Leading with a Saffira sends 2500 back to you and leaves exactly 4000, so one stopped attack from the face-downs means no lethal.",
+   "own": "[4] Attack with \"Condemned Witch\" (face-up Attack, ATK 100 / DEF 2000) (can attack directly)",
+   "confidence": "high",
+   "answers": [
+    {
+     "candidate": "opus",
+     "grade": "best",
+     "reason": "It correctly uses up Chronocorder's redirect with the 100-ATK Witch and keeps a 2400-damage margin for lethal.",
+     "answer": "[4] Attack with \"Condemned Witch\" (face-up Attack, ATK 100 / DEF 2000) (can attack directly)",
+     "why": "Chronocorder sends the damage from my next attack back to me, so I attack first with Condemned Witch (100 ATK) to use up that effect cheaply. After that, the two Saffiras and Manju deal 6400, and the opponent only has 4000 LP left. They have no monsters, so this is lethal.",
+     "shown_from": "opus"
+    },
+    {
+     "candidate": "sonnet",
+     "grade": "mistake",
+     "reason": "It ignores Chronocorder: 2500 goes back to you and lethal becomes exactly 4000 with no margin, so the two face-down cards could stop it. The reasoning misreads the board.",
+     "answer": "[1] Attack with \"Saffira, Queen of Dragons\" (face-up Attack, ATK 2500 / DEF 2400) (can attack directly)",
+     "why": "The opponent has no monsters and 4000 LP. My attackers total 6500 ATK, so I attack with everything, starting with a Saffira.",
+     "shown_from": "haiku"
+    },
+    {
+     "candidate": "haiku",
+     "grade": "mistake",
+     "reason": "It ignores Chronocorder: 2500 goes back to you and lethal becomes exactly 4000 with no margin, so the two face-down cards could stop it. The reasoning misreads the board.",
+     "answer": "[1] Attack with \"Saffira, Queen of Dragons\" (face-up Attack, ATK 2500 / DEF 2400) (can attack directly)",
+     "why": "The opponent has no monsters, 0 cards in hand, and 4000 LP, while my four attackers total 6500 ATK of direct damage. I'm starting with a Saffira attack and will keep declaring the other attackers (Saffira, Manju, Witch) to finish the duel. I'm holding Forbidden Lance, since it's not needed for lethal.",
+     "shown_from": "haiku"
+    }
+   ]
+  },
+  {
+   "position": "p18",
+   "deck": "saffira",
+   "kind": "effect_yn",
+   "sub": "optional",
+   "turn": 2,
+   "source": "games/native-smoke/2026-10-21_195052_saffira-vs-blue-eyes-ai #22",
+   "question": "Do you want to activate/use \"Saffira, Queen of Dragons\" (face-up Attack, ATK 2500 / DEF 2400) (your M1)? Reply [1] for yes or [0] for no.",
+   "spread": 3,
+   "assessment": "Saffira's End Phase trigger fires when any LIGHT monster goes from hand or Deck to the GY while she is face-up. The script doesn't check whose card it was, so the opponent discarding Blue-Eyes Alternative to Trade-In counts. The effect is free and her once-per-turn use resets each turn, so activating gives free card advantage on the opponent's turn: draw 2 and discard 1, or randomly discard from their 6-card hand. Saying yes is clearly right.",
+   "own": "[1] yes",
+   "confidence": "high",
+   "answers": [
+    {
+     "candidate": "opus",
+     "grade": "best",
+     "reason": "Correct activation, and it names the right trigger: the opponent's LIGHT Blue-Eyes Alternative went from their hand to the GY while Saffira was face-up.",
+     "answer": "[1] yes",
+     "why": "The opponent discarded Blue-Eyes Alternative, a LIGHT monster, from their hand while Saffira was face-up. That meets her End Phase condition, so I get a free extra activation on their turn.",
+     "shown_from": "opus"
+    },
+    {
+     "candidate": "sonnet",
+     "grade": "best",
+     "reason": "Correct activation, and it names the right trigger: the opponent's LIGHT Blue-Eyes Alternative went from their hand to the GY while Saffira was face-up.",
+     "answer": "[1] yes",
+     "why": "Saffira's End Phase effect is available because a LIGHT monster was discarded this turn. I'll activate it and choose a mode at the next prompt.",
+     "shown_from": "opus"
+    },
+    {
+     "candidate": "haiku",
+     "grade": "mistake",
+     "reason": "It misreads the condition. The LIGHT monster doesn't have to go to your own GY, and the once-per-turn use resets every turn, so declining throws away a free card-advantage effect.",
+     "answer": "[0] no",
+     "why": "Saffira, Queen of Dragons' End Phase effect needs either a Ritual Summon this turn or a LIGHT monster sent from hand/Deck to my GY this turn. Neither happened on the opponent's turn: she was summoned on my Turn 1, and the opponent's discard of Blue-Eyes Alternative was from their own hand. Activating now would waste her once-per-turn use, so I'll pass.",
+     "shown_from": "haiku"
+    }
+   ]
+  },
+  {
+   "position": "p37",
+   "deck": "blackwing",
+   "kind": "effect_yn",
+   "sub": "optional",
+   "turn": 2,
+   "source": "games/bench/2026-10-21_212557_readme/blackwing--haiku--windbot-blue-eyes--002/2026-10-21_214202_blackwing-vs-blue-eyes-ai #32",
+   "question": "Do you want to activate/use \"Blackwing - Harmattan the Dust\" (face-up Attack, ATK 800 / DEF 800) (your M4)? Reply [1] for yes or [0] for no.",
+   "spread": 3,
+   "assessment": "Gofu (Lv5 Blackwing Tuner) + Harmattan at Lv2 makes 7, so Blackwing Armor Master can still be Synchro Summoned this turn. If Harmattan copies Sudri, Gofu or Nothung, it becomes Lv6, 7 or 8. Gofu plus that is 11, 12 or 13, and nothing in the Extra Deck matches, so the Synchro option is gone. The boost gains nothing and costs that line. Declining is right.",
+   "own": "[0] no",
+   "confidence": "high",
+   "answers": [
+    {
+     "candidate": "opus",
+     "grade": "best",
+     "reason": "Declining keeps Harmattan at Lv2, which keeps the Gofu + Harmattan Armor Master Synchro open. The move is right. The reason is wrong, though: a Synchro is still possible this turn.",
+     "answer": "[0] no",
+     "why": "I'm keeping Harmattan at Level 2 because Gofu (Level 5 Blackwing Tuner) plus Harmattan (2) makes exactly 7, which is Blackwing Armor Master. If Harmattan copied another Blackwing's Level, that total wouldn't work.",
+     "shown_from": "sonnet"
+    },
+    {
+     "candidate": "sonnet",
+     "grade": "best",
+     "reason": "Declining keeps Harmattan at Lv2, which keeps the Gofu + Harmattan Armor Master Synchro open. The move is right. The reason is wrong, though: a Synchro is still possible this turn.",
+     "answer": "[0] no",
+     "why": "Harmattan's level boost has no use now, because I'm not Synchro Summoning again this turn. I'll skip it and set up Twin Shadow and Blackbird Close.",
+     "shown_from": "sonnet"
+    },
+    {
+     "candidate": "haiku",
+     "grade": "mistake",
+     "reason": "After the boost, Gofu + Harmattan totals 11 or more, which matches no Extra Deck monster. That throws away the Lv7 Armor Master Synchro. The 'more useful Level' argument is a misread.",
+     "answer": "[1] yes",
+     "why": "Harmattan's summon trigger is optional and costs nothing, so I'm using it. Its Level 2 can absorb a Blackwing's Level (Nothung 6 or Gofu 5) to reach a more useful Level for a later Synchro. The opponent's board is empty after Alternative White's destruction, so there is no reason to hold back.",
+     "shown_from": "haiku"
+    }
+   ]
+  }
+ ],
+ "games": {
+  "opus": {
+   "games": 4,
+   "like_for_like": 4,
+   "mistakes_per_game": 0.25,
+   "significant_per_game": 0.25,
+   "blunders_per_game": 0.0,
+   "wins": 4,
+   "per_game": [
+    {
+     "game": "g47ae77",
+     "deck": "saffira",
+     "opponent": "windbot:Blue-Eyes",
+     "index": 1,
+     "result": "win",
+     "mistakes": 0,
+     "significant": 0,
+     "log_dir": "games/bench/2026-10-21_212557_readme/saffira--opus--windbot-blue-eyes--001/2026-10-21_212608_saffira-vs-blue-eyes-ai"
+    },
+    {
+     "game": "g52022e",
+     "deck": "saffira",
+     "opponent": "windbot:Time Thief",
+     "index": 1,
+     "result": "win",
+     "mistakes": 0,
+     "significant": 0,
+     "log_dir": "games/bench/2026-10-21_212557_readme/saffira--opus--windbot-time-thief--001/2026-10-21_212835_saffira-vs-time-thief-ai"
+    },
+    {
+     "game": "gb1a14f",
+     "deck": "blackwing",
+     "opponent": "windbot:Blue-Eyes",
+     "index": 1,
+     "result": "win",
+     "mistakes": 0,
+     "significant": 0,
+     "log_dir": "games/bench/2026-10-21_212557_readme/blackwing--opus--windbot-blue-eyes--001/2026-10-21_213058_blackwing-vs-blue-eyes-ai"
+    },
+    {
+     "game": "g62f7dc",
+     "deck": "blackwing",
+     "opponent": "windbot:Time Thief",
+     "index": 1,
+     "result": "win",
+     "mistakes": 1,
+     "significant": 1,
+     "log_dir": "games/bench/2026-10-21_212557_readme/blackwing--opus--windbot-time-thief--001/2026-10-21_213441_blackwing-vs-time-thief-ai"
+    }
+   ],
+   "worst": [
+    {
+     "decision": 14,
+     "turn": 1,
+     "severity": "major",
+     "what": "Passed on Special Summoning Dark Armed Dragon at #14 and again at #17, while the GY held exactly 3 DARK monsters (Vata, Kris, Chinook). The player kept it 'for later', but the Synchros that followed sent Sudri, Sharnga and Harmattan to the GY. That left 6 DARKs there, so DAD could never be summoned again and stayed dead in hand.",
+     "better": "Summon DAD before Synchroing. There was a free zone (Sudri M1, BWD M2, Sharnga M3), and it costs one more Maxx C draw. DAD gives a 2800 attacker plus repeatable destruction by banishing DARKs from the GY. On turn 3 that means 3200 + 3000 + 2800 = 9000 against 6600 LP, which is lethal, and its destruction effect would also have answered the opponent's turn-2 plays.",
+     "evidence": "`[2]` Special Summon \"Dark Armed Dragon\" from your hand ... Plan: ... Set Delta Crow. Keep DAD and Gofu.",
+     "game": "g62f7dc",
+     "deck": "blackwing",
+     "opponent": "windbot:Time Thief",
+     "result": "win"
+    }
+   ]
+  },
+  "sonnet": {
+   "games": 4,
+   "like_for_like": 4,
+   "mistakes_per_game": 1.5,
+   "significant_per_game": 1.0,
+   "blunders_per_game": 0.25,
+   "wins": 3,
+   "per_game": [
+    {
+     "game": "g14363d",
+     "deck": "saffira",
+     "opponent": "windbot:Blue-Eyes",
+     "index": 1,
+     "result": "win",
+     "mistakes": 1,
+     "significant": 0,
+     "log_dir": "games/bench/2026-10-21_212557_readme/saffira--sonnet--windbot-blue-eyes--001/2026-10-21_212608_saffira-vs-blue-eyes-ai"
+    },
+    {
+     "game": "gb1c61f",
+     "deck": "blackwing",
+     "opponent": "windbot:Blue-Eyes",
+     "index": 1,
+     "result": "loss",
+     "mistakes": 3,
+     "significant": 3,
+     "log_dir": "games/bench/2026-10-21_212557_readme/blackwing--sonnet--windbot-blue-eyes--001/2026-10-21_213309_blackwing-vs-blue-eyes-ai"
+    },
+    {
+     "game": "ge03b87",
+     "deck": "blackwing",
+     "opponent": "windbot:Time Thief",
+     "index": 1,
+     "result": "win",
+     "mistakes": 1,
+     "significant": 0,
+     "log_dir": "games/bench/2026-10-21_212557_readme/blackwing--sonnet--windbot-time-thief--001/2026-10-21_213457_blackwing-vs-time-thief-ai"
+    },
+    {
+     "game": "gd0ebca",
+     "deck": "saffira",
+     "opponent": "windbot:Time Thief",
+     "index": 1,
+     "result": "win",
+     "mistakes": 1,
+     "significant": 1,
+     "log_dir": "games/bench/2026-10-21_212557_readme/saffira--sonnet--windbot-time-thief--001/2026-10-21_212846_saffira-vs-time-thief-ai"
+    }
+   ],
+   "worst": [
+    {
+     "decision": 21,
+     "turn": 1,
+     "severity": "blunder",
+     "what": "With Sharnga in hand and Black-Winged Dragon (2800) on the field, the player set Delta Crow and ended the turn. Sharnga stayed in hand and the Synchro extension went unused.",
+     "better": "Special Summon Sharnga (it was offered at #21 and #23 because a 2000+ ATK monster was out). Then Synchro Summon Boreastorm with Sharnga (Lv2 Tuner) + Sudri (Lv4) and send Harmattan or Chinook so it becomes Lv2. Boreastorm (Lv2 Blackwing Tuner) + BWD (Lv8) makes Full Armor Master, and banishing Boreastorm + BWD from the GY makes Black-Winged Assault Dragon. That board is FAM + Assault + Dark Armed Dragon. FAM is unaffected by Alternative White Dragon, and Assault would have burned each monster effect on turn 2 (Alternative, both White Stones and more) and reached a wipe. Instead BWD was destroyed for free and the opponent's whole turn-2 combo went through.",
+     "evidence": "The board is already strong: Black-Winged Dragon and Dark Armed Dragon, both 2800 ATK. I'll Set Delta Crow and keep Sharnga in hand.",
+     "game": "gb1c61f",
+     "deck": "blackwing",
+     "opponent": "windbot:Blue-Eyes",
+     "result": "loss"
+    },
+    {
+     "decision": 40,
+     "turn": 3,
+     "severity": "major",
+     "what": "The player passed on Sharnga's once-per-duel GY destroy at #37, #39 and #40 while Boreastorm was on the field, then banished Boreastorm for Assault Dragon. Assault Dragon is not a 'Blackwing' Synchro, so Sharnga's effect could no longer be used.",
+     "better": "Before summoning Assault Dragon, banish Sharnga to destroy Number 38 Titanic Galaxy (Sharnga is a monster effect, which its Spell negation can't stop). Titanic Galaxy later negated Enemy Controller and dealt the final 3000. The 'save it' reason didn't hold, because the next summon removed the Blackwing Synchro the effect needs.",
+     "evidence": "[0] Activate \"Blackwing - Sharnga the Waning Moon\" from your GY — effect: \"Destroy 1 face-up card your opponent controls\" ... ✅ (pass / none)",
+     "game": "gb1c61f",
+     "deck": "blackwing",
+     "opponent": "windbot:Blue-Eyes",
+     "result": "loss"
+    },
+    {
+     "decision": 51,
+     "turn": 4,
+     "severity": "major",
+     "what": "The player Tributed Assault Dragon for the field wipe on turn 4. Azure-Eyes Silver Dragon had been Special Summoned in their own End Phase, so its protection ('cannot be destroyed by card effects until the end of the next turn') still covered Azure-Eyes and Titanic Galaxy. Only the two Spirit Dragons died, and the player was left with an empty board.",
+     "better": "Hold the wipe. Soul Charge had already locked the opponent out of the Battle Phase on turn 4, so Assault Dragon was safe in battle. It would keep burning 700 per monster effect with the opponent at 4200, could attack on turn 5, and could wipe on turn 6 once Azure-Eyes' protection had expired and every Dragon could be destroyed.",
+     "evidence": "Opponent's \"Azure-Eyes Silver Dragon\" changes to face-up Attack. — Azure-Eyes and Titanic Galaxy survived the wipe; only the two Blue-Eyes Spirit Dragons were destroyed.",
+     "game": "gb1c61f",
+     "deck": "blackwing",
+     "opponent": "windbot:Blue-Eyes",
+     "result": "loss"
+    }
+   ]
+  },
+  "haiku": {
+   "games": 4,
+   "like_for_like": 4,
+   "mistakes_per_game": 2.75,
+   "significant_per_game": 2.0,
+   "blunders_per_game": 0.25,
+   "wins": 1,
+   "per_game": [
+    {
+     "game": "g1c594b",
+     "deck": "saffira",
+     "opponent": "windbot:Time Thief",
+     "index": 1,
+     "result": "win",
+     "mistakes": 2,
+     "significant": 1,
+     "log_dir": "games/bench/2026-10-21_212557_readme/saffira--haiku--windbot-time-thief--001/2026-10-21_213017_saffira-vs-time-thief-ai"
+    },
+    {
+     "game": "gca1efb",
+     "deck": "saffira",
+     "opponent": "windbot:Blue-Eyes",
+     "index": 1,
+     "result": "loss",
+     "mistakes": 1,
+     "significant": 1,
+     "log_dir": "games/bench/2026-10-21_212557_readme/saffira--haiku--windbot-blue-eyes--001/2026-10-21_212608_saffira-vs-blue-eyes-ai"
+    },
+    {
+     "game": "gcb52d6",
+     "deck": "blackwing",
+     "opponent": "windbot:Blue-Eyes",
+     "index": 1,
+     "result": "loss",
+     "mistakes": 4,
+     "significant": 2,
+     "log_dir": "games/bench/2026-10-21_212557_readme/blackwing--haiku--windbot-blue-eyes--001/2026-10-21_213319_blackwing-vs-blue-eyes-ai"
+    },
+    {
+     "game": "gef945b",
+     "deck": "blackwing",
+     "opponent": "windbot:Time Thief",
+     "index": 1,
+     "result": "loss",
+     "mistakes": 4,
+     "significant": 4,
+     "log_dir": "games/bench/2026-10-21_212557_readme/blackwing--haiku--windbot-time-thief--001/2026-10-21_213536_blackwing-vs-time-thief-ai"
+    }
+   ],
+   "worst": [
+    {
+     "decision": 6,
+     "turn": 1,
+     "severity": "blunder",
+     "what": "Put both 0/0 Vague Shadow Tokens in face-up Attack Position (decisions #6 and #8).",
+     "better": "Choose face-up Defense, which was offered both times. The tokens would have blocked for free. Instead, Titanic Galaxy and Blue-Eyes Spirit Dragon attacked them for 5500 damage, dropping the player to 1900 LP and making turn 4 lethal.",
+     "evidence": "You take 3000 damage (LP now 4400). ... You take 2500 damage (LP now 1900).",
+     "game": "gcb52d6",
+     "deck": "blackwing",
+     "opponent": "windbot:Blue-Eyes",
+     "result": "loss"
+    },
+    {
+     "decision": 99,
+     "turn": 5,
+     "severity": "major",
+     "what": "Went straight to the Battle Phase and held Change of Heart, because it believed a monster taken with Change of Heart can't attack that turn. The opponent was at 4100 with Redoer (2400) and Chronocorder (1000).",
+     "better": "Change of Heart has no attack restriction. Activate the Set Forbidden Lance first to draw out the revealed Time Thief Retrograde, which works only once per turn and only while they control a Time Thief Xyz. Then Change of Heart takes Redoer. Attacks: Saffira 2500 + Saffira 2500 + Redoer 2400. Any two of the three deal at least 4900, even if Chronocorder reflects one attack, and if Chronocorder stays to block, the line does 6400. That is lethal against 4100. Even without lethal, stealing Redoer and swinging was better than holding the card.",
+     "evidence": "Change of Heart can't win this turn: a monster taken this turn can't attack",
+     "game": "g1c594b",
+     "deck": "saffira",
+     "opponent": "windbot:Time Thief",
+     "result": "win"
+    },
+    {
+     "decision": 33,
+     "turn": 3,
+     "severity": "major",
+     "what": "Ended turn 3 without attacking, saying Saffira would lose to the 3000-ATK Blue-Eyes and Number 38, even though Honest was in hand and 'Go to the Battle Phase' was an option.",
+     "better": "Attack with Saffira and send Honest from hand in the Damage Step. She becomes 5500 against a 3000-ATK monster. If Number 38 redirects the attack, it is also 3000, so either way she destroys a boss and deals 2500 damage (6000 to 3500). Nothing on their field could stop it: Number 38 negates only Spells, and Spirit Dragon negates only GY effects. Honest going from hand to GY would also turn on Saffira's End Phase effect, which gets Honest back. That is a 3000-ATK monster and 2500 LP for free, a turn earlier.",
+     "evidence": "Attacking into their 3000-ATK Blue-Eyes White Dragon and Number 38 with Saffira loses her, so no battle.",
+     "game": "gca1efb",
+     "deck": "saffira",
+     "opponent": "windbot:Blue-Eyes",
+     "result": "loss"
+    }
+   ]
+  }
+ },
+ "bench": {
+  "folder": "bench/results/2026-10-21_212557_readme",
+  "opus": {
+   "games": 4,
+   "wins": 4,
+   "win_rate": 1.0,
+   "cost_per_game": 1.153475,
+   "latency_mean_s": 3.573279569892473,
+   "decisions_per_game": 55.25
+  },
+  "sonnet": {
+   "games": 12,
+   "wins": 7,
+   "win_rate": 0.5833333333333334,
+   "cost_per_game": 0.8015833333333333,
+   "latency_mean_s": 2.417646383467279,
+   "decisions_per_game": 90.5
+  },
+  "haiku": {
+   "games": 12,
+   "wins": 7,
+   "win_rate": 0.5833333333333334,
+   "cost_per_game": 0.057925000000000004,
+   "latency_mean_s": 2.7945358090185675,
+   "decisions_per_game": 77.08333333333333
+  }
+ },
+ "rows": [
+  {
+   "position": "p01",
+   "candidate": "opus",
+   "deck": "saffira",
+   "group": "idle",
+   "sub": "main1",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Finds the lethal: 2500 direct beats 2050, and it clears both the Chain and the stolen monster.",
+   "key": "Special Summon \"Dark Rebellion Xyz Dragon\" from your Extra Deck (by its own summoning procedure)",
+   "shown_from": "opus",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p01",
+   "candidate": "sonnet",
+   "deck": "saffira",
+   "group": "idle",
+   "sub": "main1",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Finds the lethal: 2500 direct beats 2050, and it clears both the Chain and the stolen monster.",
+   "key": "Special Summon \"Dark Rebellion Xyz Dragon\" from your Extra Deck (by its own summoning procedure)",
+   "shown_from": "opus",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p01",
+   "candidate": "haiku",
+   "deck": "saffira",
+   "group": "idle",
+   "sub": "main1",
+   "grade": "blunder",
+   "score": 0,
+   "label": "B",
+   "reason": "Misreads Fiendish Chain, which stops Honest from attacking. Only 1400 damage gets through, so a lethal turn is thrown away and Geargiaccelerator goes back to the opponent.",
+   "key": "Go to the Battle Phase (attack available: your Attack Position monsters total 2500 ATK; opponent LP 2050; opponent has no monsters)",
+   "shown_from": "haiku",
+   "agree": false,
+   "unique": true
+  },
+  {
+   "position": "p02",
+   "candidate": "opus",
+   "deck": "saffira",
+   "group": "idle",
+   "sub": "main1",
+   "grade": "good",
+   "score": 3,
+   "label": "A",
+   "reason": "It keeps Honest in hand, so the lethal is intact. Switching Castel adds little: it can't attack directly while Blue-Eyes is on the field.",
+   "key": "Change the battle position of \"Castel, the Skyblaster Musketeer\" (face-up Defense, ATK 2000 / DEF 1500)",
+   "shown_from": "opus",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p02",
+   "candidate": "sonnet",
+   "deck": "saffira",
+   "group": "idle",
+   "sub": "main1",
+   "grade": "blunder",
+   "score": 0,
+   "label": "B",
+   "reason": "It assumes extra attackers can go around the blocker, but no attack can be direct while the opponent has a monster. Summoning Honest also throws away its hand boost, which was the guaranteed lethal.",
+   "key": "Normal Summon \"Honest\" (from hand)",
+   "shown_from": "sonnet",
+   "agree": false,
+   "unique": true
+  },
+  {
+   "position": "p02",
+   "candidate": "haiku",
+   "deck": "saffira",
+   "group": "idle",
+   "sub": "main1",
+   "grade": "good",
+   "score": 3,
+   "label": "A",
+   "reason": "It keeps Honest in hand, so the lethal is intact. Switching Castel adds little: it can't attack directly while Blue-Eyes is on the field.",
+   "key": "Change the battle position of \"Castel, the Skyblaster Musketeer\" (face-up Defense, ATK 2000 / DEF 1500)",
+   "shown_from": "opus",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p03",
+   "candidate": "opus",
+   "deck": "saffira",
+   "group": "idle",
+   "sub": "main1",
+   "grade": "best",
+   "score": 4,
+   "label": "B",
+   "reason": "Same correct activation. Tributing Benten works, though Idaten's +1000 would give a bigger margin in the later step.",
+   "key": "Activate \"Saffira, Dragon Queen of the Voiceless Voice\" from your GY — effect: \"Ritual Summon 1 LIGHT Warrior or Dragon Ritual Monster\"",
+   "shown_from": "sonnet",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p03",
+   "candidate": "sonnet",
+   "deck": "saffira",
+   "group": "idle",
+   "sub": "main1",
+   "grade": "best",
+   "score": 4,
+   "label": "B",
+   "reason": "Same correct activation. Tributing Benten works, though Idaten's +1000 would give a bigger margin in the later step.",
+   "key": "Activate \"Saffira, Dragon Queen of the Voiceless Voice\" from your GY — effect: \"Ritual Summon 1 LIGHT Warrior or Dragon Ritual Monster\"",
+   "shown_from": "sonnet",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p03",
+   "candidate": "haiku",
+   "deck": "saffira",
+   "group": "idle",
+   "sub": "main1",
+   "grade": "best",
+   "score": 4,
+   "label": "B",
+   "reason": "Same correct activation. Tributing Benten works, though Idaten's +1000 would give a bigger margin in the later step.",
+   "key": "Activate \"Saffira, Dragon Queen of the Voiceless Voice\" from your GY — effect: \"Ritual Summon 1 LIGHT Warrior or Dragon Ritual Monster\"",
+   "shown_from": "sonnet",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p04",
+   "candidate": "opus",
+   "deck": "saffira",
+   "group": "idle",
+   "sub": "main1",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "It's the lethal line, with 1900 to spare against their face-downs.",
+   "key": "Go to the Battle Phase (attack available: your Attack Position monsters total 9900 ATK; opponent LP 8000; opponent has no monsters)",
+   "shown_from": "sonnet",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p04",
+   "candidate": "sonnet",
+   "deck": "saffira",
+   "group": "idle",
+   "sub": "main1",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "It's the lethal line, with 1900 to spare against their face-downs.",
+   "key": "Go to the Battle Phase (attack available: your Attack Position monsters total 9900 ATK; opponent LP 8000; opponent has no monsters)",
+   "shown_from": "sonnet",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p04",
+   "candidate": "haiku",
+   "deck": "saffira",
+   "group": "idle",
+   "sub": "main1",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "It's the lethal line, with 1900 to spare against their face-downs.",
+   "key": "Go to the Battle Phase (attack available: your Attack Position monsters total 9900 ATK; opponent LP 8000; opponent has no monsters)",
+   "shown_from": "sonnet",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p05",
+   "candidate": "opus",
+   "deck": "saffira",
+   "group": "idle",
+   "sub": "main1",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Starting with Preparation of Rites is the right move. It searches before the Normal Summon and baits Number 38's Spell negate into Ghost Ogre. The reason given ('no lethal') misses the Ghost Ogre and Tour Guide lethal line, but the move itself is sound.",
+   "key": "Activate \"Preparation of Rites\" from your hand",
+   "shown_from": "haiku",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p05",
+   "candidate": "sonnet",
+   "deck": "saffira",
+   "group": "idle",
+   "sub": "main1",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Starting with Preparation of Rites is the right move. It searches before the Normal Summon and baits Number 38's Spell negate into Ghost Ogre. The reason given ('no lethal') misses the Ghost Ogre and Tour Guide lethal line, but the move itself is sound.",
+   "key": "Activate \"Preparation of Rites\" from your hand",
+   "shown_from": "haiku",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p05",
+   "candidate": "haiku",
+   "deck": "saffira",
+   "group": "idle",
+   "sub": "main1",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Starting with Preparation of Rites is the right move. It searches before the Normal Summon and baits Number 38's Spell negate into Ghost Ogre. The reason given ('no lethal') misses the Ghost Ogre and Tour Guide lethal line, but the move itself is sound.",
+   "key": "Activate \"Preparation of Rites\" from your hand",
+   "shown_from": "haiku",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p06",
+   "candidate": "opus",
+   "deck": "saffira",
+   "group": "idle",
+   "sub": "main2",
+   "grade": "best",
+   "score": 4,
+   "label": "C",
+   "reason": "Legal and strong: Demolisher makes Sauravis untargetable by the Alternative, Sauravis can negate their Special Summons, and Tributing Honest from hand turns on Saffira's End Phase effect. The board threatens lethal next turn.",
+   "key": "Activate \"Saffira, Dragon Queen of the Voiceless Voice\" from your GY — effect: \"Ritual Summon 1 LIGHT Warrior or Dragon Ritual Monster\"",
+   "shown_from": "opus",
+   "agree": true,
+   "unique": true
+  },
+  {
+   "position": "p06",
+   "candidate": "sonnet",
+   "deck": "saffira",
+   "group": "idle",
+   "sub": "main2",
+   "grade": "good",
+   "score": 3,
+   "label": "A",
+   "reason": "Turns on Saffira's End Phase effect and keeps SDQ's GY effect available. Sound, but the reason doesn't mention building the board, which C does.",
+   "key": "Activate \"Saffira, Dragon Queen of the Voiceless Voice\" from your hand — effect: \"Send 1 Ritual Spell from your Deck to the GY\"",
+   "shown_from": "sonnet",
+   "agree": false,
+   "unique": true
+  },
+  {
+   "position": "p06",
+   "candidate": "haiku",
+   "deck": "saffira",
+   "group": "idle",
+   "sub": "main2",
+   "grade": "acceptable",
+   "score": 2,
+   "label": "B",
+   "reason": "Adds redundant cards to an 8-card hand that will have to discard down at End Phase. It doesn't develop the board against Blue-Eyes or turn on Saffira's End Phase effect by itself.",
+   "key": "Activate \"Pre-Preparation of Rites\" from your hand — effect: \"Add 1 Ritual Spell from your Deck to your hand, and add 1 Ritual Monster from your Deck or GY to your hand whose name is mentioned on that Ritual Spell\"",
+   "shown_from": "haiku",
+   "agree": false,
+   "unique": true
+  },
+  {
+   "position": "p07",
+   "candidate": "opus",
+   "deck": "saffira",
+   "group": "battle",
+   "sub": "direct",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "It correctly uses up Chronocorder's redirect with the 100-ATK Witch and keeps a 2400-damage margin for lethal.",
+   "key": "Attack with \"Condemned Witch\" (face-up Attack, ATK 100 / DEF 2000) (can attack directly)",
+   "shown_from": "opus",
+   "agree": true,
+   "unique": true
+  },
+  {
+   "position": "p07",
+   "candidate": "sonnet",
+   "deck": "saffira",
+   "group": "battle",
+   "sub": "direct",
+   "grade": "mistake",
+   "score": 1,
+   "label": "B",
+   "reason": "It ignores Chronocorder: 2500 goes back to you and lethal becomes exactly 4000 with no margin, so the two face-down cards could stop it. The reasoning misreads the board.",
+   "key": "Attack with \"Saffira, Queen of Dragons\" (face-up Attack, ATK 2500 / DEF 2400) (can attack directly)",
+   "shown_from": "haiku",
+   "agree": false,
+   "unique": false
+  },
+  {
+   "position": "p07",
+   "candidate": "haiku",
+   "deck": "saffira",
+   "group": "battle",
+   "sub": "direct",
+   "grade": "mistake",
+   "score": 1,
+   "label": "B",
+   "reason": "It ignores Chronocorder: 2500 goes back to you and lethal becomes exactly 4000 with no margin, so the two face-down cards could stop it. The reasoning misreads the board.",
+   "key": "Attack with \"Saffira, Queen of Dragons\" (face-up Attack, ATK 2500 / DEF 2400) (can attack directly)",
+   "shown_from": "haiku",
+   "agree": false,
+   "unique": false
+  },
+  {
+   "position": "p08",
+   "candidate": "opus",
+   "deck": "saffira",
+   "group": "battle",
+   "sub": "attack-target",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Honest removes the strongest monster, the 3000-ATK Blue-Eyes, and deals 2500 damage, leaving only a Dragon Spirit that Saffira can tie.",
+   "key": "\"Blue-Eyes White Dragon\" (face-up Attack, ATK 3000 / DEF 2500) — opponent's M3",
+   "shown_from": "sonnet",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p08",
+   "candidate": "sonnet",
+   "deck": "saffira",
+   "group": "battle",
+   "sub": "attack-target",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Honest removes the strongest monster, the 3000-ATK Blue-Eyes, and deals 2500 damage, leaving only a Dragon Spirit that Saffira can tie.",
+   "key": "\"Blue-Eyes White Dragon\" (face-up Attack, ATK 3000 / DEF 2500) — opponent's M3",
+   "shown_from": "sonnet",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p08",
+   "candidate": "haiku",
+   "deck": "saffira",
+   "group": "battle",
+   "sub": "attack-target",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Honest removes the strongest monster, the 3000-ATK Blue-Eyes, and deals 2500 damage, leaving only a Dragon Spirit that Saffira can tie.",
+   "key": "\"Blue-Eyes White Dragon\" (face-up Attack, ATK 3000 / DEF 2500) — opponent's M3",
+   "shown_from": "sonnet",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p09",
+   "candidate": "opus",
+   "deck": "saffira",
+   "group": "chain",
+   "sub": "own-turn",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Passing keeps the exact 4000 lethal intact. Using Lance on our own monster would lose 800 damage.",
+   "key": "pass / none",
+   "shown_from": "haiku",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p09",
+   "candidate": "sonnet",
+   "deck": "saffira",
+   "group": "chain",
+   "sub": "own-turn",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Passing keeps the exact 4000 lethal intact. Using Lance on our own monster would lose 800 damage.",
+   "key": "pass / none",
+   "shown_from": "haiku",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p09",
+   "candidate": "haiku",
+   "deck": "saffira",
+   "group": "chain",
+   "sub": "own-turn",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Passing keeps the exact 4000 lethal intact. Using Lance on our own monster would lose 800 damage.",
+   "key": "pass / none",
+   "shown_from": "haiku",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p10",
+   "candidate": "opus",
+   "deck": "saffira",
+   "group": "chain",
+   "sub": "opp-activation",
+   "grade": "mistake",
+   "score": 1,
+   "label": "A",
+   "reason": "It overlooks Return of the Dragon Lords, which protects Blue-Eyes Alternative. Ghost Ogre is spent for little, and Hymn still gets used.",
+   "key": "Activate \"Ghost Ogre & Snow Rabbit\" from your hand",
+   "shown_from": "opus",
+   "agree": false,
+   "unique": true
+  },
+  {
+   "position": "p10",
+   "candidate": "sonnet",
+   "deck": "saffira",
+   "group": "chain",
+   "sub": "opp-activation",
+   "grade": "best",
+   "score": 4,
+   "label": "B",
+   "reason": "It negates the targeted destruction and keeps Hymn as protection for the battles this turn.",
+   "key": "Activate \"Sauravis, the Ancient and Ascended\" from your hand — effect: \"Negate activation\"",
+   "shown_from": "sonnet",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p10",
+   "candidate": "haiku",
+   "deck": "saffira",
+   "group": "chain",
+   "sub": "opp-activation",
+   "grade": "best",
+   "score": 4,
+   "label": "B",
+   "reason": "It negates the targeted destruction and keeps Hymn as protection for the battles this turn.",
+   "key": "Activate \"Sauravis, the Ancient and Ascended\" from your hand — effect: \"Negate activation\"",
+   "shown_from": "sonnet",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p11",
+   "candidate": "opus",
+   "deck": "saffira",
+   "group": "chain",
+   "sub": "own-turn",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "It wins the battle and deals 2500, saves Hymn in the GY, and Saffira can recover Honest at the End Phase. Number 38 can't negate a monster effect from the hand. The opponent's last Return of the Dragon Lords in the GY may keep Number 38 on the field, but the damage still lands.",
+   "key": "Activate \"Honest\" from your hand — effect: \"That monster gains ATK equal to the ATK of the opponent's monster it is battling, until the end of this turn\"",
+   "shown_from": "sonnet",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p11",
+   "candidate": "sonnet",
+   "deck": "saffira",
+   "group": "chain",
+   "sub": "own-turn",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "It wins the battle and deals 2500, saves Hymn in the GY, and Saffira can recover Honest at the End Phase. Number 38 can't negate a monster effect from the hand. The opponent's last Return of the Dragon Lords in the GY may keep Number 38 on the field, but the damage still lands.",
+   "key": "Activate \"Honest\" from your hand — effect: \"That monster gains ATK equal to the ATK of the opponent's monster it is battling, until the end of this turn\"",
+   "shown_from": "sonnet",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p11",
+   "candidate": "haiku",
+   "deck": "saffira",
+   "group": "chain",
+   "sub": "own-turn",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "It wins the battle and deals 2500, saves Hymn in the GY, and Saffira can recover Honest at the End Phase. Number 38 can't negate a monster effect from the hand. The opponent's last Return of the Dragon Lords in the GY may keep Number 38 on the field, but the damage still lands.",
+   "key": "Activate \"Honest\" from your hand — effect: \"That monster gains ATK equal to the ATK of the opponent's monster it is battling, until the end of this turn\"",
+   "shown_from": "sonnet",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p12",
+   "candidate": "opus",
+   "deck": "saffira",
+   "group": "chain",
+   "sub": "opp-attack",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Correct: the Witch dies whatever you do, so the Lance would only save 800 LP. It's worth more held for protection or a battle.",
+   "key": "pass / none",
+   "shown_from": "haiku",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p12",
+   "candidate": "sonnet",
+   "deck": "saffira",
+   "group": "chain",
+   "sub": "opp-attack",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Correct: the Witch dies whatever you do, so the Lance would only save 800 LP. It's worth more held for protection or a battle.",
+   "key": "pass / none",
+   "shown_from": "haiku",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p12",
+   "candidate": "haiku",
+   "deck": "saffira",
+   "group": "chain",
+   "sub": "opp-attack",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Correct: the Witch dies whatever you do, so the Lance would only save 800 LP. It's worth more held for protection or a battle.",
+   "key": "pass / none",
+   "shown_from": "haiku",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p13",
+   "candidate": "opus",
+   "deck": "saffira",
+   "group": "select_card",
+   "sub": "search",
+   "grade": "best",
+   "score": 4,
+   "label": "B",
+   "reason": "Same correct search; its reasoning about having no LIGHT-only restriction is accurate.",
+   "key": "\"Hymn of Light\" — your Deck",
+   "shown_from": "sonnet",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p13",
+   "candidate": "sonnet",
+   "deck": "saffira",
+   "group": "select_card",
+   "sub": "search",
+   "grade": "best",
+   "score": 4,
+   "label": "B",
+   "reason": "Same correct search; its reasoning about having no LIGHT-only restriction is accurate.",
+   "key": "\"Hymn of Light\" — your Deck",
+   "shown_from": "sonnet",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p13",
+   "candidate": "haiku",
+   "deck": "saffira",
+   "group": "select_card",
+   "sub": "search",
+   "grade": "best",
+   "score": 4,
+   "label": "B",
+   "reason": "Same correct search; its reasoning about having no LIGHT-only restriction is accurate.",
+   "key": "\"Hymn of Light\" — your Deck",
+   "shown_from": "sonnet",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p14",
+   "candidate": "opus",
+   "deck": "saffira",
+   "group": "select_card",
+   "sub": "search",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "It takes back the hand trap that already beat Redoer, which is right for this matchup and follows lesson 4.",
+   "key": "\"Ghost Ogre & Snow Rabbit\" — your GY",
+   "shown_from": "opus",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p14",
+   "candidate": "sonnet",
+   "deck": "saffira",
+   "group": "select_card",
+   "sub": "search",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "It takes back the hand trap that already beat Redoer, which is right for this matchup and follows lesson 4.",
+   "key": "\"Ghost Ogre & Snow Rabbit\" — your GY",
+   "shown_from": "opus",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p14",
+   "candidate": "haiku",
+   "deck": "saffira",
+   "group": "select_card",
+   "sub": "search",
+   "grade": "acceptable",
+   "score": 2,
+   "label": "B",
+   "reason": "SDQ gains a card later, but it leaves you with no interaction on the opponent's turn. The reason is muddled: hand traps are used on the opponent's turn, so an empty board now doesn't make Ghost Ogre useless. SDQ's GY effect was also already available from the GY.",
+   "key": "\"Saffira, Dragon Queen of the Voiceless Voice\" — your GY",
+   "shown_from": "haiku",
+   "agree": false,
+   "unique": true
+  },
+  {
+   "position": "p15",
+   "candidate": "opus",
+   "deck": "saffira",
+   "group": "select_card",
+   "sub": "search",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "It recovers the hand trap that fits the matchup against an effect-heavy Time Thief deck, exactly as lesson 4 says.",
+   "key": "\"Ghost Ogre & Snow Rabbit\" — your GY",
+   "shown_from": "opus",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p15",
+   "candidate": "sonnet",
+   "deck": "saffira",
+   "group": "select_card",
+   "sub": "search",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "It recovers the hand trap that fits the matchup against an effect-heavy Time Thief deck, exactly as lesson 4 says.",
+   "key": "\"Ghost Ogre & Snow Rabbit\" — your GY",
+   "shown_from": "opus",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p15",
+   "candidate": "haiku",
+   "deck": "saffira",
+   "group": "select_card",
+   "sub": "search",
+   "grade": "acceptable",
+   "score": 2,
+   "label": "B",
+   "reason": "Benten gives fodder plus a search, but the player gives up the key interaction against Time Thief. It also misapplies the search-priority lesson to a GY-recovery choice.",
+   "key": "\"Cyber Angel Benten\" — your GY",
+   "shown_from": "haiku",
+   "agree": false,
+   "unique": true
+  },
+  {
+   "position": "p16",
+   "candidate": "opus",
+   "deck": "saffira",
+   "group": "select_card",
+   "sub": "cost",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "It discards the redundant Manju and keeps the hand trap and Honest. The reasoning is correct, including that Djinn Demolisher makes Saffira untargetable.",
+   "key": "\"Manju of the Ten Thousand Hands\" — your hand",
+   "shown_from": "opus",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p16",
+   "candidate": "sonnet",
+   "deck": "saffira",
+   "group": "select_card",
+   "sub": "cost",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "It discards the redundant Manju and keeps the hand trap and Honest. The reasoning is correct, including that Djinn Demolisher makes Saffira untargetable.",
+   "key": "\"Manju of the Ten Thousand Hands\" — your hand",
+   "shown_from": "opus",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p16",
+   "candidate": "haiku",
+   "deck": "saffira",
+   "group": "select_card",
+   "sub": "cost",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "It discards the redundant Manju and keeps the hand trap and Honest. The reasoning is correct, including that Djinn Demolisher makes Saffira untargetable.",
+   "key": "\"Manju of the Ten Thousand Hands\" — your hand",
+   "shown_from": "opus",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p17",
+   "candidate": "opus",
+   "deck": "saffira",
+   "group": "effect_yn",
+   "sub": "optional",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Banishing Hymn saves Saffira from destruction, which is exactly what it is for. The reasoning is correct.",
+   "key": "yes",
+   "shown_from": "opus",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p17",
+   "candidate": "sonnet",
+   "deck": "saffira",
+   "group": "effect_yn",
+   "sub": "optional",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Banishing Hymn saves Saffira from destruction, which is exactly what it is for. The reasoning is correct.",
+   "key": "yes",
+   "shown_from": "opus",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p17",
+   "candidate": "haiku",
+   "deck": "saffira",
+   "group": "effect_yn",
+   "sub": "optional",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Banishing Hymn saves Saffira from destruction, which is exactly what it is for. The reasoning is correct.",
+   "key": "yes",
+   "shown_from": "opus",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p18",
+   "candidate": "opus",
+   "deck": "saffira",
+   "group": "effect_yn",
+   "sub": "optional",
+   "grade": "best",
+   "score": 4,
+   "label": "B",
+   "reason": "Correct activation, and it names the right trigger: the opponent's LIGHT Blue-Eyes Alternative went from their hand to the GY while Saffira was face-up.",
+   "key": "yes",
+   "shown_from": "opus",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p18",
+   "candidate": "sonnet",
+   "deck": "saffira",
+   "group": "effect_yn",
+   "sub": "optional",
+   "grade": "best",
+   "score": 4,
+   "label": "B",
+   "reason": "Correct activation, and it names the right trigger: the opponent's LIGHT Blue-Eyes Alternative went from their hand to the GY while Saffira was face-up.",
+   "key": "yes",
+   "shown_from": "opus",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p18",
+   "candidate": "haiku",
+   "deck": "saffira",
+   "group": "effect_yn",
+   "sub": "optional",
+   "grade": "mistake",
+   "score": 1,
+   "label": "C",
+   "reason": "It misreads the condition. The LIGHT monster doesn't have to go to your own GY, and the once-per-turn use resets every turn, so declining throws away a free card-advantage effect.",
+   "key": "no",
+   "shown_from": "haiku",
+   "agree": false,
+   "unique": true
+  },
+  {
+   "position": "p19",
+   "candidate": "opus",
+   "deck": "saffira",
+   "group": "other",
+   "sub": "option",
+   "grade": "acceptable",
+   "score": 2,
+   "label": "B",
+   "reason": "The GY mode is playable with Honest or Ghost Ogre. But the planned target, Benten, is redundant: Idaten already covers the Tribute, and Hymn needs a Saffira in hand.",
+   "key": "Add 1 LIGHT monster from your Graveyard to your hand",
+   "shown_from": "haiku",
+   "agree": false,
+   "unique": false
+  },
+  {
+   "position": "p19",
+   "candidate": "sonnet",
+   "deck": "saffira",
+   "group": "other",
+   "sub": "option",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "It digs for the missing piece, a Saffira or a way to get one, and the discard can put Hymn in the GY.",
+   "key": "Draw 2 cards, then discard 1 card",
+   "shown_from": "sonnet",
+   "agree": true,
+   "unique": true
+  },
+  {
+   "position": "p19",
+   "candidate": "haiku",
+   "deck": "saffira",
+   "group": "other",
+   "sub": "option",
+   "grade": "acceptable",
+   "score": 2,
+   "label": "B",
+   "reason": "The GY mode is playable with Honest or Ghost Ogre. But the planned target, Benten, is redundant: Idaten already covers the Tribute, and Hymn needs a Saffira in hand.",
+   "key": "Add 1 LIGHT monster from your Graveyard to your hand",
+   "shown_from": "haiku",
+   "agree": false,
+   "unique": false
+  },
+  {
+   "position": "p20",
+   "candidate": "opus",
+   "deck": "blackwing",
+   "group": "idle",
+   "sub": "main1",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "This Sets Enemy Controller for the opponent's turn and keeps Ahrima for a Simoon search next turn, which is the higher-value use of the card.",
+   "key": "Set \"Enemy Controller\" in your Spell/Trap Zone",
+   "shown_from": "opus",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p20",
+   "candidate": "sonnet",
+   "deck": "blackwing",
+   "group": "idle",
+   "sub": "main1",
+   "grade": "acceptable",
+   "score": 2,
+   "label": "B",
+   "reason": "Searching Lair costs no cards, but it trades Ahrima's Simoon-search potential for a field spell whose best synergy (Ahrima) is gone. It is playable but clearly the weaker use of the card.",
+   "key": "Activate \"Ahrima, the Wicked Warden\" from your hand — effect: \"Search \"Lair of Darkness\"\"",
+   "shown_from": "sonnet",
+   "agree": false,
+   "unique": true
+  },
+  {
+   "position": "p20",
+   "candidate": "haiku",
+   "deck": "blackwing",
+   "group": "idle",
+   "sub": "main1",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "This Sets Enemy Controller for the opponent's turn and keeps Ahrima for a Simoon search next turn, which is the higher-value use of the card.",
+   "key": "Set \"Enemy Controller\" in your Spell/Trap Zone",
+   "shown_from": "opus",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p21",
+   "candidate": "opus",
+   "deck": "blackwing",
+   "group": "idle",
+   "sub": "main1",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Summoning Vata now is a fine step: the full line still works with Sudri tributing Gofu afterward. The reason misreads Sudri's lock, though. It does not block Black-Winged Dragon, which is a Synchro Monster, and skipping the token would miss the Full Armor Master + Assault line.",
+   "key": "Special Summon \"Blackwing - Vata the Emblem of Wandering\" from your hand (by its own summoning procedure)",
+   "shown_from": "haiku",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p21",
+   "candidate": "sonnet",
+   "deck": "blackwing",
+   "group": "idle",
+   "sub": "main1",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Summoning Vata now is a fine step: the full line still works with Sudri tributing Gofu afterward. The reason misreads Sudri's lock, though. It does not block Black-Winged Dragon, which is a Synchro Monster, and skipping the token would miss the Full Armor Master + Assault line.",
+   "key": "Special Summon \"Blackwing - Vata the Emblem of Wandering\" from your hand (by its own summoning procedure)",
+   "shown_from": "haiku",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p21",
+   "candidate": "haiku",
+   "deck": "blackwing",
+   "group": "idle",
+   "sub": "main1",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Summoning Vata now is a fine step: the full line still works with Sudri tributing Gofu afterward. The reason misreads Sudri's lock, though. It does not block Black-Winged Dragon, which is a Synchro Monster, and skipping the token would miss the Full Armor Master + Assault line.",
+   "key": "Special Summon \"Blackwing - Vata the Emblem of Wandering\" from your hand (by its own summoning procedure)",
+   "shown_from": "haiku",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p22",
+   "candidate": "opus",
+   "deck": "blackwing",
+   "group": "idle",
+   "sub": "main1",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Taking Blue-Eyes Alternative deals 3000 damage and empties my board for Simoon next turn. Ahrima is worth little here as a body.",
+   "key": "Activate \"Enemy Controller\" from your hand — effect: \"Activate 1 of these effects\"",
+   "shown_from": "sonnet",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p22",
+   "candidate": "sonnet",
+   "deck": "blackwing",
+   "group": "idle",
+   "sub": "main1",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Taking Blue-Eyes Alternative deals 3000 damage and empties my board for Simoon next turn. Ahrima is worth little here as a body.",
+   "key": "Activate \"Enemy Controller\" from your hand — effect: \"Activate 1 of these effects\"",
+   "shown_from": "sonnet",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p22",
+   "candidate": "haiku",
+   "deck": "blackwing",
+   "group": "idle",
+   "sub": "main1",
+   "grade": "acceptable",
+   "score": 2,
+   "label": "B",
+   "reason": "Holding Enemy Controller for their turn is a playable defensive line, but it gives up 3000 damage, and Ahrima is still exposed to Blue-Eyes Alternative's destroy effect or an attack.",
+   "key": "Set \"Enemy Controller\" in your Spell/Trap Zone",
+   "shown_from": "haiku",
+   "agree": false,
+   "unique": true
+  },
+  {
+   "position": "p23",
+   "candidate": "opus",
+   "deck": "blackwing",
+   "group": "idle",
+   "sub": "main1",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Setting Delta Crow is the only useful action left. It readies backrow removal for the opponent's turn, and DAD has no target.",
+   "key": "Set \"Delta Crow - Anti Reverse\" in your Spell/Trap Zone",
+   "shown_from": "haiku",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p23",
+   "candidate": "sonnet",
+   "deck": "blackwing",
+   "group": "idle",
+   "sub": "main1",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Setting Delta Crow is the only useful action left. It readies backrow removal for the opponent's turn, and DAD has no target.",
+   "key": "Set \"Delta Crow - Anti Reverse\" in your Spell/Trap Zone",
+   "shown_from": "haiku",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p23",
+   "candidate": "haiku",
+   "deck": "blackwing",
+   "group": "idle",
+   "sub": "main1",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Setting Delta Crow is the only useful action left. It readies backrow removal for the opponent's turn, and DAD has no target.",
+   "key": "Set \"Delta Crow - Anti Reverse\" in your Spell/Trap Zone",
+   "shown_from": "haiku",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p24",
+   "candidate": "opus",
+   "deck": "blackwing",
+   "group": "idle",
+   "sub": "main1",
+   "grade": "best",
+   "score": 4,
+   "label": "B",
+   "reason": "This is the strongest board: Full Armor Master plus Assault Dragon, worth the extra draws. The reason wrongly assumes a Time Thief opponent, but the line itself is right.",
+   "key": "Special Summon \"Blackwing - Boreastorm the Wicked Wind\" from your Extra Deck (by its own summoning procedure)",
+   "shown_from": "opus",
+   "agree": true,
+   "unique": true
+  },
+  {
+   "position": "p24",
+   "candidate": "sonnet",
+   "deck": "blackwing",
+   "group": "idle",
+   "sub": "main1",
+   "grade": "acceptable",
+   "score": 2,
+   "label": "A",
+   "reason": "Summoning it now does keep Dark Armed Dragon usable before the GY count rises, but it gives a Maxx \"C\" draw for a body with nothing to destroy this turn. It is also exposed before your next turn.",
+   "key": "Special Summon \"Dark Armed Dragon\" from your hand (by its own summoning procedure)",
+   "shown_from": "sonnet",
+   "agree": false,
+   "unique": true
+  },
+  {
+   "position": "p24",
+   "candidate": "haiku",
+   "deck": "blackwing",
+   "group": "idle",
+   "sub": "main1",
+   "grade": "good",
+   "score": 3,
+   "label": "C",
+   "reason": "This is a sound cautious line against Maxx \"C\": a single summon for Full Armor Master, with Sudri kept. It gives up Assault Dragon, though.",
+   "key": "Special Summon \"Blackwing Full Armor Master\" from your Extra Deck (by its own summoning procedure)",
+   "shown_from": "haiku",
+   "agree": false,
+   "unique": true
+  },
+  {
+   "position": "p25",
+   "candidate": "opus",
+   "deck": "blackwing",
+   "group": "idle",
+   "sub": "main1",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "This uses your Normal Summon to start the whole engine: a Black Whirlwind search, then Black-Winged Dragon, then a Black Feather Whirlwind revive. The plan in the reason is correct.",
+   "key": "Normal Summon \"Blackwing - Vata the Emblem of Wandering\" (from hand)",
+   "shown_from": "sonnet",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p25",
+   "candidate": "sonnet",
+   "deck": "blackwing",
+   "group": "idle",
+   "sub": "main1",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "This uses your Normal Summon to start the whole engine: a Black Whirlwind search, then Black-Winged Dragon, then a Black Feather Whirlwind revive. The plan in the reason is correct.",
+   "key": "Normal Summon \"Blackwing - Vata the Emblem of Wandering\" (from hand)",
+   "shown_from": "sonnet",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p25",
+   "candidate": "haiku",
+   "deck": "blackwing",
+   "group": "idle",
+   "sub": "main1",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "This uses your Normal Summon to start the whole engine: a Black Whirlwind search, then Black-Winged Dragon, then a Black Feather Whirlwind revive. The plan in the reason is correct.",
+   "key": "Normal Summon \"Blackwing - Vata the Emblem of Wandering\" (from hand)",
+   "shown_from": "sonnet",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p26",
+   "candidate": "opus",
+   "deck": "blackwing",
+   "group": "battle",
+   "sub": "attack-target",
+   "grade": "best",
+   "score": 4,
+   "label": "B",
+   "reason": "Same correct move. The reason is thinner: it calls the step a required selection when cancelling was allowed, and it doesn't mention any of the gains. The move itself is still right.",
+   "key": "\"Blackwing - Simoon the Poison Wind\" (face-up Attack, ATK 1600 / DEF 2000, owned by you) — opponent's M3",
+   "shown_from": "haiku",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p26",
+   "candidate": "sonnet",
+   "deck": "blackwing",
+   "group": "battle",
+   "sub": "attack-target",
+   "grade": "best",
+   "score": 4,
+   "label": "B",
+   "reason": "Same correct move. The reason is thinner: it calls the step a required selection when cancelling was allowed, and it doesn't mention any of the gains. The move itself is still right.",
+   "key": "\"Blackwing - Simoon the Poison Wind\" (face-up Attack, ATK 1600 / DEF 2000, owned by you) — opponent's M3",
+   "shown_from": "haiku",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p26",
+   "candidate": "haiku",
+   "deck": "blackwing",
+   "group": "battle",
+   "sub": "attack-target",
+   "grade": "best",
+   "score": 4,
+   "label": "B",
+   "reason": "Same correct move. The reason is thinner: it calls the step a required selection when cancelling was allowed, and it doesn't mention any of the gains. The move itself is still right.",
+   "key": "\"Blackwing - Simoon the Poison Wind\" (face-up Attack, ATK 1600 / DEF 2000, owned by you) — opponent's M3",
+   "shown_from": "haiku",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p27",
+   "candidate": "opus",
+   "deck": "blackwing",
+   "group": "battle",
+   "sub": "direct",
+   "grade": "best",
+   "score": 4,
+   "label": "B",
+   "reason": "Starts a lethal sequence of direct attacks with the highest-ATK attacker.",
+   "key": "Attack with \"Black-Winged Assault Dragon\" (face-up Attack, ATK 3200 / DEF 2800) (can attack directly)",
+   "shown_from": "sonnet",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p27",
+   "candidate": "sonnet",
+   "deck": "blackwing",
+   "group": "battle",
+   "sub": "direct",
+   "grade": "best",
+   "score": 4,
+   "label": "B",
+   "reason": "Starts a lethal sequence of direct attacks with the highest-ATK attacker.",
+   "key": "Attack with \"Black-Winged Assault Dragon\" (face-up Attack, ATK 3200 / DEF 2800) (can attack directly)",
+   "shown_from": "sonnet",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p27",
+   "candidate": "haiku",
+   "deck": "blackwing",
+   "group": "battle",
+   "sub": "direct",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Starts a lethal sequence of direct attacks. The order is irrelevant.",
+   "key": "Attack with \"Blackwing Full Armor Master\" (face-up Attack, ATK 3000 / DEF 3000) (can attack directly)",
+   "shown_from": "haiku",
+   "agree": true,
+   "unique": true
+  },
+  {
+   "position": "p28",
+   "candidate": "opus",
+   "deck": "blackwing",
+   "group": "battle",
+   "sub": "attack-target",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "It's the correct attack. The reason has a small misread: Black Feather Whirlwind's protection needs a Black Feather Counter on my field, and Black-Winged Dragon has none.",
+   "key": "\"Blue-Eyes Alternative White Dragon\" (face-up Attack, ATK 2300 / DEF 2500, effects negated) — opponent's M3",
+   "shown_from": "opus",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p28",
+   "candidate": "sonnet",
+   "deck": "blackwing",
+   "group": "battle",
+   "sub": "attack-target",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "It's the correct attack. The reason has a small misread: Black Feather Whirlwind's protection needs a Black Feather Counter on my field, and Black-Winged Dragon has none.",
+   "key": "\"Blue-Eyes Alternative White Dragon\" (face-up Attack, ATK 2300 / DEF 2500, effects negated) — opponent's M3",
+   "shown_from": "opus",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p28",
+   "candidate": "haiku",
+   "deck": "blackwing",
+   "group": "battle",
+   "sub": "attack-target",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "It's the correct attack. The reason has a small misread: Black Feather Whirlwind's protection needs a Black Feather Counter on my field, and Black-Winged Dragon has none.",
+   "key": "\"Blue-Eyes Alternative White Dragon\" (face-up Attack, ATK 2300 / DEF 2500, effects negated) — opponent's M3",
+   "shown_from": "opus",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p29",
+   "candidate": "opus",
+   "deck": "blackwing",
+   "group": "chain",
+   "sub": "opp-activation",
+   "grade": "acceptable",
+   "score": 2,
+   "label": "B",
+   "reason": "The rules are right: Chinook can negate the search mid-chain. But it spends Chinook on a minor one-for-one, gives up the field Blackwing that Vata needs on my turn, and loses the chance to answer Saffira's stronger End Phase effect.",
+   "key": "Activate \"Blackwing - Chinook the Snow Blast\" (face-up Attack, ATK 100 / DEF 700) from your M1 — effect: \"Decrease ATK and negate effects\"",
+   "shown_from": "opus",
+   "agree": false,
+   "unique": true
+  },
+  {
+   "position": "p29",
+   "candidate": "sonnet",
+   "deck": "blackwing",
+   "group": "chain",
+   "sub": "opp-activation",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Passing keeps Chinook as a body that enables Vata and Full Armor Master on my turn, and it can still answer Saffira's End Phase effect. The Witch search is a low-value target.",
+   "key": "pass / none",
+   "shown_from": "sonnet",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p29",
+   "candidate": "haiku",
+   "deck": "blackwing",
+   "group": "chain",
+   "sub": "opp-activation",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Passing keeps Chinook as a body that enables Vata and Full Armor Master on my turn, and it can still answer Saffira's End Phase effect. The Witch search is a low-value target.",
+   "key": "pass / none",
+   "shown_from": "sonnet",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p30",
+   "candidate": "opus",
+   "deck": "blackwing",
+   "group": "chain",
+   "sub": "opp-activation",
+   "grade": "best",
+   "score": 4,
+   "label": "B",
+   "reason": "Chinook as a Quick Effect while Redoer has no materials stops the attach, shuts off its protection, and sets up Black-Winged Dragon to destroy it in battle. The reasoning is correct.",
+   "key": "Activate \"Blackwing - Chinook the Snow Blast\" from your hand — effect: \"Decrease ATK and negate effects\"",
+   "shown_from": "haiku",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p30",
+   "candidate": "sonnet",
+   "deck": "blackwing",
+   "group": "chain",
+   "sub": "opp-activation",
+   "grade": "mistake",
+   "score": 1,
+   "label": "A",
+   "reason": "Passing gives Redoer a material, so it can later dodge Chinook or spin Black-Winged Dragon back to the Deck. Right now it is the 'real threat' and it has no protection.",
+   "key": "pass / none",
+   "shown_from": "sonnet",
+   "agree": false,
+   "unique": true
+  },
+  {
+   "position": "p30",
+   "candidate": "haiku",
+   "deck": "blackwing",
+   "group": "chain",
+   "sub": "opp-activation",
+   "grade": "best",
+   "score": 4,
+   "label": "B",
+   "reason": "Chinook as a Quick Effect while Redoer has no materials stops the attach, shuts off its protection, and sets up Black-Winged Dragon to destroy it in battle. The reasoning is correct.",
+   "key": "Activate \"Blackwing - Chinook the Snow Blast\" from your hand — effect: \"Decrease ATK and negate effects\"",
+   "shown_from": "haiku",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p31",
+   "candidate": "opus",
+   "deck": "blackwing",
+   "group": "chain",
+   "sub": "opp-activation",
+   "grade": "best",
+   "score": 4,
+   "label": "B",
+   "reason": "It correctly spots that Retrograde is dead right now and turns the trap into a Full Armor Master on the opponent's turn, plus a Black Feather Whirlwind revive.",
+   "key": "Activate \"Blackwing - Twin Shadow\" (set) from your S3",
+   "shown_from": "opus",
+   "agree": true,
+   "unique": true
+  },
+  {
+   "position": "p31",
+   "candidate": "sonnet",
+   "deck": "blackwing",
+   "group": "chain",
+   "sub": "opp-activation",
+   "grade": "acceptable",
+   "score": 2,
+   "label": "C",
+   "reason": "Holding for a 'real threat' ignores that the threat (a new Time Thief Xyz) would also switch on Retrograde against Twin Shadow. Using it now at no risk is clearly better.",
+   "key": "pass / none",
+   "shown_from": "haiku",
+   "agree": false,
+   "unique": false
+  },
+  {
+   "position": "p31",
+   "candidate": "haiku",
+   "deck": "blackwing",
+   "group": "chain",
+   "sub": "opp-activation",
+   "grade": "acceptable",
+   "score": 2,
+   "label": "C",
+   "reason": "Holding for a 'real threat' ignores that the threat (a new Time Thief Xyz) would also switch on Retrograde against Twin Shadow. Using it now at no risk is clearly better.",
+   "key": "pass / none",
+   "shown_from": "haiku",
+   "agree": false,
+   "unique": false
+  },
+  {
+   "position": "p32",
+   "candidate": "opus",
+   "deck": "blackwing",
+   "group": "chain",
+   "sub": "opp-activation",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Correct: destroying Cards of Consonance in the chain gains nothing, so the once-per-Duel Sharnga effect is kept.",
+   "key": "pass / none",
+   "shown_from": "opus",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p32",
+   "candidate": "sonnet",
+   "deck": "blackwing",
+   "group": "chain",
+   "sub": "opp-activation",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Correct: destroying Cards of Consonance in the chain gains nothing, so the once-per-Duel Sharnga effect is kept.",
+   "key": "pass / none",
+   "shown_from": "opus",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p32",
+   "candidate": "haiku",
+   "deck": "blackwing",
+   "group": "chain",
+   "sub": "opp-activation",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Correct: destroying Cards of Consonance in the chain gains nothing, so the once-per-Duel Sharnga effect is kept.",
+   "key": "pass / none",
+   "shown_from": "opus",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p33",
+   "candidate": "opus",
+   "deck": "blackwing",
+   "group": "select_card",
+   "sub": "material",
+   "grade": "mistake",
+   "score": 1,
+   "label": "A",
+   "reason": "The reason only looks at the stats of the bigger body. It ignores the extra Maxx \"C\" draw, that the GY going to 4 DARK makes Dark Armed Dragon unusable, and that Sharnga's GY effect only works with a Blackwing Synchro on the field.",
+   "key": "\"Blackwing - Sharnga the Waning Moon\" (face-up Attack, ATK 500 / DEF 500) — your M2",
+   "shown_from": "sonnet",
+   "agree": false,
+   "unique": false
+  },
+  {
+   "position": "p33",
+   "candidate": "sonnet",
+   "deck": "blackwing",
+   "group": "select_card",
+   "sub": "material",
+   "grade": "mistake",
+   "score": 1,
+   "label": "A",
+   "reason": "The reason only looks at the stats of the bigger body. It ignores the extra Maxx \"C\" draw, that the GY going to 4 DARK makes Dark Armed Dragon unusable, and that Sharnga's GY effect only works with a Blackwing Synchro on the field.",
+   "key": "\"Blackwing - Sharnga the Waning Moon\" (face-up Attack, ATK 500 / DEF 500) — your M2",
+   "shown_from": "sonnet",
+   "agree": false,
+   "unique": false
+  },
+  {
+   "position": "p33",
+   "candidate": "haiku",
+   "deck": "blackwing",
+   "group": "select_card",
+   "sub": "material",
+   "grade": "mistake",
+   "score": 1,
+   "label": "A",
+   "reason": "The reason only looks at the stats of the bigger body. It ignores the extra Maxx \"C\" draw, that the GY going to 4 DARK makes Dark Armed Dragon unusable, and that Sharnga's GY effect only works with a Blackwing Synchro on the field.",
+   "key": "\"Blackwing - Sharnga the Waning Moon\" (face-up Attack, ATK 500 / DEF 500) — your M2",
+   "shown_from": "sonnet",
+   "agree": false,
+   "unique": false
+  },
+  {
+   "position": "p34",
+   "candidate": "opus",
+   "deck": "blackwing",
+   "group": "select_card",
+   "sub": "material",
+   "grade": "best",
+   "score": 4,
+   "label": "B",
+   "reason": "Simoon is the least useful body here. Keeping Vata (for Black-Winged Dragon) and Sudri (for the token) allows Full Armor Master plus Assault Dragon.",
+   "key": "\"Blackwing - Simoon the Poison Wind\" (face-up Attack, ATK 1600 / DEF 2000) — your M1",
+   "shown_from": "opus",
+   "agree": true,
+   "unique": true
+  },
+  {
+   "position": "p34",
+   "candidate": "sonnet",
+   "deck": "blackwing",
+   "group": "select_card",
+   "sub": "material",
+   "grade": "mistake",
+   "score": 1,
+   "label": "A",
+   "reason": "The reason is wrong: Sudri's Tribute-for-token effect is separate from its search and is still available. Losing Sudri removes the Tuner route to Boreastorm and Assault Dragon.",
+   "key": "\"Blackwing - Sudri the Phantom Glimmer\" (face-up Attack, ATK 1400 / DEF 1400) — your M2",
+   "shown_from": "haiku",
+   "agree": false,
+   "unique": false
+  },
+  {
+   "position": "p34",
+   "candidate": "haiku",
+   "deck": "blackwing",
+   "group": "select_card",
+   "sub": "material",
+   "grade": "mistake",
+   "score": 1,
+   "label": "A",
+   "reason": "The reason is wrong: Sudri's Tribute-for-token effect is separate from its search and is still available. Losing Sudri removes the Tuner route to Boreastorm and Assault Dragon.",
+   "key": "\"Blackwing - Sudri the Phantom Glimmer\" (face-up Attack, ATK 1400 / DEF 1400) — your M2",
+   "shown_from": "haiku",
+   "agree": false,
+   "unique": false
+  },
+  {
+   "position": "p35",
+   "candidate": "opus",
+   "deck": "blackwing",
+   "group": "select_card",
+   "sub": "cost",
+   "grade": "best",
+   "score": 4,
+   "label": "B",
+   "reason": "Vata is the least useful Lv2 in the Deck once BWD is banished, and the reasoning is correct.",
+   "key": "\"Blackwing - Vata the Emblem of Wandering\" — your Deck",
+   "shown_from": "opus",
+   "agree": true,
+   "unique": true
+  },
+  {
+   "position": "p35",
+   "candidate": "sonnet",
+   "deck": "blackwing",
+   "group": "select_card",
+   "sub": "cost",
+   "grade": "acceptable",
+   "score": 2,
+   "label": "A",
+   "reason": "It makes the combo work, but it sends away Chinook, one of the deck's best interactive cards on later turns, when Vata was nearly dead.",
+   "key": "\"Blackwing - Chinook the Snow Blast\" — your Deck",
+   "shown_from": "sonnet",
+   "agree": false,
+   "unique": true
+  },
+  {
+   "position": "p35",
+   "candidate": "haiku",
+   "deck": "blackwing",
+   "group": "select_card",
+   "sub": "cost",
+   "grade": "good",
+   "score": 3,
+   "label": "C",
+   "reason": "It reaches the right Level and keeps Chinook in the Deck, but it thins the singleton Harmattan instead of a nearly dead Vata.",
+   "key": "\"Blackwing - Harmattan the Dust\" — your Deck",
+   "shown_from": "haiku",
+   "agree": false,
+   "unique": true
+  },
+  {
+   "position": "p36",
+   "candidate": "opus",
+   "deck": "blackwing",
+   "group": "select_card",
+   "sub": "search",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Vata is the right search. It gives BWD, turns on Sharnga, and leads to the Boreastorm → Full Armor Master + Assault Dragon line, exactly as the reason lays out.",
+   "key": "\"Blackwing - Vata the Emblem of Wandering\" — your Deck",
+   "shown_from": "opus",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p36",
+   "candidate": "sonnet",
+   "deck": "blackwing",
+   "group": "select_card",
+   "sub": "search",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Vata is the right search. It gives BWD, turns on Sharnga, and leads to the Boreastorm → Full Armor Master + Assault Dragon line, exactly as the reason lays out.",
+   "key": "\"Blackwing - Vata the Emblem of Wandering\" — your Deck",
+   "shown_from": "opus",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p36",
+   "candidate": "haiku",
+   "deck": "blackwing",
+   "group": "select_card",
+   "sub": "search",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Vata is the right search. It gives BWD, turns on Sharnga, and leads to the Boreastorm → Full Armor Master + Assault Dragon line, exactly as the reason lays out.",
+   "key": "\"Blackwing - Vata the Emblem of Wandering\" — your Deck",
+   "shown_from": "opus",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p37",
+   "candidate": "opus",
+   "deck": "blackwing",
+   "group": "effect_yn",
+   "sub": "optional",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Declining keeps Harmattan at Lv2, which keeps the Gofu + Harmattan Armor Master Synchro open. The move is right. The reason is wrong, though: a Synchro is still possible this turn.",
+   "key": "no",
+   "shown_from": "sonnet",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p37",
+   "candidate": "sonnet",
+   "deck": "blackwing",
+   "group": "effect_yn",
+   "sub": "optional",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Declining keeps Harmattan at Lv2, which keeps the Gofu + Harmattan Armor Master Synchro open. The move is right. The reason is wrong, though: a Synchro is still possible this turn.",
+   "key": "no",
+   "shown_from": "sonnet",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p37",
+   "candidate": "haiku",
+   "deck": "blackwing",
+   "group": "effect_yn",
+   "sub": "optional",
+   "grade": "mistake",
+   "score": 1,
+   "label": "B",
+   "reason": "After the boost, Gofu + Harmattan totals 11 or more, which matches no Extra Deck monster. That throws away the Lv7 Armor Master Synchro. The 'more useful Level' argument is a misread.",
+   "key": "yes",
+   "shown_from": "haiku",
+   "agree": false,
+   "unique": true
+  },
+  {
+   "position": "p38",
+   "candidate": "opus",
+   "deck": "blackwing",
+   "group": "effect_yn",
+   "sub": "optional",
+   "grade": "best",
+   "score": 4,
+   "label": "B",
+   "reason": "Right: the counter sets up Full Armor Master's steal to recover Assault Dragon.",
+   "key": "yes",
+   "shown_from": "opus",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p38",
+   "candidate": "sonnet",
+   "deck": "blackwing",
+   "group": "effect_yn",
+   "sub": "optional",
+   "grade": "mistake",
+   "score": 1,
+   "label": "A",
+   "reason": "This misses that a Wedge Counter lets Full Armor Master take back the 3200-ATK Assault Dragon in Main Phase 2. It throws away the chance to recover a key monster.",
+   "key": "no",
+   "shown_from": "sonnet",
+   "agree": false,
+   "unique": true
+  },
+  {
+   "position": "p38",
+   "candidate": "haiku",
+   "deck": "blackwing",
+   "group": "effect_yn",
+   "sub": "optional",
+   "grade": "best",
+   "score": 4,
+   "label": "B",
+   "reason": "Right: the counter sets up Full Armor Master's steal to recover Assault Dragon.",
+   "key": "yes",
+   "shown_from": "opus",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p39",
+   "candidate": "opus",
+   "deck": "blackwing",
+   "group": "other",
+   "sub": "option",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "This is the right choice: it gets the Black Whirlwind search and keeps my own Normal Summon.",
+   "key": "Normal Summon this card without Tributing",
+   "shown_from": "sonnet",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p39",
+   "candidate": "sonnet",
+   "deck": "blackwing",
+   "group": "other",
+   "sub": "option",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "This is the right choice: it gets the Black Whirlwind search and keeps my own Normal Summon.",
+   "key": "Normal Summon this card without Tributing",
+   "shown_from": "sonnet",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p39",
+   "candidate": "haiku",
+   "deck": "blackwing",
+   "group": "other",
+   "sub": "option",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "This is the right choice: it gets the Black Whirlwind search and keeps my own Normal Summon.",
+   "key": "Normal Summon this card without Tributing",
+   "shown_from": "sonnet",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p40",
+   "candidate": "opus",
+   "deck": "blackwing",
+   "group": "other",
+   "sub": "option",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Correct: the free Normal Summon triggers the Black Whirlwind search and keeps the real Normal Summon.",
+   "key": "Normal Summon this card without Tributing",
+   "shown_from": "sonnet",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p40",
+   "candidate": "sonnet",
+   "deck": "blackwing",
+   "group": "other",
+   "sub": "option",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Correct: the free Normal Summon triggers the Black Whirlwind search and keeps the real Normal Summon.",
+   "key": "Normal Summon this card without Tributing",
+   "shown_from": "sonnet",
+   "agree": true,
+   "unique": false
+  },
+  {
+   "position": "p40",
+   "candidate": "haiku",
+   "deck": "blackwing",
+   "group": "other",
+   "sub": "option",
+   "grade": "best",
+   "score": 4,
+   "label": "A",
+   "reason": "Correct: the free Normal Summon triggers the Black Whirlwind search and keeps the real Normal Summon.",
+   "key": "Normal Summon this card without Tributing",
+   "shown_from": "sonnet",
+   "agree": true,
+   "unique": false
+  }
+ ],
+ "recommendation": {
+  "choice": "opus",
+  "best": "opus",
+  "confidence": "medium",
+  "reasons": [
+   "the self-preference flag is answered: the second judge (sonnet) also ranks opus 3.75 > sonnet 3.48 > haiku 3.25",
+   "the sign test vs sonnet is not below 0.05 (the interval excludes 0)"
+  ],
+  "lines": [
+   "haiku scores below opus: -0.57 grade points (95% CI -1.02 to -0.17) over 40 positions.",
+   "sonnet scores below opus: -0.42 grade points (95% CI -0.82 to -0.03) over 40 positions."
+  ],
+  "separated_from": [
+   "sonnet",
+   "haiku"
+  ]
+ },
+ "sources": {
+  "p01": "2026-10-21_211059_saffira-vs-mostwanted #31",
+  "p02": "saffira--haiku--windbot-blue-eyes--003 #82",
+  "p03": "saffira--haiku--windbot-time-thief--002 #26",
+  "p04": "saffira--opus--windbot-time-thief--001 #39",
+  "p05": "saffira--sonnet--windbot-blue-eyes--001 #55",
+  "p06": "2026-10-21_195052_saffira-vs-blue-eyes-ai #58",
+  "p07": "saffira--haiku--windbot-time-thief--003 #53",
+  "p08": "saffira--sonnet--windbot-blue-eyes--001 #39",
+  "p09": "saffira--haiku--windbot-time-thief--003 #61",
+  "p10": "saffira--opus--windbot-blue-eyes--001 #23",
+  "p11": "saffira--opus--windbot-blue-eyes--001 #48",
+  "p12": "saffira--sonnet--windbot-time-thief--003 #45",
+  "p13": "saffira--haiku--windbot-blue-eyes--003 #55",
+  "p14": "saffira--haiku--windbot-time-thief--001 #74",
+  "p15": "saffira--opus--windbot-time-thief--001 #27",
+  "p16": "saffira--sonnet--windbot-blue-eyes--002 #35",
+  "p17": "saffira--haiku--windbot-blue-eyes--003 #46",
+  "p18": "2026-10-21_195052_saffira-vs-blue-eyes-ai #22",
+  "p19": "saffira--sonnet--windbot-time-thief--002 #41",
+  "p20": "2026-10-21_203748_blackwing-vs-saffira-sonnet #13",
+  "p21": "blackwing--haiku--windbot-blue-eyes--001 #13",
+  "p22": "blackwing--haiku--windbot-blue-eyes--003 #27",
+  "p23": "blackwing--opus--windbot-blue-eyes--001 #37",
+  "p24": "blackwing--opus--windbot-time-thief--001 #17",
+  "p25": "blackwing--sonnet--windbot-time-thief--003 #5",
+  "p26": "blackwing--haiku--windbot-time-thief--002 #50",
+  "p27": "blackwing--opus--windbot-blue-eyes--001 #51",
+  "p28": "blackwing--sonnet--windbot-blue-eyes--002 #46",
+  "p29": "2026-10-21_203748_blackwing-vs-saffira-sonnet #18",
+  "p30": "blackwing--haiku--windbot-time-thief--003 #45",
+  "p31": "blackwing--haiku--windbot-time-thief--003 #72",
+  "p32": "blackwing--opus--windbot-blue-eyes--001 #40",
+  "p33": "blackwing--haiku--windbot-time-thief--001 #16",
+  "p34": "blackwing--haiku--windbot-time-thief--002 #34",
+  "p35": "blackwing--opus--windbot-time-thief--001 #23",
+  "p36": "blackwing--sonnet--windbot-blue-eyes--001 #8",
+  "p37": "blackwing--haiku--windbot-blue-eyes--002 #32",
+  "p38": "blackwing--sonnet--windbot-time-thief--002 #89",
+  "p39": "blackwing--haiku--windbot-blue-eyes--003 #43",
+  "p40": "blackwing--sonnet--windbot-time-thief--002 #23"
+ }
+}
