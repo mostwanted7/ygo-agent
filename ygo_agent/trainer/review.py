@@ -15,17 +15,18 @@ from ..agent.validate import validate
 from . import logs
 from . import playbook as pb
 
-LIMIT_WORDS = ("usage limit", "rate limit", "rate_limit", "limit reached", "quota", "overloaded", "429",
-               "credit balance", "out of extra usage", "hit your limit")
+# Errors that mean "you're out of model usage" (the agent then played on with the fallback, so the game isn't the
+# backend's): the claude CLI's wordings, HTTP 429s, and the APIs' quota and overload errors.
+LIMIT = re.compile(r"usage limit|rate[ _-]?limit|hit your (usage |session |weekly )?limit|limit (reached|exceeded)"
+                   r"|quota|credit balance|out of (extra )?usage|too many requests|overloaded|\b429\b", re.I)
 
 
 class UsageLimited(Exception):
     """The model service refused for usage or rate limits: checkpoint and stop (resume after the reset)."""
 
 
-def limited(error: str | None) -> bool:
-    low = (error or "").lower()
-    return any(w in low for w in LIMIT_WORDS)
+def limited(error) -> bool:
+    return bool(error) and LIMIT.search(str(error)) is not None
 
 
 def game_usage_limited(game_dir: str) -> str | None:

@@ -18,6 +18,7 @@ import tempfile
 import time
 
 from .. import backends
+from ..backends.claude_code import WORKDIR
 from ..backends.parse import _load, _objects, strip_reasoning
 from ..paths import CACHE
 from .workspace import TrainerError
@@ -91,10 +92,9 @@ class Reviewer:
 
     def _claude(self, system, prompt, schema, timeout, transcript, max_cost, info):
         p = self.profile
-        cwd = self.sandbox if self.agentic else os.path.join(CACHE, "claude-code")
-        os.makedirs(cwd, exist_ok=True)
-        os.makedirs(CACHE, exist_ok=True)
-        fd, system_file = tempfile.mkstemp(prefix="reviewer-", suffix=".md", dir=os.path.join(CACHE))
+        cwd = self.sandbox if self.agentic else WORKDIR
+        os.makedirs(cwd, exist_ok=True)  # both are under CACHE, where the system prompt file goes
+        fd, system_file = tempfile.mkstemp(prefix="reviewer-", suffix=".md", dir=CACHE)
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             f.write(system)
         cmd = [p.get("command", "claude"), "-p", "--output-format", "stream-json", "--verbose",

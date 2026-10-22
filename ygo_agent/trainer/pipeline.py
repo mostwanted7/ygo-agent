@@ -12,12 +12,13 @@ import hashlib
 import io
 import json
 import os
+import re
 import shutil
 import time
 from dataclasses import asdict, dataclass, field
 
 from .. import decks, paths
-from ..agent.gamelog import GREEN, slug
+from ..agent.gamelog import GREEN
 from ..match import MatchError, SeatSpec
 from . import dossier as dossier_mod
 from . import games as games_mod
@@ -903,7 +904,7 @@ class Trainer:
             code = replay.run_tests(cases, cfg, self.db, lambda key: profile, repeat, results=results)
         ws.write("tests-final.txt", strip_ansi(buf.getvalue()))
         cost = replay_cost(cfg["games_dir"])
-        ws.spend("final.tests", "tests", cost, time.monotonic() - t0, runs=len(cases) * repeat)
+        ws.spend("final.tests", "test", cost, time.monotonic() - t0, runs=len(cases) * repeat)
         passed = sum(x["passed"] for x in results)
         ws.finish("final.tests", {"cases": len(cases), "repeat": repeat, "passed": passed, "exit": code,
                                   "cost": round(cost, 4), "failed": [x["name"] for x in results if not x["passed"]]})
@@ -940,9 +941,4 @@ def normal_line(x: dict, n: int) -> dict:
 
 
 def strip_ansi(text: str) -> str:
-    import re
     return re.sub(r"\x1b\[[0-9;]*m", "", text)
-
-
-def deck_key(name: str) -> str:
-    return slug(name, 40)

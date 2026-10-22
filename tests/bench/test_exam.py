@@ -1,4 +1,4 @@
-"""The decision exam (bench/exam.py, bench/judge.py) without EDOPro or an LLM: position sampling and filtering, blind
+"""The decision exam (bench/exam/, bench/judge.py) without EDOPro or an LLM: position sampling and filtering, blind
 labels, identical-choice grades, the judge's reply checks, aggregation, and a scripted run of the whole pipeline with
 resume. The logged games are built from the saved regression cases."""
 
@@ -300,7 +300,7 @@ def judge_policy(calls):
 
 
 def test_scripted_run_end_to_end_with_resume(games, db, cfg, tmp_path, monkeypatch):
-    monkeypatch.setattr(E, "default_bench_run", lambda: None)
+    monkeypatch.setattr(E.files, "default_bench_run", lambda: None)
     exam = E.make_exam("t", cfg, db, ["saffira", "blackwing"], 6, seed=2, sources=[games])
     first_pos = exam["positions"][0]
     broken = {first_pos["id"]}

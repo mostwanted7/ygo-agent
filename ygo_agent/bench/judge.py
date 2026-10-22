@@ -18,6 +18,8 @@ import shutil
 import string
 
 from ..agent.validate import validate
+from ..trainer.prompts import RULES_TEXT
+from ..trainer.schemas import arr, obj
 
 GRADES = ("best", "good", "acceptable", "mistake", "blunder")
 SCORE = {"best": 4, "good": 3, "acceptable": 2, "mistake": 1, "blunder": 0}
@@ -25,37 +27,24 @@ CONFIDENCE = ("high", "medium", "low")
 SEVERITIES = ("blunder", "major", "minor")
 MODEL_WORDS = re.compile(r"\b(opus|sonnet|haiku|claude(?:-code)?)\b", re.I)
 
-RULES_TEXT = {
-    "MR3": "Master Rule 3: Extra Deck monsters are summoned to the Main Monster Zones (there is no Extra Monster "
-           "Zone), the Pendulum Zones are separate from the Spell & Trap Zones, and Link Monsters don't exist.",
-}
-
 
 def _str(desc=None):
     return {"type": "string", **({"description": desc} if desc else {})}
 
 
-def _obj(**props):
-    return {"type": "object", "properties": props, "required": list(props), "additionalProperties": False}
-
-
-def _arr(item):
-    return {"type": "array", "items": item}
-
-
-JUDGE_SCHEMA = _obj(positions=_arr(_obj(
+JUDGE_SCHEMA = obj(positions=arr(obj(
     position=_str("the position id, e.g. p07"),
     assessment=_str("2-4 sentences: what matters in this position and which options are reasonable"),
-    own_choice=_arr({"type": "integer"}),
-    equivalent=_arr(_str("a label (A, B, ...) whose answer is as good as your own choice")),
-    grades=_arr(_obj(label=_str("A, B, ..."), grade={"type": "string", "enum": list(GRADES)},
-                     reason=_str("one or two sentences: the concrete reason for the grade"))),
+    own_choice=arr({"type": "integer"}),
+    equivalent=arr(_str("a label (A, B, ...) whose answer is as good as your own choice")),
+    grades=arr(obj(label=_str("A, B, ..."), grade={"type": "string", "enum": list(GRADES)},
+                   reason=_str("one or two sentences: the concrete reason for the grade"))),
     confidence={"type": "string", "enum": list(CONFIDENCE)},
 )))
 
-GAME_SCHEMA = _obj(
+GAME_SCHEMA = obj(
     summary=_str("3-5 sentences: how the game went and why it was won or lost"),
-    mistakes=_arr(_obj(
+    mistakes=arr(obj(
         decision={"type": "integer"}, turn={"type": "integer"},
         severity={"type": "string", "enum": list(SEVERITIES)},
         what=_str("what the player did"), better=_str("what it should have done, and why"),

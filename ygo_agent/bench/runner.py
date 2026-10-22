@@ -15,9 +15,9 @@ from __future__ import annotations
 
 import copy
 import datetime as dt
+import hashlib
 import json
 import os
-import re
 import shutil
 import subprocess
 import sys
@@ -25,16 +25,15 @@ import threading
 import time
 
 from .. import paths
-from ..agent.gamelog import BOLD, DIM, GREEN, RED, YELLOW, paint
+from ..agent.gamelog import BOLD, DIM, GREEN, RED, YELLOW, paint, slug
 from ..match import MatchError, SeatSpec, duration, run_games
+from ..trainer.games import bot_deck_file
+from ..trainer.review import limited
 from .spec import BenchSpec, Job, opponent_label
 
 RESULTS = "results.jsonl"
 RESULTS_ROOT = os.path.join(paths.ROOT, "bench", "results")
 LLM_TYPES = ("claude-code", "anthropic", "openai")
-# Errors that mean "you're out of model usage": the game fell back to the heuristic, so it isn't this backend's.
-LIMIT = re.compile(r"usage limit|rate[ _-]?limit|hit your (usage |session |weekly )?limit|limit (reached|exceeded)"
-                   r"|quota|credit balance|out of (extra )?usage|too many requests|\b429\b", re.I)
 MAX_ERRORS_IN_A_ROW = 4
 
 
@@ -127,7 +126,7 @@ def scan_prompts(path: str) -> dict:
             if err:
                 err = str(err)
                 timeouts += err.startswith("timed out")
-                if LIMIT.search(err):
+                if limited(err):
                     limits += 1
                     limit_sample = limit_sample or err[:200]
                 if len(samples) < 3 and err[:200] not in samples:
@@ -251,7 +250,7 @@ def probe(profile: dict) -> dict:
         except (OSError, subprocess.TimeoutExpired, json.JSONDecodeError) as e:
             return {"ok": False, "error": f"{type(e).__name__}: {e}"[:300], "seconds": round(time.monotonic() - t0, 1)}
         error = (data.get("result") or "error result") if data.get("is_error") or not data else None
-        return {"ok": error is None, "error": error and str(error)[:300], "limit": bool(error and LIMIT.search(error)),
+        return {"ok": error is None, "error": error and str(error)[:300], "limit": limited(error),
                 "model_ids": sorted(data.get("modelUsage") or {}), "seconds": round(time.monotonic() - t0, 1)}
     from .. import backends
     from ..agent.prompts import SCHEMA
@@ -265,13 +264,13 @@ def probe(profile: dict) -> dict:
     except Exception as e:
         return {"ok": False, "error": f"{type(e).__name__}: {e}"[:300], "seconds": round(time.monotonic() - t0, 1)}
     error = info.get("error") if reply is None else None
-    return {"ok": reply is not None, "error": error and str(error)[:300], "limit": bool(error and LIMIT.search(error)),
+    return {"ok": reply is not None, "error": error and str(error)[:300], "limit": limited(error),
             "model_ids": [profile.get("model")] if profile.get("model") else [],
             "seconds": round(time.monotonic() - t0, 1)}
 
 
-def _sha(path: str) -> str | None:
-    import hashlib
+def file_sha(path: str) -> str | None:
+    """The first 12 hex digits of a file's sha256; None when it can't be read."""
     try:
         with open(path, "rb") as f:
             return hashlib.sha256(f.read()).hexdigest()[:12]
@@ -328,28 +327,13 @@ def environment(spec: BenchSpec, cfg: dict, db, engine, profiles: dict, decks: d
     return env
 
 
-def windbot_ydk(assets: str, deck: str) -> str | None:
-    """A WindBot deck AI's .ydk: Decks/AI_<deck>.ydk, matched ignoring case, spaces and dashes (the executor's
-    [Deck] attribute names the file; for a few decks, e.g. "Rank V" = AI_Rank5, the names differ: then None)."""
-    folder = os.path.join(assets, "Decks")
-    want = re.sub(r"[^a-z0-9]", "", deck.lower())
-    try:
-        names = os.listdir(folder)
-    except OSError:
-        return None
-    for name in sorted(names):
-        stem, ext = os.path.splitext(name)
-        if ext == ".ydk" and stem.startswith("AI_") and re.sub(r"[^a-z0-9]", "", stem[3:].lower()) == want:
-            return os.path.join(folder, name)
-    return None
-
-
 def deck_info(profile) -> dict:
     from ..decks import rules_count
     rules = rules_count(profile.dir) if os.path.isfile(os.path.join(profile.dir, "rules.py")) else None
     playbook = profile.playbook_path if profile.playbook_path and os.path.isfile(profile.playbook_path) else None
-    return {"name": profile.name, "ydk": rel(profile.ydk), "ydk_sha": _sha(profile.ydk), "main": len(profile.main),
-            "extra": len(profile.extra), "playbook": rel(playbook), "playbook_sha": _sha(playbook) if playbook else None,
+    return {"name": profile.name, "ydk": rel(profile.ydk), "ydk_sha": file_sha(profile.ydk), "main": len(profile.main),
+            "extra": len(profile.extra), "playbook": rel(playbook),
+            "playbook_sha": file_sha(playbook) if playbook else None,
             "playbook_chars": os.path.getsize(playbook) if playbook else 0, "rules": rules,
             "location": getattr(profile, "location", None)}
 
@@ -416,7 +400,7 @@ class Bench:
                     bot = windbot.resolve(seat.deck)
                 except WindBotError as e:
                     raise MatchError(str(e)) from None
-                path = windbot_ydk(windbot.assets, bot.deck)
+                path = bot_deck_file(windbot, bot)
                 if path:
                     loaded = load_ydk(path, self.engine.cards)
                     err = check_deck(loaded.deck, self.engine.cards, legal, loaded.unknown)
@@ -425,7 +409,7 @@ class Bench:
                                          "another opponent (docs/bench.md lists the legal ones)")
                 bots[opponent] = {"name": bot.name, "deck": bot.deck, "difficulty": bot.difficulty,
                                   "exe": rel(windbot.exe), "fork": windbot.is_fork,
-                                  "ydk_sha": _sha(path) if path else None}
+                                  "ydk_sha": file_sha(path) if path else None}
             else:
                 profile = load_profile(seat.deck, self.db, self.cfg)
                 bots[opponent] = {"ai": True, "deck": deck_info(profile), "backend": seat.backend}
@@ -603,7 +587,6 @@ def scratch_root(cfg: dict) -> str:
 
 
 def new_folder(name: str, root: str = RESULTS_ROOT) -> str:
-    from ..agent.gamelog import slug
     stem = os.path.join(root, f"{time.strftime('%Y-%m-%d_%H%M%S')}_{slug(name, 40)}")
     path, n = stem, 1
     while os.path.exists(path):
@@ -615,7 +598,6 @@ def new_folder(name: str, root: str = RESULTS_ROOT) -> str:
 
 def latest_folder(name: str | None, root: str | list[str] = RESULTS_ROOT) -> str | None:
     """The newest run folder (of this benchmark name, when given) in `root` (or in any of a list of roots)."""
-    from ..agent.gamelog import slug
     found = []
     for folder in [root] if isinstance(root, str) else root:
         if not os.path.isdir(folder):

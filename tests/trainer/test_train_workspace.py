@@ -41,6 +41,12 @@ def test_budget_uses_defaults_then_the_ledger(tmp_path):
         ws.check_budget("game", 9)
     assert ws.affordable("game", 20) == 8
     assert Workspace(str(tmp_path / "other"), quiet=True).affordable("game", 20) == 20  # no budget
+    # an entry that covers several runs (the case gate's replays) is estimated per run
+    ws.spend("r1.condense.cases", "test", 0.28, runs=14)
+    assert ws.estimate("test") == pytest.approx(0.02)
+    ws.check_budget("test", 300)  # $6 of the $7.72 left
+    with pytest.raises(BudgetExhausted):
+        ws.check_budget("test", 400)
 
 
 def test_reviewer_needs_an_llm_and_scripted_works():

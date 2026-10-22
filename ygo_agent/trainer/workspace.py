@@ -132,8 +132,12 @@ class Workspace:
             self.save()
 
     def estimate(self, kind: str) -> float:
-        costs = [e.get("cost") or 0.0 for e in self.state["ledger"] if e["kind"] == kind]
-        return sum(costs) / len(costs) if costs else DEFAULT_ESTIMATES.get(kind, 1.0)
+        """The cost of one step of `kind` so far: the ledger's average per run (an entry may cover several, e.g. a
+        case gate's replays), else the default."""
+        entries = [e for e in self.state["ledger"] if e["kind"] == kind]
+        if not entries:
+            return DEFAULT_ESTIMATES.get(kind, 1.0)
+        return sum(e.get("cost") or 0.0 for e in entries) / sum(e.get("runs") or 1 for e in entries)
 
     def remaining(self) -> float | None:
         return None if self.budget is None else round(self.budget - self.spent, 4)

@@ -4,7 +4,7 @@
     ygo-agent bench --decks saffira --backends sonnet,heuristic --opponents windbot:Blue-Eyes --games 4
     ygo-agent bench readme --resume                          # continue the newest run of that plan
     ygo-agent bench report bench/results/<run>               # rebuild report.md, summary.json, chart.svg
-    ygo-agent bench exam [NAME] [--backends opus,sonnet,haiku --judge opus]   # the decision exam (exam.py)
+    ygo-agent bench exam [NAME] [--backends opus,sonnet,haiku --judge opus]   # the decision exam (exam/)
 """
 
 from __future__ import annotations

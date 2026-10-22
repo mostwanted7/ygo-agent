@@ -260,11 +260,12 @@ Sonnet's $0.80.
 resume, probes, versions), `metrics.py` (Wilson, percentiles, aggregation, Bradley-Terry), `report.py` and
 `chart.py`. `tests/bench/` covers the statistics, aggregation and reports from synthetic results, the plan and seed
 pairing, resume, budget and usage-limit stops with a fake game player, and one tiny real run (heuristic and
-random against an in-process heuristic, no LLM) through the whole pipeline. The exam is `exam.py` (sampling, the
-runs, aggregation, the report) and `judge.py` (blind labels, the judge's prompt and reply checks, its sandbox, the
-whole-game review); `tests/bench/test_exam.py` covers sampling and filtering, labels, identical-choice grades,
-aggregation and the self-preference flag, and a scripted run of the whole pipeline with resume, on game logs built
-from the saved regression cases.
+random against an in-process heuristic, no LLM) through the whole pipeline. The exam is the `exam/` package
+(`positions.py` the pool and the sample, `runs.py` the answers, grades and whole-game reviews of a run, `report.py`
+the numbers and the report, `files.py` the run's files, `__init__.py` the command) and `judge.py` (blind labels, the
+judge's prompt and reply checks, its sandbox, the whole-game review); `tests/bench/test_exam.py` covers sampling and
+filtering, labels, identical-choice grades, aggregation and the self-preference flag, and a scripted run of the whole
+pipeline with resume, on game logs built from the saved regression cases.
 
 Who goes first is `run_games(first=...)`, in-process and in WindBot rooms alike (`RoomConfig.first`: the room
 still runs the rock-paper-scissors, then starts game 1 with that seat instead of asking the RPS winner).

@@ -5,14 +5,14 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import time
 
+from .. import paths
 from ..match import duration
 from . import chart, metrics
 from .runner import finished, game_cost, read_results, write_json
 from .spec import BASELINES, opponent_label
-
-BASELINE_TYPES = ("heuristic", "random")
 
 
 def _load(folder, name):
@@ -25,7 +25,7 @@ def _load(folder, name):
 
 def is_baseline(name: str, env: dict) -> bool:
     kind = (env.get("backends", {}).get(name) or {}).get("type")
-    return kind in BASELINE_TYPES if kind else name in BASELINES
+    return kind in BASELINES if kind else name in BASELINES
 
 
 def summarize(folder: str) -> dict:
@@ -336,12 +336,11 @@ def build(folder: str) -> dict:
 
 def publish(folder: str, summary: dict, target: str) -> list[str]:
     """Copy the leaderboard and the chart to `target` (docs/bench for the README), linking the full report."""
-    import shutil
     os.makedirs(target, exist_ok=True)
     report_link = os.path.relpath(os.path.join(folder, "report.md"), target)
     g = summary["games"]
     lines = [f"Benchmark `{summary['name']}`, {(summary['period']['first'] or '')[:10]}: {g['done']} games. "
-             f"Full report: [{os.path.relpath(os.path.join(folder, 'report.md'), paths_root())}]({report_link}).", ""]
+             f"Full report: [{os.path.relpath(os.path.join(folder, 'report.md'), paths.ROOT)}]({report_link}).", ""]
     if summary["spec"].get("note"):
         lines += [f"> {' '.join(summary['spec']['note'].split())}", ""]
     lines += [leaderboard_md(summary), ""]
@@ -354,8 +353,3 @@ def publish(folder: str, summary: dict, target: str) -> list[str]:
     svg = os.path.join(target, "chart.svg")
     shutil.copyfile(os.path.join(folder, "chart.svg"), svg)
     return [md, svg]
-
-
-def paths_root() -> str:
-    from .. import paths
-    return paths.ROOT
