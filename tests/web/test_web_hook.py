@@ -119,9 +119,9 @@ def test_a_note_from_the_panel_is_saved_like_a_chat_note(cfg, db, scripted, bus)
     brain.close()
     with open(os.path.join(brain.log.dir, "feedback.md"), encoding="utf-8") as f:
         lines = f.read().splitlines()
-    assert lines == [f"- ({ack['context']}) keep Chinook for their attack",
-                     f"- (turn {brain.turn}, right after decision #{last['id']}) and use Shura",
-                     "- (turn 1, right after decision #3) about an earlier one"]
+    assert lines == [f"- ({ack['context']}; from Web panel) keep Chinook for their attack",
+                     f"- (turn {brain.turn}, right after decision #{last['id']}; from Opponent) and use Shura",
+                     "- (turn 1, right after decision #3; from Web panel) about an earlier one"]
     with open(os.path.join(brain.log.dir, "game.md"), encoding="utf-8") as f:
         assert "**Web panel feedback**" in f.read()
     acks = [m for m in bus.backlog(gid) if m["type"] == "feedback_ack"]

@@ -1414,7 +1414,7 @@ async function showGames() {
 function fmtStarted(s) {
   if (!s) return "";
   const d = typeof s === "number" ? new Date(s * 1000) : new Date(String(s).replace(" ", "T"));
-  if (isNaN(d)) return String(s);
+  if (isNaN(d)) return esc(String(s));
   return d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 function renderGames(open) {

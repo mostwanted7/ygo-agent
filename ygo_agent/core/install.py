@@ -74,7 +74,8 @@ class EdoproInstall:
         """`root`, else $YGO_AGENT_EDOPRO, else ~/Games/ProjectIgnis."""
         root = os.path.abspath(os.path.expanduser(root or os.environ.get(ENV_VAR) or DEFAULT_EDOPRO_DIR))
         if not os.path.isdir(root):
-            raise InstallError(f"EDOPro directory not found: {root} (set {ENV_VAR} or pass --edopro)")
+            raise InstallError(f"EDOPro directory not found: {root} (set edopro_dir in config.local.toml, pass "
+                               f"--edopro-dir, or set ${ENV_VAR})")
         return cls(root, cls._read_repos(root))
 
     @staticmethod

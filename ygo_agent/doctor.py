@@ -6,7 +6,6 @@ is off. `run()` calls them in order and turns an unexpected exception into a FAI
 completes; `main()` prints it (`--json` for scripts) and exits 1 when anything failed.
 """
 
-import importlib.util
 import json
 import os
 import shutil
@@ -20,6 +19,7 @@ import urllib.error
 import urllib.request
 from dataclasses import asdict, dataclass
 
+from .agent.rules import load_rules
 from . import decks, paths
 from .config import ConfigError, DEFAULT_PATH, LOCAL_PATH, load_config
 
@@ -336,14 +336,16 @@ def check_backends(setup):
 
 
 def _rules_error(folder):
-    """Why a deck's rules.py doesn't import (decks.listing only says that it doesn't)."""
+    """Why a deck's rules.py doesn't import, or None when it does (the listing only parses it; the doctor is the
+    one command that imports every deck's rules to check them)."""
     path = os.path.join(folder, "rules.py")
+    if not os.path.isfile(path):
+        return None
     try:
-        spec = importlib.util.spec_from_file_location(f"_doctor_rules_{os.path.basename(folder)}", path)
-        spec.loader.exec_module(importlib.util.module_from_spec(spec))
+        load_rules(path)
     except Exception as e:
         return f"{type(e).__name__}: {e}"
-    return "could not be imported"
+    return None
 
 
 def check_decks(setup):
@@ -368,8 +370,8 @@ def check_decks(setup):
         if row.get("clash") == "clash":
             out.append(Result(name, FAIL, f"{detail}; a deck of this name is in both deck dirs",
                               'rename one, or set [decks] prefer = "user" or "repo" in config.local.toml'))
-        elif row["rules"] is None:
-            out.append(Result(name, FAIL, f"{detail}; rules.py: {_rules_error(folder)}",
+        elif (error := _rules_error(folder)) is not None:
+            out.append(Result(name, FAIL, f"{detail}; rules.py: {error}",
                               f"fix {short(os.path.join(folder, 'rules.py'))} so that it imports"))
         elif not row["ydk_ok"]:
             out.append(Result(name, FAIL, f"{detail} (missing)",

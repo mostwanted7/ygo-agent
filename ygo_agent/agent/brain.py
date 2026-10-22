@@ -234,7 +234,10 @@ class DuelBrain:
         if msg.startswith("!"):
             self.feedback += 1
             context = f"turn {self.turn}, right after decision #{self.last_decision}"
-            self.log.feedback(msg[1:].strip(), context, who="Spectator" if source == "spectator" else "Opponent")
+            author = "Spectator" if source == "spectator" else "Opponent"
+            if ev.get("name"):
+                author += f" {ev['name']}"
+            self.log.feedback(msg[1:].strip(), context, who=author)
             self.say_queue.append(f"Noted feedback #{self.feedback}.")
         else:
             self.add_line(f'{who} says in chat: "{msg}"')

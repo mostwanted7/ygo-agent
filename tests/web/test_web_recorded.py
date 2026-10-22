@@ -159,7 +159,7 @@ def test_feedback_notes_land_after_their_decision(played, db):
     ack = recorded.append_feedback(game_dir, "Chinook should wait", decision=5)
     assert ack["context"].endswith("right after decision #5") and ack["context"].startswith("turn ")
     with open(os.path.join(game_dir, "feedback.md"), encoding="utf-8") as f:
-        assert f.read().endswith(f"- ({ack['context']}) Chinook should wait\n")
+        assert f.read().endswith(f"- ({ack['context']}; from Web panel) Chinook should wait\n")
     msgs = recorded.load_game(game_dir, db)
     k = next(i for i, m in enumerate(msgs) if m["type"] == "feedback_ack")
     assert msgs[k - 1]["type"] == "reply" and msgs[k - 1]["id"] == 5 and msgs[k]["text"] == "Chinook should wait"

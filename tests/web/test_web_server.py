@@ -208,7 +208,7 @@ def test_feedback_for_a_recorded_game(panel):
     status, out = post(panel, {"game_id": f"rec:{panel.game}", "seat": 0, "decision": 4, "text": "  pass here  "})
     assert status == 200 and not out["live"] and out["n"] == 1 and out["context"].endswith("right after decision #4")
     with open(os.path.join(panel.game_dir, "feedback.md"), encoding="utf-8") as f:
-        assert f.read() == f"- ({out['context']}) pass here\n"
+        assert f.read() == f"- ({out['context']}; from Web panel) pass here\n"
     assert post(panel, {"game_id": f"rec:{panel.game}", "text": "   "})[0] == 400
     assert post(panel, {"game_id": "rec:nope", "text": "x"})[0] == 404
     assert post(panel, {"game_id": f"rec:{panel.game}", "text": "x", "decision": "seven"})[0] == 400
@@ -221,7 +221,7 @@ def test_feedback_for_a_live_game_goes_through_its_seat(panel, cfg, db, scripted
     assert status == 200 and out["live"] and out["context"] == f"turn {brain.turn}, right after decision #{brain.last_decision}"
     brain.close()
     with open(os.path.join(brain.log.dir, "feedback.md"), encoding="utf-8") as f:
-        assert f.read() == f"- ({out['context']}) don't Veiler my Stratos\n"
+        assert f.read() == f"- ({out['context']}; from Web panel) don't Veiler my Stratos\n"
     assert any(m["type"] == "feedback_ack" and m["who"] == "Web panel" for m in BUS.backlog(gid))
 
 
@@ -236,7 +236,7 @@ def test_feedback_for_a_demo_goes_to_the_recorded_folder(panel):
     assert status == 200 and not out["live"] and out["context"] == "turn 1, right after decision #2"
     assert any(m["type"] == "feedback_ack" for m in BUS.backlog("demo:x:1"))
     with open(os.path.join(panel.game_dir, "feedback.md"), encoding="utf-8") as f:
-        assert f.read().endswith("- (turn 1, right after decision #2) noted in a demo\n")
+        assert f.read().endswith("- (turn 1, right after decision #2; from Web panel) noted in a demo\n")
 
 
 @pytest.mark.skipif(not shutil.which("node"), reason="node not installed")

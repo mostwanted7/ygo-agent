@@ -158,7 +158,7 @@ def test_logs_review_and_notes(coached, bus, cfg, db):
     with open(os.path.join(folder, "feedback.md"), encoding="utf-8") as f:
         notes = f.read().splitlines()
     assert notes[0].startswith("- (coach game, turn ") and notes[0].endswith("the coach should keep Veiler")
-    assert notes[1] == f"- ({ack['context']}) a note from the panel" and "coach game" in ack["context"]
+    assert notes[1] == f"- ({ack['context']}; from Web panel) a note from the panel" and "coach game" in ack["context"]
     # game.md marks the human's own moves and the coach's advice.
     md = open(os.path.join(folder, "game.md"), encoding="utf-8").read()
     assert "> **human** (" in md and "🎓 **Coach**" in md and "**Player feedback**" in md

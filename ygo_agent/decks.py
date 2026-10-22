@@ -14,6 +14,7 @@ one wins, so a deck never silently shadows another.
 
 from __future__ import annotations
 
+import ast
 import glob
 import json
 import os
@@ -145,12 +146,20 @@ def deck_settings(folder: str, key: str, cfg: dict | None = None) -> dict:
 
 
 def rules_count(folder: str) -> int | None:
-    """How many functions the deck's rules.py lists in RULES (0 without a rules.py, None if it doesn't load)."""
-    from .agent.rules import load_rules
+    """How many entries the deck's rules.py lists in RULES (0 without a rules.py, None if it doesn't parse or
+    RULES isn't a literal list). Read with `ast`, not imported: a listing shouldn't run every deck's code."""
+    path = os.path.join(folder, "rules.py")
+    if not os.path.isfile(path):
+        return 0
     try:
-        return len(load_rules(os.path.join(folder, "rules.py")))
-    except Exception:  # a listing must survive one deck's broken rules.py, whatever the error
+        with open(path, encoding="utf-8") as f:
+            tree = ast.parse(f.read(), path)
+    except (OSError, SyntaxError, ValueError):
         return None
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "RULES" for t in node.targets):
+            return len(node.value.elts) if isinstance(node.value, (ast.List, ast.Tuple)) else None
+    return 0
 
 
 def target(name: str, into: str, cfg: dict | None = None) -> str:

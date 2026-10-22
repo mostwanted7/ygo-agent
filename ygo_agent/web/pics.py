@@ -6,6 +6,7 @@ import json
 import os
 import threading
 import time
+import urllib.parse
 import urllib.request
 
 from .. import paths
@@ -29,6 +30,8 @@ def pic_urls(edopro_dir):
         for e in entries:
             if isinstance(e, dict) and e.get("type") == "pic" and e.get("url"):
                 url = EDOPRO_DEFAULT_PICS if e["url"] == "default" else e["url"]
+                if urllib.parse.urlsplit(url).scheme not in ("http", "https"):
+                    continue  # a file:// or ftp:// template from a tampered config isn't a picture site
                 if url not in urls:
                     urls.append(url)
     return urls or [EDOPRO_DEFAULT_PICS]

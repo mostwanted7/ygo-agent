@@ -10,7 +10,7 @@ import os
 import re
 import threading
 
-from ..agent.gamelog import same_pick
+from ..agent.gamelog import one_line, same_pick
 from .render import Renderer
 
 DECISION = re.compile(r"^\*\*Decision #(\d+)\*\* — (.*)$")
@@ -372,5 +372,5 @@ def append_feedback(game_dir, text, decision=None, turn=None):
     context = f"turn {turn if turn is not None else '?'}, right after decision #{decision if decision else '?'}"
     path = os.path.join(game_dir, "feedback.md")
     with open(path, "a", encoding="utf-8") as f:
-        f.write(f"- ({context}) {text}\n")
+        f.write(f"- ({context}; from Web panel) {one_line(text)}\n")
     return {"n": len(read_feedback(game_dir)), "context": context}

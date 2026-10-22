@@ -36,6 +36,11 @@ def slug(text, limit=24):
     return text[:limit].strip("-") or "unknown"
 
 
+
+def one_line(text, limit=4000):
+    """A note or a name as one line of at most `limit` characters (newlines and control characters collapsed)."""
+    return " ".join(str(text).split())[:limit]
+
 def unique_dir(parent, name):
     """Create parent/name, or name-2, name-3... if a game already started in the same second."""
     os.makedirs(parent, exist_ok=True)
@@ -350,12 +355,16 @@ class GameLog:
             self._flush()
 
     def feedback(self, text, context, who="Opponent"):
+        """A note for whoever improves the deck. The file line names its author, because anyone in the room
+        (the opponent, a spectator) can type one; and it is one line, so a note can't forge another entry."""
+        text = one_line(text)
+        who = one_line(who)[:80] or "Opponent"
         if self.echo != "off":
             self.say("", paint(BOLD + ";" + YELLOW, f"  ✍ feedback noted: {text}"))
         with self._lock:
             path = os.path.join(self.dir, "feedback.md")
             with open(path, "a", encoding="utf-8") as f:
-                f.write(f"- ({context}) {text}\n")
+                f.write(f"- ({context}; from {who}) {text}\n")
             if not self.md.closed:  # a note from the panel can come after the game's log was closed
                 self.md.write(f"\n> ✍ **{who} feedback** ({context}): {text}\n\n")
                 self._flush()
