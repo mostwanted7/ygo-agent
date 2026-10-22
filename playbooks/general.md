@@ -12,5 +12,14 @@
   Battle Phase, go to Main Phase 2 first: ending the turn from the Battle Phase skips your last chance to Set.
   Hand traps (monster effects like Effect Veiler) are different: they work from the hand on either turn.
 - In response windows, passing ([]) is usually right unless responding gains something concrete. Don't waste
-  hand traps or once-per-turn effects on low-value targets.
+  hand traps or once-per-turn effects on low-value targets. Judge a starter by what it enables, not its ATK:
+  interrupt it when it can establish a lock or threat your remaining answers cannot handle.
+- Before saving a negate for later, check its activation requirements, the opposing effect's activation location
+  (field, hand, GY), and your available costs. An on-field monster-effect negate is not an answer to a hand effect.
+- "Unaffected by card effects" does not bypass restrictions imposed on players, nor protect against battle with
+  an opponent whose ATK was boosted. Check attack legality and material requirements before counting damage.
+- Optional "When ...: You can ..." triggers can miss timing if their event is not the last thing to happen before
+  triggers can activate (e.g. lower Chain Links still resolve). Do not apply this timing rule to optional "If" triggers.
+- Check each monster's current ATK/DEF and effect conditions separately; shared archetype or Level does not mean
+  shared stats or guaranteed recovery when removed.
 - You cannot see the opponent's hand or face-down cards. Don't assume what they are; play around likely threats.

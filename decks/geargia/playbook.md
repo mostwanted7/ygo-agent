@@ -25,9 +25,11 @@ sudden OTKs: Limiter Removal (one or two) on your Machines, finished with Gagaga
   either position. Destroyed by battle or effect → the other Gadget from the Deck. Both effects share
   one use per turn: after its summon effect it doesn't float that turn.
 - **Geargiagear** (Normal Trap, 1 per turn): two Geargiano-type monsters from the Deck at Lv4. Needs 2 still in the
-  Deck and 2 free Monster Zones.
+  Deck and 2 free Monster Zones. It changes Levels, not ATK/DEF: Geargiano has 1000 DEF, Mk-II only 500.
+  Check each body's actual stats before relying on them as blockers.
 - **Gear Gigant X**: detach → a Lv4-or-lower Machine (a Gadget too) from Deck or GY (once per turn per copy). When it
-  leaves the field face-up, any way → revive a Lv3-or-lower Geargia from your GY.
+  leaves the field face-up, its optional "When" effect can revive a Lv3-or-lower Geargia from your GY. Don't count
+  on this after it is Tributed for a summon or sent as a cost: leaving the field is not the last event, so it misses timing.
 - **Other Rank 4s.** Answers: Dark Rebellion (its materials have no other use: halve their best monster the turn
   you make it; both changes last), Castel, Number 101, Tornado Dragon, Photon Papilloperative, Ouroboros. Walls:
   Cairngorgon, Steelswarm Roach, Abyss Dweller, Shock Master (locks the declared type for BOTH players: never Trap

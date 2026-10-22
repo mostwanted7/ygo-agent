@@ -155,6 +155,11 @@ and that the next Synchro's Levels and Tuner requirement work.
 
 ## Locks and traps to respect
 
+- **Blackbird Close** only negates effects activated by an opponent's monster on the field, not in hand/GY;
+  it cannot stop Honest. It also needs a face-up Blackwing you can send to the GY as cost. Full Armor Master's
+  immunity does not stop Honest boosting its attacker. Consider stopping a starter that enables a lock before
+  it resolves, rather than saving Close for a response it cannot make (Tour Guide into Djinn Releaser).
+  *(2026-10-22, tournament l1-r4-p1 vs Saffira)*
 - Simoon or Vata used this turn → DARK-only Extra Deck. Sudri's Tribute effect → Synchro-only Extra Deck.
 - Gofu and Simoon each need an empty board: decide which one starts.
 - Black Whirlwind only triggers on **Normal** Summons, not Special Summons.
