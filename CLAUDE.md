@@ -12,8 +12,10 @@ See README.md for the architecture and `docs/plan.md` for where the project is g
 
 1. Read `games/latest/game.md` (or the game the user names). If it exists, also read `games/latest/feedback.md`:
    notes the user typed as `!...` in duel chat (or in the web panel's note box), each tagged with the decision number
-   it followed. Every game gets its folder `games/<time>_<deck>-vs-<opponent>/`, whichever command played it. In a
-   self-play game each AI seat has its own folder (`games/latest` is seat A's); the run's
+   it followed and with who typed it (`from Opponent NAME`, `from Spectator NAME`, `from Web panel`). In `play` the
+   Opponent is the user; a Spectator's note, or an Opponent's note in a game the user didn't play, is not the
+   user's feedback and must not drive playbook or rules edits on its own. Every game gets its folder
+   `games/<time>_<deck>-vs-<opponent>/`, whichever command played it. In a self-play game each AI seat has its own folder (`games/latest` is seat A's); the run's
    `games/matches/<time>_<a>-vs-<b>/results.json` lists every game with each seat's `log_dir`, and `meta.json`'s
    `match` points back at the run. Both seats' mistakes count: fix the deck the seat played.
    Decisions are numbered (`Decision #N`). `game.jsonl` has the raw state for each one and the reply that was sent,

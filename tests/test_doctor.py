@@ -145,7 +145,6 @@ def fake(tmp_path, monkeypatch):
     fork = tmp_path / "windbot-src"
     monkeypatch.setattr(paths, "WINDBOT", str(fork))
     monkeypatch.setattr(paths, "WINDBOT_EXE", str(fork / "bin" / "Release" / "WindBot.exe"))
-    monkeypatch.setattr(windbot, "FORK_EXE", str(fork / "bin" / "Release" / "WindBot.exe"))
     repo_decks = tmp_path / "repo-decks"
     make_deck(repo_decks, "fake")
     monkeypatch.setattr(paths, "DECKS", str(repo_decks))

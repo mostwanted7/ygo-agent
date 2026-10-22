@@ -19,6 +19,7 @@ import inspect
 import logging
 import random
 import socket
+import struct
 import time
 from collections import Counter
 from collections.abc import Awaitable, Callable
@@ -321,7 +322,9 @@ class Room:
                 handler(self, c, data)
             else:
                 log.debug("unhandled %s from %r", P.PACKET_NAMES.get(pid, hex(pid)), c)
-        except P.ProtocolError as e:
+        except (ValueError, struct.error, IndexError, UnicodeError) as e:
+            # ProtocolError and BufferUnderrun are ValueErrors; the rest is what a malformed payload raises in a
+            # handler's own parsing. The packet is dropped and the client stays, as in EDOPro's host.
             log.warning("bad packet %s from %r: %s", P.PACKET_NAMES.get(pid, pid), c, e)
 
     def on_player_info(self, c: Client, data: bytes) -> None:

@@ -241,17 +241,19 @@ Status: ☐ todo · ◐ in progress · ☑ done (verified by the orchestrator)
   advice, both seats in self-play, and a feedback box that does the job of `!note`.
 - It should be good enough for a demo GIF.
 
-### Stage 9: Polish and publish ☐
+### Stage 9: Polish and publish ◐ (polish done 2026-10-22; publishing waits for the user)
 - **Deck storage, agreed with the user (2026-10-21).** The repo ships curated decks in `decks/<name>/`:
   playbook, rules, tests, ydk, deck.json and train-report.md. `decks/*/train/` is gitignored, apart from the
   report, because it holds logs, prompts, copied scripts and card text. User-trained decks go to a
   personal decks dir (e.g. `~/.local/share/ygo-agent/decks/`, configurable), which is also searched, so
   training never dirties the repo and updates never clobber it. Sharing a deck is a deliberate copy into
   `decks/` plus a PR. `train` writes to the user dir by default (`--into repo` writes to `decks/`).
-- `ygo-agent doctor`: checks the EDOPro dir, core version, scripts, mono, the fork build and backends.
-- Docs: `architecture.md`, adding a deck, adding a backend. README with diagram, demo GIF, bench table and
+- ☑ `ygo-agent doctor`: checks the EDOPro dir, core version, scripts, mono, the fork build and backends.
+- ☑ Docs: `architecture.md`, adding a deck, adding a backend. README with diagram, demo GIF, bench table and
   quick start.
-- GitHub Actions: unit tests, plus a C# fork build if feasible.
+- ☑ GitHub Actions: unit tests (3.11-3.13), plus the C# fork build in the mono image.
+- ☑ Review pass: one card-db reader, the exam split into a package, leaks and races fixed, security findings
+  applied (see the Status below).
 - Publish, **only after the user confirms**:
   1. fork `ProjectIgnis/windbot` → `mostwanted7/windbot` and push branch `brain-bridge`;
   2. add `windbot-src` as a submodule;
@@ -352,10 +354,10 @@ Status: ☐ todo · ◐ in progress · ☑ done (verified by the orchestrator)
 - Optional fields: `ctr`, `sc`, `blv`, `own`, `uid`. Optional events: `confirm`, `equip`, `swap`, `counter`,
   `coin`, `dice`, `declared`, and `flip` on summoning.
 - Arena CLI: `agent:<deck>[:<backend>]` seats, `--pace`, `--games-dir`, `--chat`.
-- Open: (1) `brain.py` counts a false rollover when rules answered a turn's first decisions;
-  (2) `event_ids` ignores `confirm.cards`, so revealed cards' texts aren't added to the prompt;
-  (3) two Xyz-procedure options read identically. Brain fallbacks are only `place` (about 16%, as in the
-  bridge). The LAN test binds UDP 7920, so deselect it while an arena is running.
+- Open points (1) a false rollover when rules answered a turn's first decisions, (2) `confirm.cards` texts
+  missing from the prompt and (3) identical Xyz-procedure options were all fixed by Stage 4 (checked in the
+  2026-10-22 review, each with a test). Brain fallbacks are only `place` (about 16%, as in the bridge). The
+  LAN test binds UDP 7920, so deselect it while an arena is running.
 
 **Stage 4.**
 - `ygo_agent/match.py` is the API that Stages 5, 6 and 7 build on:
@@ -373,8 +375,8 @@ Status: ☐ todo · ◐ in progress · ☑ done (verified by the orchestrator)
 - Stats change: native seats' zone placements count as `auto`, not `fallback`.
 - Sonnet vs Sonnet (Saffira vs Blackwing): Blackwing won in 15 turns, 16 min, about $4.8, with 1 invalid
   reply out of 351 and 0 fallbacks. The play looked sensible.
-- Gaps: spectating with the real EDOPro GUI is unchecked; the spectator gate holds only game 1 of a Bo3;
-  WindBot seats can't be paced.
+- Gaps: WindBot seats can't be paced (they answer over the network). The spectator gate is per match, by
+  design (games 2-3 of a Bo3 follow siding). Spectating from the EDOPro GUI was checked by the user.
 
 **User GUI checks after Stage 4 (2026-10-21).**
 - `ygo-agent play --deck saffira --backend opus --web`: the user played Geargia against the AI and lost.
@@ -393,8 +395,8 @@ Status: ☐ todo · ◐ in progress · ☑ done (verified by the orchestrator)
   - 0 invalid replies out of 1,811.
 - Extend the pilot after the usage reset: raise the counts in `readme.toml`, then `ygo-agent bench readme --resume`.
 - Opponent strength scan: heuristic win rate against Branded 0%, Blue-Eyes 5%, Time Thief 25%, Dragunity 70%.
-- Both bench and trainer patch `room._ask_first` through `on_room` to force who goes first. Stage 9:
-  add a proper `first=` / `RoomConfig.first` and use it in both.
+- Bench and trainer force who goes first through `RoomConfig.first` (`first=` in `run_games`); the old
+  `room._ask_first` monkeypatch is gone.
 
 **Stage 6 (trainer).**
 - `ygo_agent/trainer/` (dossier, goldfish, lab, games, review, llm, report) and the commands
@@ -482,10 +484,23 @@ Usage window nearly exhausted, so this waits for the reset. Then:
 - **Opus is the play model** (exam: 3.73 vs Sonnet 3.30 vs Haiku 3.15; 0.2 vs 1.0 vs 2.0 mistakes per game).
   `decks/geargia` is the user's Gadget Geargia list.
 - Open:
-  - the user's coached Gadget Geargia game (coach mode has never had a real human);
+  - more coached games from the EDOPro GUI (the user played two on 2026-10-22);
   - the attack note still misses non-negating locks (Spellbinding Circle, Swords). An exact fix needs
     card-target links in the decision JSON, i.e. a C# change;
   - `train-compare` for Geargia (now with Opus as the player);
   - local models on the desktop: exam → hybrid routing (local model for routine decisions, escalate hard
     ones to Opus) → maybe distillation (fine-tune on logged Opus decisions);
-  - Stage 9 polish (user's session); publishing (needs confirmation).
+  - publishing (needs confirmation).
+
+## Status 2026-10-22 (polish pass): reviewed, ready to publish after the user's look
+- Review pass by six agents in parallel worktrees plus a read-only security scan, squash-merged in logical
+  commits (`git log` from c6bb66f): CI; the exam judge transcripts dropped (local paths, session ids, account
+  telemetry); the agent core (one card-db reader on `core/`, session cleanup); the exam split into
+  `ygo_agent/bench/exam/`; README and docs (architecture, adding a deck, adding a backend, demo GIF, smaller
+  images); `ygo-agent doctor`; coach and web (bounded POSTs, stalled streams, a renderer race); the arena
+  (leaked log files, a reset timer, LAN discovery scope); the security fixes (notes name their author, http(s)
+  only for pictures, rules counted without importing, malformed packets dropped).
+- Security verdict: a local tool; the room is bound on every interface without a password by default for
+  rooms a human joins (debatable, left as is), everything else is loopback; secrets never reach logs.
+- Debatable items were listed for the user rather than changed (the session's final report).
+- Publishing (the WindBot fork, the submodule, the public repo) still waits for the user's confirmation.

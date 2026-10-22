@@ -26,6 +26,19 @@ python3 -m venv .venv && .venv/bin/pip install -e '.[dev]'    # the ygo-agent co
 .venv/bin/ygo-agent play                                      # hosts a room and prints where it is
 ```
 
+`doctor` prints one line per check (Python, config, the EDOPro dir, libocgcore, card databases, scripts, mono, the
+WindBot fork, every backend profile, every deck, the ports) with a hint under anything that isn't `ok`:
+
+```
+ok    edopro                  ~/Games/ProjectIgnis (the default in config/default.toml); repositories: Project Ignis updates, ...
+ok    core                    ~/Games/ProjectIgnis/repositories/delta-bagooska/bin/libocgcore.so: ocgcore API 11.0
+ok    cards                   21 .cdb files, 24932 cards; strings.conf found
+warn  backend api-opus        anthropic: model opus; $ANTHROPIC_API_KEY is not set
+                              → export ANTHROPIC_API_KEY=<your key> in the shell that runs ygo-agent (the key is never logged)
+ok    deck blackwing          repo: playbook 13.0 KB, 1 rule, 3 cases, ydk decks/blackwing/deck.ydk
+21 ok, 2 warnings, 0 failures
+```
+
 Then in EDOPro: **LAN Mode**, type the Host address `127.0.0.1` and port `7911`, **Join**. Type the address rather
 than waiting for the room list: EDOPro may not list the room, and its LAN Refresh button can crash EDOPro. Pick your
 deck, ready up, and the duel starts. You get 600 s per turn (`--time-limit`); the AI has no limit. EDOPro offers a
