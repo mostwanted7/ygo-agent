@@ -20,3 +20,6 @@ tests/build/
 # trainer workspaces (logs, prompts, copied scripts); only the report ships
 decks/*/train/*
 !decks/*/train/train-report.md
+
+# Claude Code worktrees of subagents
+.claude/worktrees/
