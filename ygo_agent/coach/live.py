@@ -23,7 +23,7 @@ import traceback
 from dataclasses import dataclass, field
 
 from ..agent.brain import card_key
-from ..agent.gamelog import BOLD, CYAN, DIM, GREEN, MAGENTA, RED, YELLOW, emit, paint, same_pick
+from ..agent.gamelog import BOLD, CYAN, DIM, GREEN, MAGENTA, RED, YELLOW, paint, same_pick
 from ..agent.prompts import SCHEMA
 from ..arena.native_seat import SeatWatcher
 from ..arena.server import RoomObserver

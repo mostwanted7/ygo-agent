@@ -13,6 +13,7 @@ from .. import paths
 # What EDOPro means by "url": "default" for card pictures (config/configs.json).
 EDOPRO_DEFAULT_PICS = "https://pics.projectignis.org:2096/pics/{}.jpg"
 RETRY_AFTER = 600  # seconds before a failed download is tried again
+MAX_BYTES = 4 << 20  # a card picture is well under 1 MB; anything bigger isn't one
 MAGIC = (b"\xff\xd8\xff", b"\x89PNG")
 
 
@@ -66,25 +67,27 @@ class PicStore:
             return data, "image/png" if data.startswith(MAGIC[1]) else "image/jpeg"
         return self.placeholder(code).encode("utf-8"), "image/svg+xml"
 
+    def failed_recently(self, code):
+        with self._lock:
+            return time.time() - self._failed.get(code, 0) < RETRY_AFTER
+
     def download(self, code):
         if not self.fetch_enabled or not self.urls:
             return None
         with self._lock:
-            if time.time() - self._failed.get(code, 0) < RETRY_AFTER:
-                return None
             lock = self._locks.setdefault(code, threading.Lock())
         with lock:  # one download per card, however many browser requests ask for it
             path = self.local(code)
-            if path:
+            if path or self.failed_recently(code):
                 return path
             for url in self.urls:
                 try:
                     req = urllib.request.Request(url.replace("{}", str(code)), headers={"User-Agent": "ygo-agent"})
                     with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-                        data = resp.read()
+                        data = resp.read(MAX_BYTES + 1)
                 except (OSError, ValueError):
                     continue
-                if data.startswith(MAGIC):
+                if len(data) <= MAX_BYTES and data.startswith(MAGIC):
                     os.makedirs(self.cache_dir, exist_ok=True)
                     ext = "png" if data.startswith(MAGIC[1]) else "jpg"
                     path = os.path.join(self.cache_dir, f"{code}.{ext}")

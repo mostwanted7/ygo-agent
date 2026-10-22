@@ -191,3 +191,15 @@ def test_the_coach_prompt(coached, db):
     assert "piloting" not in prompt and "playing a duel as a bot" not in prompt
     terse = Profile("saffira", db, coach.cfg).system_prompt("coach", "MR3", level="intermediate")
     assert "one terse sentence" in terse and "new to this deck" not in terse
+
+
+def test_a_review_of_a_game_without_decisions(cfg, db, tmp_path):
+    """A duel that ended before the human faced a decision (an early surrender) still gets a well-formed review."""
+    from ygo_agent.coach.review import write_review
+    folder = tmp_path / "games" / "2026-01-01_000000_saffira-vs-nobody"
+    folder.mkdir(parents=True)
+    (folder / "game.jsonl").write_text("", encoding="utf-8")
+    (folder / "meta.json").write_text(json.dumps({"deck": "saffira", "mode": "coach"}), encoding="utf-8")
+    path, markdown, _ = write_review(str(folder), cfg, db, backend(cfg, "heuristic"))
+    assert os.path.isfile(path) and markdown.startswith("# Coach review: saffira vs the opponent")
+    assert "## Key moments\n\n(none)" in markdown and "did not finish" in (folder / "review-prompt.md").read_text()

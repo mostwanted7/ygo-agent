@@ -95,26 +95,9 @@ def test_card_pictures_local_placeholder_and_download(panel, db, tmp_path):
     status, ctype, body = get(panel, f"/card/{other}.jpg")
     assert status == 200 and ctype == "image/svg+xml" and db.name(other).split()[0].encode() in body
 
-    hits = []
-
-    class Pics(BaseHTTPRequestHandler):
-        def log_message(self, *a):
-            pass
-
-        def do_GET(self):
-            hits.append(self.path)
-            ok = self.path == f"/pics/{other}.jpg"
-            self.send_response(200 if ok else 404)
-            self.send_header("Content-Length", str(len(JPEG) if ok else 0))
-            self.end_headers()
-            if ok:
-                self.wfile.write(JPEG)
-
-    remote = ThreadingHTTPServer(("127.0.0.1", 0), Pics)
-    threading.Thread(target=remote.serve_forever, daemon=True).start()
+    remote, hits = picture_server({f"/pics/{other}.jpg": JPEG})
     try:
-        store = PicStore(str(tmp_path / "edopro"), db=db, cache_dir=str(tmp_path / "cache"),
-                         urls=[f"http://127.0.0.1:{remote.server_address[1]}/pics/{{}}.jpg"])
+        store = PicStore(str(tmp_path / "edopro"), db=db, cache_dir=str(tmp_path / "cache"), urls=[remote])
         assert store.get(other) == (JPEG, "image/jpeg")
         assert os.path.exists(tmp_path / "cache" / f"{other}.jpg")
         assert store.get(other)[0] == JPEG and len(hits) == 1  # cached
@@ -122,8 +105,54 @@ def test_card_pictures_local_placeholder_and_download(panel, db, tmp_path):
         assert store.get(missing)[1] == "image/svg+xml" and store.get(missing)[1] == "image/svg+xml"
         assert len(hits) == 2  # a failed download isn't retried right away
     finally:
-        remote.shutdown()
-        remote.server_close()
+        hits.stop()
+
+
+def picture_server(pictures):
+    """A picture site serving `pictures` ({path: bytes}, 404 elsewhere): (its URL template, the paths requested;
+    `.stop()` shuts it down)."""
+    class Hits(list):
+        pass
+
+    class Pics(BaseHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+        def do_GET(self):
+            hits.append(self.path)
+            data = pictures.get(self.path)
+            self.send_response(200 if data else 404)
+            self.send_header("Content-Length", str(len(data or b"")))
+            self.end_headers()
+            if data:
+                self.wfile.write(data)
+
+    hits = Hits()
+    remote = ThreadingHTTPServer(("127.0.0.1", 0), Pics)
+    threading.Thread(target=remote.serve_forever, daemon=True).start()
+    hits.stop = lambda: (remote.shutdown(), remote.server_close())
+    return f"http://127.0.0.1:{remote.server_address[1]}/pics/{{}}.jpg", hits
+
+
+def test_an_oversized_picture_is_not_kept(db, tmp_path, monkeypatch):
+    from ygo_agent.web import pics
+    monkeypatch.setattr(pics, "MAX_BYTES", len(JPEG) - 1)
+    code = next(iter(db.cards))
+    remote, hits = picture_server({f"/pics/{code}.jpg": JPEG})
+    try:
+        store = PicStore(str(tmp_path / "edopro"), db=db, cache_dir=str(tmp_path / "cache"), urls=[remote])
+        assert store.get(code)[1] == "image/svg+xml" and len(hits) == 1
+        assert not os.path.exists(tmp_path / "cache")
+    finally:
+        hits.stop()
+
+
+def test_post_bodies_are_bounded(panel):
+    note = {"game_id": f"rec:{panel.game}", "text": "x"}
+    assert post(panel, note, headers={"Content-Length": str(web.MAX_BODY + 1)})[0] == 413
+    assert post(panel, note, headers={"Content-Length": "lots"})[0] == 400
+    assert post(panel, {**note, "decision": float("inf")})[0] == 400  # JSON's Infinity: no OverflowError traceback
+    assert post(panel, note)[0] == 200
 
 
 def test_edopro_picture_urls(tmp_path):

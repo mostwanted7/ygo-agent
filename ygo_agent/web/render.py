@@ -1,6 +1,9 @@
 """Display text for bus messages, in the words describe.py uses, so the panel reads like game.md and like the prompt
 the model saw. The bus runs every live message through a Renderer; the recorded-game loader uses one too."""
 
+import collections
+import threading
+
 from ..agent.brain import chat_source, event_ids
 from ..agent.describe import Describer
 
@@ -25,48 +28,67 @@ def chat_line(ev):
 
 
 class Renderer:
+    """Seats publish from their own threads, and a Describer keeps state between events (a Summon in its negation
+    window, an open chain), so each (game, seat) gets its own, and the card briefs are tracked per game."""
+
+    MAX_GAMES = 32  # the state of older games is forgotten (a looping demo makes a new game id each time)
+
     def __init__(self, db):
         self.db = db
-        self.describer = Describer(db)
-        self._seen = {}  # game_id -> card ids whose brief was already sent with that game
+        self._lock = threading.Lock()
+        self._describers = collections.OrderedDict()  # (game_id, seat) -> Describer
+        self._seen = collections.OrderedDict()        # game_id -> card ids whose brief was already sent
+
+    def describer(self, msg):
+        key = (msg.get("game_id"), msg.get("seat", 0))
+        with self._lock:
+            if key not in self._describers:
+                if len(self._describers) >= 2 * self.MAX_GAMES:
+                    self._describers.popitem(last=False)
+                self._describers[key] = Describer(self.db)
+            return self._describers[key]
 
     def __call__(self, msg):
         kind = msg.get("type")
+        words = self.describer(msg)
         ids = set()
         if kind == "event":
             ev = msg.get("ev") or {}
             if "text" not in msg:
-                msg["text"] = self.event_text(ev)
+                msg["text"] = self.event_text(words, ev)
             ids = event_ids(ev)
             if ev.get("e") == "chaining" and "desc_text" not in msg:
                 msg["desc_text"] = self.db.desc(ev.get("desc"))
         elif kind == "decision":
             d = msg.get("decision") or {}
             if "question" not in msg:
-                msg["question"] = self.describer.question(d)
-                msg["options"] = self.describer.options(d)
+                msg["question"] = words.question(d)
+                msg["options"] = words.options(d)
             if d.get("kind") in ("select_card", "tribute", "select_unselect", "select_sum"):
-                msg.setdefault("hint_text", self.describer.hint(d))
+                msg.setdefault("hint_text", words.hint(d))
             state = d.get("state") or {}
             if state.get("me"):
-                ids = self.describer.ids_in_state(state)
+                ids = words.ids_in_state(state)
                 for link in state.get("chain") or []:
                     link.setdefault("desc_text", self.db.desc(link.get("desc")))
-            ids |= {i for i in self.describer.ids_in_decision(d) if self.db.get(i)}
+            ids |= {i for i in words.ids_in_decision(d) if self.db.get(i)}
         elif kind == "game_end" and "reason_text" not in msg:
             msg["reason_text"] = self.db.victory.get(msg.get("reason"), "")
         if ids:
-            seen = self._seen.setdefault(msg.get("game_id"), set())
-            new = sorted(i for i in ids if i and i not in seen)
-            if new:
+            with self._lock:
+                if msg.get("game_id") not in self._seen and len(self._seen) >= self.MAX_GAMES:
+                    self._seen.popitem(last=False)
+                seen = self._seen.setdefault(msg.get("game_id"), set())
+                new = sorted(i for i in ids if i and i not in seen)
                 seen.update(new)
+            if new:
                 msg["cards"] = {str(i): card_brief(self.db, i) for i in new}
         return msg
 
-    def event_text(self, ev):
+    def event_text(self, words, ev):
         if ev.get("e") == "chat":
             return chat_line(ev)
         try:
-            return self.describer.event(ev)
+            return words.event(ev)
         except (KeyError, TypeError, ValueError):
             return None

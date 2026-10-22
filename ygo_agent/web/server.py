@@ -30,7 +30,9 @@ CARD = re.compile(r"^/card/(\d{1,10})(?:\.(?:jpg|png))?$")
 CARD_INFO = re.compile(r"^/cardinfo/(\d{1,10})$")
 RECORDED = re.compile(r"^/api/recorded/([\w.+-]+)$")
 LOCAL_HOSTS = ("127.0.0.1", "localhost", "[::1]", "::1")
-HEARTBEAT = 15
+HEARTBEAT = 15   # seconds between SSE pings
+STALL = 60       # seconds a stream write may block before the browser is given up (it reconnects)
+MAX_BODY = 65536  # bytes a POST may carry (a note is 4000 characters at most)
 
 
 def card_info(db, code):
@@ -68,7 +70,7 @@ class Panel:
             seat = int(body.get("seat") or 0)
             decision = int(body["decision"]) if body.get("decision") is not None else None
             turn = int(body["turn"]) if body.get("turn") is not None else None
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             return 400, {"error": "seat, decision and turn must be numbers"}
         ack = self.bus.feedback(gid, seat, text, decision=decision, turn=turn)  # a live seat: like a !note
         if ack is not None:
@@ -171,7 +173,16 @@ class Handler(BaseHTTPRequestHandler):
         if "json" not in (self.headers.get("Content-Type") or ""):
             return self.send_json({"error": "send JSON"}, 415)
         try:
-            body = json.loads(self.rfile.read(min(int(self.headers.get("Content-Length") or 0), 65536)) or b"{}")
+            length = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            length = -1
+        if length < 0 or length > MAX_BODY:
+            self.close_connection = True  # the body stays unread, so the connection can't carry another request
+            if length < 0:
+                return self.send_json({"error": "bad Content-Length"}, 400)
+            return self.send_json({"error": "too long"}, 413)
+        try:
+            body = json.loads(self.rfile.read(length) or b"{}")
         except ValueError:
             return self.send_json({"error": "bad JSON"}, 400)
         status, out = self.panel.feedback(body if isinstance(body, dict) else {})
@@ -194,6 +205,7 @@ class Handler(BaseHTTPRequestHandler):
             after = 0
         backlog, sub = self.panel.bus.subscribe(game_id, after)
         self.close_connection = True
+        self.connection.settimeout(STALL)  # a browser that stops reading (a lid closed) frees its thread
         try:
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream; charset=utf-8")

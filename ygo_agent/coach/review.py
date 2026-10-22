@@ -7,15 +7,15 @@ Everything comes from the game folder (game.jsonl, meta.json, feedback.md), so a
 later with another backend or after the playbook changed.
 """
 
-import json
 import os
 import time
 
 from .. import backends
 from ..agent import prompts
-from ..agent.brain import event_ids
+from ..agent.brain import DuelBrain, event_ids
 from ..agent.describe import Describer
 from ..agent.gamelog import same_pick
+from ..web.recorded import read_json, read_jsonl
 
 REVIEW_SCHEMA = {
     "type": "object",
@@ -101,36 +101,13 @@ LEVELS = {"beginner": "They are new to the deck: explain each point so that the 
           "intermediate": "They know the basics of the deck: be brief and technical."}
 
 
-def read_jsonl(path):
-    rows = []
-    try:
-        with open(path, encoding="utf-8") as f:
-            for line in f:
-                try:
-                    rows.append(json.loads(line))
-                except ValueError:
-                    pass
-    except OSError:
-        pass
-    return rows
-
-
 def read_meta(game_dir):
-    try:
-        with open(os.path.join(game_dir, "meta.json"), encoding="utf-8") as f:
-            return json.load(f)
-    except (OSError, ValueError):
-        return {}
+    return read_json(os.path.join(game_dir, "meta.json"))
 
 
 def picked(options, choice):
-    if choice is None:
-        return "?"
-    if options:
-        text = ", ".join(options[k] for k in choice if 0 <= k < len(options))
-    else:
-        text = {(1,): "yes", (0,): "no"}.get(tuple(choice), str(choice))
-    return text or "pass / none"
+    """A choice in the words game.md uses ("?" for a decision that got no choice)."""
+    return "?" if choice is None else DuelBrain.picked(options, choice)
 
 
 def digest(game_dir, db, profile=None):

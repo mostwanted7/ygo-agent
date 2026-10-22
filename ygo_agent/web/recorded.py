@@ -97,6 +97,16 @@ def read_json(path):
         return {}
 
 
+def read_title(game_dir):
+    """{deck_name, started} from game.md's title line: where logs from before meta.json keep them."""
+    try:
+        with open(os.path.join(game_dir, "game.md"), encoding="utf-8") as f:
+            m = TITLE.match(f.readline().strip())
+    except OSError:
+        return {}
+    return {"deck_name": m.group(1), "started": m.group(2)} if m else {}
+
+
 def usage(info):
     """prompts.jsonl info in the normalized form (logs from before the backends refactor have Claude's raw usage)."""
     if not info:
@@ -158,14 +168,7 @@ def load_game(game_dir, db, name=None):
         prompts[p.get("id")] = {"reply": p.get("reply") or {}, "usage": info}
     replies = {r["msg"].get("id"): r["msg"] for r in rows if r.get("kind") == "reply"}
     advices = {r["msg"].get("id"): r["msg"] for r in rows if r.get("kind") == "advice"}  # coach games
-    title = {}
-    try:
-        with open(os.path.join(game_dir, "game.md"), encoding="utf-8") as f:
-            m = TITLE.match(f.readline().strip())
-            if m:
-                title = {"deck_name": m.group(1), "started": m.group(2)}
-    except OSError:
-        pass
+    title = read_title(game_dir)
     label = (meta.get("backend") or {}).get("label")
     mode = meta.get("mode", "play")
     t0 = rows[0]["ts"] if rows else 0
@@ -300,9 +303,10 @@ class Library:
 
     def summary(self, name):
         path = self.path(name)
-        jsonl = os.path.join(path, "game.jsonl")
+        if path is None:
+            return None
         try:
-            st = os.stat(jsonl)
+            st = os.stat(os.path.join(path, "game.jsonl"))
         except OSError:
             return None
         key = (st.st_size, st.st_mtime)
@@ -341,14 +345,9 @@ class Library:
                         s["result"] = RESULTS.get(ev.get("result"), "draw")
         s["decisions"], s["turns"] = decisions, turns
         if not s["deck_name"] or not s["started"]:
-            try:
-                with open(os.path.join(path, "game.md"), encoding="utf-8") as f:
-                    m = TITLE.match(f.readline().strip())
-                if m:
-                    s["deck_name"] = s["deck_name"] or m.group(1)
-                    s["started"] = s["started"] or m.group(2)
-            except OSError:
-                pass
+            title = read_title(path)
+            s["deck_name"] = s["deck_name"] or title.get("deck_name")
+            s["started"] = s["started"] or title.get("started")
         s["notes"] = len(read_feedback(path))
         return s
 

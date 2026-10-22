@@ -93,7 +93,7 @@ DuelBrain ─▶ GameLog ─▶ Channel(game_id, seat) ─▶ Bus ──(Rendere
 - **Renderer** (`render.py`): adds the display text to every message as it is published, using the same
   `describe.py` the model's prompt uses, plus a brief of each card the game mentions (sent once per game).
 - **Server** (`server.py`): `ThreadingHTTPServer`, one thread per request. It refuses requests whose `Host` or
-  `Origin` isn't local (DNS rebinding, cross-site posts) and only takes JSON posts.
+  `Origin` isn't local (DNS rebinding, cross-site posts) and only takes JSON posts of up to 64 KiB.
 - **Recorded games** (`recorded.py`): rebuilds the same messages from a game folder: `game.jsonl` (events,
   decisions, and replies in logs since Stage 0), `game.md` (choice, source, reasoning and plan of every decision,
   for old logs too), `prompts.jsonl` (the backend's own reply, time and tokens) and `feedback.md`.

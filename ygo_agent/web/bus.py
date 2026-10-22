@@ -13,7 +13,7 @@ import time
 
 # Also sent to browsers that watch another game: they keep the game list up to date.
 SUMMARY_TYPES = ("game_start", "meta", "game_end")
-SEAT_FIELDS = ("deck", "deck_name", "mode", "opponent", "first", "rules", "dir", "name", "result", "source")
+SEAT_FIELDS = ("deck", "deck_name", "mode", "opponent", "first", "rules", "dir", "name", "result")
 
 
 class Subscription:

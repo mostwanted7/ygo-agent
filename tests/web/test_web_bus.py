@@ -144,3 +144,20 @@ def test_a_browser_that_falls_far_behind_is_dropped(monkeypatch):
         bus.publish(msg("g"))
     assert sub.overflow and [sub.get(timeout=0.1)["seq"] for _ in range(3)] == [1, 2, 3]
     assert [m["seq"] for m in bus.backlog("g", after=3)] == [4, 5]
+
+
+def test_the_renderer_keeps_the_games_and_seats_apart(db):
+    """A Describer remembers a Summon in its negation window until the `summoned` that completes it; each game and
+    seat on the bus has its own, so another game's `summoned` at the same zone can't claim it."""
+    render, words = Renderer(db), Describer(db)
+    code = next(iter(db.cards))
+    spot = {"c": 0, "l": 4, "s": 2, "p": 1}
+    summoning = {"e": "summoning", "id": code, "to": spot, "window": True}
+    summoned = {"e": "summoned", "id": code, "to": spot}
+    assert render(msg("a", ev=dict(summoning)))["text"] == words.event(dict(summoning))
+    assert render(msg("b", ev=dict(summoned)))["text"] is None          # game b saw no Summon start
+    assert render(msg("a", ev=dict(summoned), seat=1))["text"] is None  # nor did seat 1 of game a
+    assert render(msg("a", ev=dict(summoned)))["text"] == words.event(dict(summoned)) is not None
+    # Card briefs go out once per game, whichever seat mentions the card first.
+    assert "cards" not in render(msg("a", ev=dict(summoning), seat=1))
+    assert str(code) in render(msg("c", ev=dict(summoning)))["cards"]

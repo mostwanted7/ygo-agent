@@ -141,10 +141,7 @@ class CoachBrain(DuelBrain):
         if msg.startswith("!"):
             self.note(msg[1:].strip(), "Player" if own else ("Spectator" if source == "spectator" else "Opponent"))
         elif not own:
-            line = f'{"A spectator" if source == "spectator" else "The opponent"} says in chat: "{msg}"'
-            self.history.append(line)
-            self.pending.append(line)
-            self.log.event(line)
+            self.add_line(f'{"A spectator" if source == "spectator" else "The opponent"} says in chat: "{msg}"')
 
     def summary(self):
         self.log.write_meta(stats=self.stats.summary())  # live.py prints the coach's own summary

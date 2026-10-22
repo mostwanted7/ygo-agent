@@ -896,7 +896,7 @@ function ingest(g, m, animate) {
     case "game_start": case "meta":
       for (const k of ["deck", "deck_name", "mode", "opponent", "first", "rules", "dir", "name", "result", "demo", "recorded"]) if (m[k] != null) info[k] = m[k];
       if (m.backend && m.backend.label) info.label = m.backend.label;
-      if (g.msgs.length < 4 || m.type === "game_start") scheduleHeader();
+      scheduleHeader();
       break;
     case "decision": {
       const rec = { seat, i: m._i, m, d: m.decision || {}, reply: null, advice: null, human: null };
@@ -1338,7 +1338,7 @@ function onStream(m, subscribed) {
   if (m.type === "caught_up") {
     if (g && g.id === m.game_id) {
       g.caughtUp = true;
-      rebuildIfNeeded();
+      showCaughtUp();
       if (!g.msgs.length && g.mode !== "recorded") { toast("That game isn't on this panel", "Pick one from the list.", "bad"); showGames(); app.awaiting = g.id; }
     }
     return;
@@ -1360,7 +1360,8 @@ function onStream(m, subscribed) {
   }
 }
 
-function rebuildIfNeeded() {
+// The backlog is in: the header, the cursor and the timeline catch up with it in one go.
+function showCaughtUp() {
   try {
     renderHeader();
     $("#ticks")._dirty = true;
@@ -1493,12 +1494,10 @@ function place(box, target) {
 }
 function hidePreview() { previewFor = null; $("#preview").classList.add("hidden"); }
 
-let toastN = 0;
 function toast(title, sub, kind = "") {
   const t = el("div", `toast ${kind}`, `${esc(title)}${sub ? `<small>${esc(sub)}</small>` : ""}`);
   $("#toasts").append(t);
-  const n = ++toastN;
-  setTimeout(() => t.remove(), 4200 + (n % 2));
+  setTimeout(() => t.remove(), 4200);
 }
 
 // ---------------------------------------------------------------- feedback

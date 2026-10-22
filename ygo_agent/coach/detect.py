@@ -35,7 +35,7 @@ def counts(codes, db=None):
     out = collections.Counter()
     for code in codes:
         card = db.get(code) if db is not None else None
-        out[(card.alias or code) if card is not None and getattr(card, "alias", 0) else code] += 1
+        out[card.alias if card is not None and card.alias else code] += 1
     return out
 
 

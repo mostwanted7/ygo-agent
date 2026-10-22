@@ -172,7 +172,7 @@ def test_the_library_lists_games_and_refuses_odd_names(played, db):
     assert s["name"] == os.path.basename(game_dir) and s["deck_name"] == "Blackwing" and s["result"] == "win"
     assert s["decisions"] > 0 and s["latest"] and s["backend"]
     for bad in ("..", "../games", "latest/../x", "", "a b"):
-        assert lib.path(bad) is None
+        assert lib.path(bad) is None and lib.summary(bad) is None
     assert lib.load(s["name"], db)[0]["type"] == "game_start"
 
 
