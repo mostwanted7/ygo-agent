@@ -18,7 +18,7 @@ from dataclasses import dataclass, field, fields
 from enum import IntEnum
 from typing import ClassVar
 
-from ..core.constants import (HINT_SELECTMSG, LOCATION_MZONE, LOCATION_NAMES, LOCATION_SZONE, MSG_NAMES,
+from ..core.constants import (LOCATION_MZONE, LOCATION_NAMES, LOCATION_SZONE, MSG_NAMES,
                               PHASE_NAMES, POSITION_NAMES, WIN_REASON_NAMES, Msg)
 from .buffer import BufferUnderrun, LocInfo, Reader, Writer
 from .query import CardQuery, FieldState, parse_card, parse_field, parse_location
@@ -1551,7 +1551,3 @@ _RENDER = {
     UpdateCard: lambda m, n: (f"UPDATE_CARD p{m.player} {LOCATION_NAMES.get(m.location, m.location)}"
                               f"[{m.sequence}]: {n(m.card.code) if m.card else '-'}"),
 }
-
-
-def is_select_hint(msg: Message) -> bool:
-    return isinstance(msg, Hint) and msg.hint_type == HINT_SELECTMSG

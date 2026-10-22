@@ -8,13 +8,13 @@ import re
 import time
 from dataclasses import asdict
 
+from .. import paths
 from ..core.cards import CardDatabase
 from ..core.constants import WIN_REASON_NAMES, Msg
 from .duel import VIEW_FULL, Duel, DuelObserver, DuelResult
 from .messages import Message, Prompt, decode_response, render
 
-REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DEFAULT_OUT = os.path.join(REPO_ROOT, "games", "arena")
+DEFAULT_OUT = os.path.join(paths.ROOT, "games", "arena")
 _QUIET = {Msg.UPDATE_DATA, Msg.UPDATE_CARD, Msg.HINT, Msg.WAITING, Msg.CARD_HINT, Msg.PLAYER_HINT}
 
 
@@ -32,7 +32,8 @@ def game_dir(base: str | None, label: str) -> str:
 
 
 class GameLog(DuelObserver):
-    """Writes one line per public event (unfiltered view), each prompt and each decoded response."""
+    """Writes one line per public event (unfiltered view), each prompt and each decoded response. The file is
+    open from a duel's start to its end (a log that outlives one duel appends the next one)."""
     views = frozenset({VIEW_FULL})
 
     def __init__(self, path: str, cards: CardDatabase | None, names: tuple[str, str] = ("p0", "p1")):
@@ -46,6 +47,8 @@ class GameLog(DuelObserver):
         self._f.write(line + "\n")
 
     def on_start(self, duel: Duel) -> None:
+        if self._f.closed:
+            self._f = open(self.path, "a", encoding="utf-8")
         self.names = duel.names
         self._w(f"# {duel.names[0]} (team 0, goes first) vs {duel.names[1]} (team 1)")
         self._w(f"# seed {duel.seed} core seed {list(duel.core_seed)} flags {duel.config.flags:#x}")
@@ -70,7 +73,7 @@ class GameLog(DuelObserver):
                 f"responses {result.responses}, retries {result.retries}, lua errors {len(result.lua_errors)}")
         for err in result.lua_errors:
             self._w(f"# lua error: {err}")
-        self._f.flush()
+        self._f.close()
 
     def close(self) -> None:
         self._f.close()

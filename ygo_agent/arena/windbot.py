@@ -8,6 +8,7 @@ so stopping it never leaves stray mono processes behind.
 
 from __future__ import annotations
 
+import asyncio
 import atexit
 import base64
 import json
@@ -20,8 +21,7 @@ import time
 import weakref
 from dataclasses import dataclass
 
-REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-FORK_EXE = os.path.join(REPO_ROOT, "windbot-src", "bin", "Release", "WindBot.exe")
+from .. import paths
 
 
 class WindBotError(RuntimeError):
@@ -50,8 +50,8 @@ class WindBotInstall:
     @classmethod
     def find(cls, edopro_root: str | None = None, prefer_fork: bool = True) -> "WindBotInstall":
         candidates = []
-        if prefer_fork and os.path.isfile(FORK_EXE):
-            candidates.append((FORK_EXE, True))
+        if prefer_fork and os.path.isfile(paths.WINDBOT_EXE):
+            candidates.append((paths.WINDBOT_EXE, True))
         if edopro_root:
             candidates.append((os.path.join(edopro_root, "WindBot", "WindBot.exe"), False))
         for exe, fork in candidates:
@@ -172,7 +172,10 @@ class WindBotProcess:
                     time.sleep(0.05)
                 if self.proc.poll() is not None:
                     break
-        self.proc.wait(timeout=1)
+        try:
+            self.proc.wait(timeout=1)
+        except subprocess.TimeoutExpired:
+            pass  # unreapable; nothing more a SIGKILL could do
         _live.discard(self)
 
     def crash_log(self) -> str:
@@ -204,6 +207,29 @@ class WindBotProcess:
         self.stop()
         if self._own_scratch and self.scratch:
             shutil.rmtree(self.scratch, ignore_errors=True)
+
+
+async def watch_bots(room, seats: list[tuple[int, str]], procs: list[WindBotProcess], relaunch,
+                     failed: list[str]) -> None:
+    """Keep an arena room's WindBots playable. A bot that exits before its first match (or whose output says
+    why it can't play) would leave the room waiting forever: `failed` gets the reason and the room is finished. A
+    bot that left after a match is replaced with `relaunch(i)` once the room reopens. `seats[i]` is (lobby
+    position, name) of `procs[i]`."""
+    from .server import Stage
+    while not room.finished.is_set():
+        await asyncio.sleep(1.0)
+        if room.stage is not Stage.LOBBY:
+            continue
+        for i, (pos, name) in enumerate(seats):
+            p = procs[i]
+            if room.slots[pos] is not None or p.running():
+                continue
+            problem = p.problem()
+            if problem or room.matches_played == 0:
+                failed.append(f"WindBot {name} can't play: {problem or 'it exited'} (see {p.log_path})")
+                room.finished.set()
+                return
+            procs[i] = relaunch(i)
 
 
 @atexit.register

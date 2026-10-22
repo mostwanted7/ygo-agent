@@ -21,8 +21,8 @@ import struct
 import time
 from dataclasses import dataclass, field
 
-from ..core.constants import OLD_REPLAY_MODE
-from .buffer import Reader, utf16_field
+from ..core.constants import OLD_REPLAY_MODE, Msg
+from .buffer import Reader, read_utf16, utf16_field
 
 REPLAY_COMPRESSED = 0x1
 REPLAY_TAG = 0x2
@@ -165,7 +165,7 @@ class ReplayRecorder:
 
 # --- comparing -----------------------------------------------------------------------------------------------
 
-_UNORDERED = (160, 165)  # MSG_CARD_HINT, MSG_PLAYER_HINT
+_UNORDERED = (Msg.CARD_HINT, Msg.PLAYER_HINT)
 
 
 def _canonical(packets: list[bytes]) -> list:
@@ -218,7 +218,7 @@ class Replay:
 
     @property
     def turns(self) -> int:
-        return sum(1 for p in self.packets if p[0] == 40)
+        return sum(1 for p in self.packets if p[0] == Msg.NEW_TURN)
 
     @property
     def old(self) -> "Replay | None":
@@ -227,7 +227,6 @@ class Replay:
 
 
 def _read_names(r: Reader, flag: int) -> tuple[list[str], list[str]]:
-    from .buffer import read_utf16
     teams = []
     for _ in range(2):
         n = r.u32() if flag & REPLAY_NEWREPLAY else (2 if flag & REPLAY_TAG else 1)

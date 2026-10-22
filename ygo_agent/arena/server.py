@@ -20,6 +20,7 @@ import logging
 import random
 import socket
 import time
+from collections import Counter
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from enum import Enum
@@ -27,6 +28,7 @@ from enum import Enum
 from ..core import Engine
 from ..core.constants import WIN_REASON_CONNECTION_LOST, WIN_REASON_SURRENDERED, WIN_REASON_TIMED_OUT
 from . import protocol as P
+from .buffer import read_utf16
 from .deck import (AllowedCards, Banlist, Deck, DeckError, DeckRules, DeckSizes, check_deck, classify)
 from .duel import Duel, DuelConfig, DuelObserver, DuelResult, Pending, StartState
 from .messages import Prompt
@@ -216,6 +218,7 @@ class Room:
         self._turn_seen = -1
         self.team_positions = [0, 1]   # lobby position of core team 0 (moves first) and team 1, this game
         self._timer: asyncio.Task | None = None
+        self._reset_handle: asyncio.TimerHandle | None = None   # the lobby reset after a match
         self._waiting: asyncio.Future | None = None   # the answer the game loop is waiting for
         self.version = P.ClientVersion(config.client_version[0], config.client_version[1], *engine.core.version)
         self.host_info = self._host_info()
@@ -745,16 +748,10 @@ class Room:
         self.duel.end(1 - c.team, WIN_REASON_SURRENDERED)
         self._wake_game()
 
-    def surrender_local(self, p: Participant) -> None:
-        if self.duel is not None and self.duel.result is None and p.team is not None:
-            self.duel.end(1 - p.team, WIN_REASON_SURRENDERED)
-            self._wake_game()
-
     def on_time_confirm(self, c: Client, data: bytes) -> None:
         pass  # EDOPro's host ignores it too
 
     def on_chat(self, c: Client, data: bytes) -> None:
-        from .buffer import read_utf16
         text = read_utf16(data[:512])
         if not c.joined:
             return
@@ -878,7 +875,7 @@ class Room:
         if done:
             self.finished.set()
         else:
-            asyncio.get_running_loop().call_later(1.0, self._reset_lobby)
+            self._reset_handle = asyncio.get_running_loop().call_later(1.0, self._reset_lobby)
 
     def _reset_lobby(self) -> None:
         for p in list(self.everyone()):
@@ -917,7 +914,6 @@ def _valid_side(original: Deck | None, new: Deck) -> bool:
     """DeckManager::LoadSide: same cards overall, same Main and Extra Deck sizes."""
     if original is None:
         return False
-    from collections import Counter
     if len(new.main) != len(original.main) or len(new.extra) != len(original.extra):
         return False
     return Counter(original.main + original.extra + original.side) == Counter(new.main + new.extra + new.side)
@@ -985,7 +981,8 @@ class ArenaServer:
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-            sock.bind(("0.0.0.0", P.LAN_DISCOVERY_PORT))
+            # A room bound to one address (e.g. 127.0.0.1) answers searches on that address only.
+            sock.bind((self.host or "0.0.0.0", P.LAN_DISCOVERY_PORT))
             self._udp, _ = await asyncio.get_running_loop().create_datagram_endpoint(
                 lambda: _LanDiscovery(self), sock=sock)
         except OSError as e:
@@ -1003,6 +1000,8 @@ class ArenaServer:
     async def close(self) -> None:
         if self.room._gate_task is not None and not self.room._gate_task.done():
             self.room._gate_task.cancel()
+        if self.room._reset_handle is not None:
+            self.room._reset_handle.cancel()  # no new match on a closed server
         if self.room.game_task and not self.room.game_task.done():
             if self.room.duel is not None and self.room.duel.result is None:
                 self.room.duel.end(2, 0x6)

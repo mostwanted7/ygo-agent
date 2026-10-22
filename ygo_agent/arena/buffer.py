@@ -5,9 +5,8 @@ from __future__ import annotations
 import struct
 from dataclasses import dataclass
 
-_U8, _U16, _U32, _I32, _U64, _I16 = (struct.Struct(f) for f in ("<B", "<H", "<I", "<i", "<Q", "<h"))
+_U8, _U16, _U32, _I32, _U64 = (struct.Struct(f) for f in ("<B", "<H", "<I", "<i", "<Q"))
 _LOC = struct.Struct("<BBII")
-_LOC_COMPACT = struct.Struct("<BBB")
 
 
 class BufferUnderrun(ValueError):
@@ -48,9 +47,6 @@ class Reader:
     def u16(self) -> int:
         return self._read(_U16)
 
-    def i16(self) -> int:
-        return self._read(_I16)
-
     def u32(self) -> int:
         return self._read(_U32)
 
@@ -67,15 +63,6 @@ class Reader:
             raise BufferUnderrun(f"need a loc_info at offset {self.pos}") from None
         self.pos += 10
         return LocInfo(c, l, s, p)
-
-    def loc_compact(self) -> LocInfo:
-        """controller u8, location u8, sequence u8 (used by a few prompts)."""
-        try:
-            c, l, s = _LOC_COMPACT.unpack_from(self.buf, self.pos)
-        except struct.error:
-            raise BufferUnderrun(f"need 3 bytes at offset {self.pos}") from None
-        self.pos += 3
-        return LocInfo(c, l, s, 0)
 
     def bytes(self, n: int) -> bytes:
         if self.pos + n > len(self.buf):
@@ -106,10 +93,6 @@ class Writer:
 
     def u16(self, v: int) -> "Writer":
         self.parts.append(_U16.pack(v & 0xFFFF))
-        return self
-
-    def i16(self, v: int) -> "Writer":
-        self.parts.append(_I16.pack(v))
         return self
 
     def u32(self, v: int) -> "Writer":

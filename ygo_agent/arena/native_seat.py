@@ -353,9 +353,6 @@ class AgentSeat(Seat):
         if brain is not None and brain._log is not None:
             self._run(lambda: brain.log.note(text))
 
-    def on_end(self, result, team: int) -> None:
-        pass
-
     def close(self, timeout: float = 60) -> None:
         """End of the seat's life: close the last game's brain (log files, backend session) and the worker.
         `timeout`: how long to wait for a decision still in progress (e.g. 2 after Ctrl+C)."""

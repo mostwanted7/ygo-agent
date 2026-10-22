@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from ..core import Engine
 from .deck import Deck
 from .duel import Duel, DuelConfig, DuelObserver, DuelResult, Pending, StartState
+from .replay import Replay
 from .seats import Seat, SeatFeed, SeatView, resolve
 
 
@@ -133,23 +134,11 @@ def run_match(engine: Engine, config: DuelConfig, decks: tuple[Deck, Deck], seat
     return match
 
 
-class ScriptedSeat(Seat):
-    """Answers prompts from a fixed list of responses (replays, regression tests)."""
-
-    def __init__(self, name: str, responses: list[bytes]):
-        self.name = name
-        self.responses = responses
-
-    def choose(self, prompt, retry):
-        raise RuntimeError("ScriptedSeat is driven by replay_duel")
-
-
-def replay_duel(engine: Engine, replay, observers: Iterable[DuelObserver] = ()) -> Duel:
+def replay_duel(engine: Engine, replay: Replay, observers: Iterable[DuelObserver] = ()) -> Duel:
     """Re-run an old-style replay (a .yrp, or the one embedded in a .yrpX) on the core: same seed, flags,
     decks in their recorded order, the recorded responses in sequence. The returned duel's `replay` holds
     the stream as this arena records it, which should match EDOPro's .yrpX for the same game."""
-    from .replay import Replay
-    old: Replay | None = replay.old
+    old = replay.old
     if old is None:
         raise ValueError("this replay has no old-style (.yrp) part to re-simulate")
     if len(old.decks) != 2:

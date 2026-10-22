@@ -11,7 +11,7 @@ import random
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from ..core.constants import PROMPT_MESSAGES
+from ..core.constants import PROMPT_MESSAGES, Msg
 from . import protocol as P
 from .deck import Deck
 from .messages import Prompt, decode
@@ -151,7 +151,7 @@ class ArenaClient:
         self.log.game.append(raw)
         if self._catching_up:
             self.log.catchup.append(raw)
-        if raw[0] == 4:  # MSG_START
+        if raw[0] == Msg.START:
             self.log.team = raw[1] & 0xF
         if raw[0] in PROMPT_MESSAGES and self.policy is not None and not self.stall:
             prompt = decode(raw)

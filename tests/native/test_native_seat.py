@@ -63,7 +63,7 @@ def test_slow_backend_runs_off_the_event_loop(make_seat, agent_cfg, agent_db, en
 
     def slow(d):
         threads.add(threading.current_thread().name)
-        time.sleep(0.12)
+        time.sleep(0.3)
         return heuristic.choose(d)
     a = custom_seat(make_seat, agent_cfg, agent_db, engine, slow)
     b = make_seat("blackwing")
@@ -86,7 +86,9 @@ def test_slow_backend_runs_off_the_event_loop(make_seat, agent_cfg, agent_db, en
     asyncio.run(scenario())
     assert a.stats["decisions"] >= 5 and a.stats["errors"] == 0 and a.stats["timeouts"] == 0
     assert threads and all(t.startswith("agent-") for t in threads)
-    assert max(gaps) < 0.1, f"the event loop stalled for {max(gaps):.2f}s"
+    # The core and the inline heuristic seat legitimately hold the loop for up to ~0.1 s per step; a backend
+    # sleeping on the loop would show as a gap of at least its 0.3 s.
+    assert max(gaps) < 0.25, f"the event loop stalled for {max(gaps):.2f}s"
 
 
 def test_pace_sets_a_minimum_time_per_decision(make_seat, engine, quiet):

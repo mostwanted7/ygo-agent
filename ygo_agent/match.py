@@ -527,7 +527,7 @@ class _Run:
             _link_latest(base, os.path.basename(self.out))
         else:
             os.makedirs(base, exist_ok=True)
-            self.out = base
+            self.out = os.path.abspath(base)  # results.json and log_dir hold absolute paths either way
         self.result.out = self.out
         self.name = os.path.basename(self.out)
         if self.web:
@@ -729,7 +729,7 @@ class _Run:
     async def room(self, room_no: int, numbers: list[int] | None, human: bool):
         from .arena.native_seat import add_to_room, link
         from .arena.server import ArenaServer, Room, RoomConfig, RoomObserver
-        from .arena.windbot import WindBotProcess
+        from .arena.windbot import WindBotProcess, watch_bots
         watched = human or self.spectate
         reserved, bots = {}, []
         for s in self.seats:
@@ -816,28 +816,12 @@ class _Run:
             p.start()
             return p
 
-        async def watch_bots():
-            """A WindBot that can't play would leave the room waiting forever: fail fast. Start a new one when the
-            room reopens after a match it left."""
-            while not room.finished.is_set():
-                await asyncio.sleep(1.0)
-                if room.stage.value != "lobby":
-                    continue
-                for i, s in enumerate(bots):
-                    p = procs[i]
-                    if room.slots[s.index] is not None or p.running():
-                        continue
-                    problem = p.problem()
-                    if problem or room.matches_played == 0:
-                        failed.append(f"WindBot {s.name} can't play: {problem or 'it exited'} (see {p.log_path})")
-                        room.finished.set()
-                    else:
-                        procs[i] = launch(s)
         watcher = None
         try:
             procs += [launch(s) for s in bots]
             if bots:
-                watcher = asyncio.get_running_loop().create_task(watch_bots())
+                watcher = asyncio.get_running_loop().create_task(watch_bots(
+                    room, [(s.index, s.name) for s in bots], procs, lambda i: launch(bots[i]), failed))
             await server.serve(timeout=self.timeout)
         except asyncio.TimeoutError:
             self.say(paint(RED, f"Timed out after {self.timeout}s (room stage: {room.stage.value})."))

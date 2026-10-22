@@ -23,6 +23,7 @@ from ..core.constants import (LOCATION_MZONE, LOCATION_SZONE, POS_FACEDOWN_ATTAC
                               POS_FACEUP_ATTACK, POS_FACEUP_DEFENSE)
 from . import messages as M
 from .announce import declarable_codes
+from .buffer import Reader
 from .messages import BattleAction, IdleAction, decode_cards
 
 FIELD_ZONE, PENDULUM_ZONE = 0x100, 0x200
@@ -86,7 +87,7 @@ def _auto(response: bytes, note: str) -> Decision:
 
 # --- main and battle phase ---------------------------------------------------------------------------------------
 
-def _actions(options: list, actions: list, respond) -> tuple[Callable, Callable]:
+def _actions(actions: list, respond) -> tuple[Callable, Callable]:
     def encode(choice):
         return respond(*actions[_one(choice, len(actions))])
 
@@ -119,7 +120,7 @@ def _idle(p: M.SelectIdleCmd, view) -> Decision:
     if p.can_end_phase:
         options.append({"a": "to_end"})
         actions.append((IdleAction.END, 0))
-    enc, dec = _actions(options, actions, p.respond)
+    enc, dec = _actions(actions, p.respond)
     return Decision("idle", {"options": options}, enc, dec)
 
 
@@ -137,7 +138,7 @@ def _battle(p: M.SelectBattleCmd, view) -> Decision:
     if p.can_end_phase:
         options.append({"a": "to_end"})
         actions.append((BattleAction.END, 0))
-    enc, dec = _actions(options, actions, p.respond)
+    enc, dec = _actions(actions, p.respond)
     return Decision("battle", {"options": options}, enc, dec)
 
 
@@ -236,7 +237,7 @@ def _unselect(p: M.SelectUnselectCard, view) -> Decision:
         return p.respond(_one(choice, len(options)))
 
     def decode(data):
-        r = M.Reader(data)
+        r = Reader(data)
         if r.i32() == -1:
             return []
         k = r.i32()

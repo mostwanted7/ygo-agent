@@ -10,12 +10,13 @@ import os
 import sys
 import time
 
+from .. import paths
 from ..core import Engine, InstallError
 from ..core.constants import RULES, WIN_REASON_NAMES
 from .deck import (AllowedCards, Deck, DeckRules, check_deck, deck_problems, find_banlist, find_deck, load_banlists,
                    load_ydk)
 from .duel import DuelConfig
-from .gamelog import DEFAULT_OUT, REPO_ROOT, GameLog, game_dir, write_result
+from .gamelog import DEFAULT_OUT, GameLog, game_dir, write_result
 from .policies import POLICIES
 from .native_seat import PacedSeat, add_to_room, link
 from .runner import replay_duel, run_match
@@ -35,7 +36,7 @@ def _engine(args) -> Engine:
 
 def _deck(engine: Engine, ref: str, rules: DeckRules, label: str) -> Deck:
     from ..decks import user_dir
-    dirs = [engine.install.deck_dir, os.path.join(REPO_ROOT, "decks"), user_dir()]
+    dirs = [engine.install.deck_dir, paths.DECKS, user_dir()]
     try:
         path = find_deck(ref, dirs)
     except FileNotFoundError as e:
@@ -197,7 +198,7 @@ class _Agents:
 async def _host(args, engine: Engine, seats: list[tuple[str, str]], max_matches: int | None, rematch: bool,
                 label: str) -> int:
     from .server import ArenaServer, Room, RoomConfig, RoomObserver
-    from .windbot import WindBotInstall, WindBotProcess, WindBotError
+    from .windbot import WindBotError, WindBotInstall, WindBotProcess, watch_bots
     config = _duel_config(args)
     rules = _deck_rules(args, engine, config)
     banlist = rules.banlist
@@ -295,32 +296,18 @@ async def _host(args, engine: Engine, seats: list[tuple[str, str]], max_matches:
         print(f"started WindBot {bot.name} as {name!r} (pid {p.pid})", flush=True)
         return p
 
+    watcher = None
     try:
         procs += [launch(i) for i in range(len(bots))]
-
-        async def watch_bots():
-            """Fail fast when a WindBot can't play (it would leave the room waiting forever); start a new one
-            when the room reopens after a match it left."""
-            while not room.finished.is_set():
-                await asyncio.sleep(1.0)
-                if room.stage.value != "lobby":
-                    continue
-                for i, (pos, _bot, name) in enumerate(bots):
-                    p = procs[i]
-                    if room.slots[pos] is not None or p.running():
-                        continue
-                    problem = p.problem()
-                    if problem or room.matches_played == 0:
-                        failed.append(f"WindBot {name} can't play: {problem or 'exited'} (see {p.log_path})")
-                        room.finished.set()
-                    else:
-                        procs[i] = launch(i)
-        watcher = asyncio.get_running_loop().create_task(watch_bots())
+        if bots:
+            watcher = asyncio.get_running_loop().create_task(
+                watch_bots(room, [(pos, name) for pos, _bot, name in bots], procs, launch, failed))
         await server.serve(timeout=args.timeout)
-        watcher.cancel()
     except asyncio.TimeoutError:
         print(f"timed out after {args.timeout}s in stage {room.stage.value}", file=sys.stderr)
     finally:
+        if watcher:
+            watcher.cancel()
         for p in procs:
             p.stop()
             crash = p.crash_log()
