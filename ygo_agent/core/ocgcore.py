@@ -81,7 +81,10 @@ class OcgCore:
             "OCG_DuelQueryField": ([OCG_Duel, C.POINTER(C.c_uint32)], C.c_void_p),
         }
         for name, (args, res) in sig.items():
-            fn = getattr(lib, name)
+            try:
+                fn = getattr(lib, name)
+            except AttributeError:
+                raise CoreError(f"{path}: no {name}; not an EDOPro core with API {SUPPORTED_MAJOR}?") from None
             fn.argtypes, fn.restype = args, res
         self.lib = lib
         major, minor = C.c_int(), C.c_int()

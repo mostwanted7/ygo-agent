@@ -1,10 +1,19 @@
-"""Card database and string tables, read straight from an EDOPro install."""
+"""The card database as the agent sees it: names, type lines and effect texts for prompts and logs.
 
-import glob
+Built on the core's view of the EDOPro install (core/install.py finds the .cdb, strings and script files the way
+EDOPro does; core/cards.py reads them). A Card keeps the raw .cdb values (the level word with its Pendulum Scales,
+the setcode word, a Link monster's markers in `defense`), which the prompt and web code read; the core's CardData
+splits them the way the engine wants them.
+"""
+
 import os
 import re
 import sqlite3
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+
+from ..core.cards import Strings, cdb_rows
+from ..core.constants import ATTRIBUTE_NAMES, RACE_NAMES
+from ..core.install import EdoproInstall, InstallError
 
 TYPE_NAMES = [
     (0x1, "Monster"), (0x2, "Spell"), (0x4, "Trap"), (0x10, "Normal"), (0x20, "Effect"),
@@ -14,13 +23,8 @@ TYPE_NAMES = [
     (0x80000, "Field"), (0x100000, "Counter"), (0x200000, "Flip"), (0x400000, "Toon"),
     (0x800000, "Xyz"), (0x1000000, "Pendulum"), (0x4000000, "Link"),
 ]
-ATTRIBUTES = {0x1: "EARTH", 0x2: "WATER", 0x4: "FIRE", 0x8: "WIND", 0x10: "LIGHT", 0x20: "DARK", 0x40: "DIVINE"}
-RACES = [
-    "Warrior", "Spellcaster", "Fairy", "Fiend", "Zombie", "Machine", "Aqua", "Pyro", "Rock",
-    "Winged Beast", "Plant", "Insect", "Thunder", "Dragon", "Beast", "Beast-Warrior", "Dinosaur",
-    "Fish", "Sea Serpent", "Reptile", "Psychic", "Divine-Beast", "Creator God", "Wyrm", "Cyberse",
-    "Illusion", "Cyborg", "Magical Knight", "High Dragon", "Omega Psychic", "Celestial Warrior", "Galaxy",
-]
+ATTRIBUTES = ATTRIBUTE_NAMES
+RACES = [RACE_NAMES[1 << i] for i in range(32)]  # by bit index
 EXTRA_TYPES = 0x40 | 0x2000 | 0x800000 | 0x4000000
 
 
@@ -50,7 +54,13 @@ class Card:
     attribute: int
     alias: int = 0
     setcode: int = 0
-    extra: dict = field(default_factory=dict)
+
+    @classmethod
+    def from_row(cls, row):
+        """A Card from a core.cards.cdb_rows() row."""
+        cid, _ot, alias, setcode, typ, atk, de, level, race, attr, _category, name, desc = row[:13]
+        return cls(cid, name or "", desc or "", [s or "" for s in row[13:29]], typ or 0, level or 0, atk or 0,
+                   de or 0, race or 0, attr or 0, alias or 0, setcode or 0)
 
     def has(self, bit):
         return bool(self.type & bit)
@@ -87,30 +97,33 @@ class Card:
 
 
 class CardDB:
+    """Every card and string table of an EDOPro install. `cards` is empty when the folder isn't one (callers say
+    so); `install` is its core.install.EdoproInstall then, else None."""
+
     def __init__(self, edopro_dir):
-        self.root = os.path.expanduser(edopro_dir)
+        self.root = os.path.abspath(os.path.expanduser(edopro_dir))
         self.cards = {}
-        self.system = {}
-        self.victory = {}
-        self.counters = {}
-        self.setnames = {}
-        # Later databases override earlier ones, so load the base files first and the update deltas last.
-        paths = sorted(glob.glob(os.path.join(self.root, "expansions", "*.cdb")))
-        paths.sort(key=lambda p: (os.path.basename(p) != "cards.cdb", p))
-        paths += sorted(glob.glob(os.path.join(self.root, "repositories", "*", "*.cdb")))
-        self.db_paths = paths
-        for path in paths:
+        self._scripts = None
+        try:
+            self.install = EdoproInstall.find(self.root)
+        except InstallError:
+            self.install = None
+        # Later databases override earlier ones (expansions/, then each repository's deltas), as in EDOPro.
+        self.db_paths = list(self.install.cdb_paths) if self.install else []
+        for path in self.db_paths:
             self._load_cdb(path)
-        self._load_strings(os.path.join(self.root, "config", "strings.conf"))
-        for path in sorted(glob.glob(os.path.join(self.root, "expansions", "*.conf"))):
-            self._load_strings(path)
+        strings = Strings(self.install.strings_paths if self.install else ())
+        self.system = strings.tables.setdefault("system", {})
+        self.victory = strings.tables.setdefault("victory", {})
+        self.counters = strings.tables.setdefault("counter", {})
+        self.setnames = strings.tables.setdefault("setname", {})
 
     @classmethod
     def from_dict(cls, data):
         """A database from plain data (tests use this instead of an EDOPro install): {"cards": {id: [name, text,
         strings, type, level, atk, def, race, attribute, alias, setcode]}, "system": {id: text}, "victory": {...}}."""
         db = cls.__new__(cls)
-        db.root, db.db_paths, db.counters, db.setnames = None, [], {}, {}
+        db.root, db.install, db.db_paths, db.counters, db.setnames, db._scripts = None, None, [], {}, {}, None
         db.cards = {int(k): Card(int(k), *v) for k, v in data.get("cards", {}).items()}
         db.system = {int(k): v for k, v in data.get("system", {}).items()}
         db.victory = {int(k): v for k, v in data.get("victory", {}).items()}
@@ -118,40 +131,18 @@ class CardDB:
 
     def _load_cdb(self, path):
         try:
-            con = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
-            rows = con.execute(
-                "select d.id, t.name, t.desc, d.type, d.level, d.atk, d.def, d.race, d.attribute, d.alias, d.setcode, "
-                + ", ".join(f"t.str{i}" for i in range(1, 17))
-                + " from datas d join texts t on d.id = t.id"
-            )
-            for row in rows:
-                cid, name, desc, typ, level, atk, de, race, attr, alias, setcode = row[:11]
-                self.cards[cid] = Card(cid, name or "", desc or "", [s or "" for s in row[11:]], typ or 0,
-                                       level or 0, atk or 0, de or 0, race or 0, attr or 0, alias or 0, setcode or 0)
-            con.close()
+            for row in cdb_rows(path):
+                self.cards[row[0]] = Card.from_row(row)
         except sqlite3.Error as e:
             print(f"[carddb] could not read {path}: {e}")
 
-    def _load_strings(self, path):
-        if not os.path.exists(path):
-            return
-        tables = {"!system": self.system, "!victory": self.victory, "!counter": self.counters, "!setname": self.setnames}
-        with open(path, encoding="utf-8", errors="replace") as f:
-            for line in f:
-                parts = line.rstrip("\n").split(" ", 2)
-                if len(parts) == 3 and parts[0] in tables:
-                    try:
-                        key = int(parts[1], 0)
-                    except ValueError:
-                        continue
-                    tables[parts[0]][key] = parts[2]
-
     @property
     def scripts(self):
-        """The card scripts (cardscripts.ScriptIndex), loaded on first use; none for a database built from_dict."""
-        if getattr(self, "_scripts", None) is None:
+        """The card scripts (cardscripts.ScriptIndex), loaded on first use; empty for a database built from_dict."""
+        if self._scripts is None:
+            from ..core.scripts import ScriptLoader
             from .cardscripts import ScriptIndex
-            self._scripts = ScriptIndex(self.root)
+            self._scripts = ScriptIndex(loader=ScriptLoader(self.install.script_dirs) if self.install else None)
         return self._scripts
 
     def get(self, cid):
@@ -161,7 +152,7 @@ class CardDB:
         if not cid:
             return "unknown card"
         card = self.cards.get(cid)
-        return card.name if card else f"card #{cid}"
+        return card.name if card and card.name else f"card #{cid}"
 
     def full_text(self, cid):
         card = self.cards.get(cid)
@@ -187,7 +178,7 @@ class CardDB:
             text = (cut[:end + 1] if end > limit // 2 else cut[:cut.rfind(" ")]) + " …"
         return f'"{card.name}" [{card.type_line()}]: {text}'
 
-    def desc(self, value, card_id=None):
+    def desc(self, value):
         """Resolve an effect/hint description id to text (card strings are encoded as code << 20 | index)."""
         if value is None or value < 0:
             return None

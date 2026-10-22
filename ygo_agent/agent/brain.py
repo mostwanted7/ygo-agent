@@ -19,7 +19,6 @@ BOSS_TYPES = 0x40 | 0x80 | 0x2000 | 0x800000 | 0x4000000  # Fusion, Ritual, Sync
 BOSS_ATK = 2500
 FIELD = (0x4, 0x8)
 KEY_ACTIONS = ("activate", "summon", "spsummon", "set_monster", "set_spell", "attack", "reposition")
-FALLBACKS = ("bot", "heuristic")
 # Backend profile keys meta.json records (never headers or keys).
 META_KEYS = ("name", "type", "model", "effort", "base_url", "json_mode", "structured", "api_key_env", "temperature",
              "max_tokens", "num_ctx", "history_lines", "card_texts", "max_session_messages", "seed")
@@ -333,7 +332,8 @@ class DuelBrain:
                 self.stats.ask(info)
                 self.log.prompt(d["id"], text, out, info)
                 if out is None:
-                    if not session.alive:
+                    if not session.alive:  # crashed or timed out: release it (a claude-code session's process and
+                        session.close()    # prompt file) so the next decision opens a fresh one
                         self.session = None
                     return None, None, None, info
                 if not error:

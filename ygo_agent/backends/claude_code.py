@@ -46,7 +46,7 @@ def _clean_old_prompt_files(folder, age=86400):
 
 class ClaudeCodeSession(Session):
     def __init__(self, system_prompt, schema, model, effort=None, cwd=None, command="claude"):
-        self.messages = 0
+        self.messages = 0  # not Session.__init__(): `alive` is the process's state here, not a flag
         # An empty working directory, so the CLI doesn't pick up this repo's CLAUDE.md or settings.
         self.cwd = cwd or WORKDIR
         os.makedirs(self.cwd, exist_ok=True)
@@ -66,8 +66,12 @@ class ClaudeCodeSession(Session):
         ]
         if effort:
             cmd += ["--effort", effort]
-        self.proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                     text=True, cwd=self.cwd, bufsize=1)
+        try:
+            self.proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                         text=True, cwd=self.cwd, bufsize=1)
+        except OSError:
+            os.remove(self.prompt_file)
+            raise
         self.lines = queue.Queue()
         self.stderr_tail = []
         self.total_cost = 0.0  # the CLI reports the session's running total; per-call cost is the difference
@@ -160,11 +164,9 @@ class ClaudeCodeSession(Session):
         try:
             self.proc.terminate()
             self.proc.wait(timeout=5)
-        except Exception:
-            try:
-                self.proc.kill()
-            except Exception:
-                pass
+        except subprocess.TimeoutExpired:
+            self.proc.kill()
+            self.proc.wait()  # reap it, or it stays a zombie until this object is collected
         try:
             os.remove(self.prompt_file)
         except OSError:

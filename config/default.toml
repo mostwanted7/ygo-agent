@@ -51,8 +51,8 @@ protocol_version = 0
 
 [web]
 # The local web panel: the board with card pictures, every decision with its reasoning and plan, coach advice and a
-# feedback box (docs/web.md). play/selfplay/teach/copilot start it with --web; `ygo-agent web` browses recorded games.
-auto = false         # true = start it with every play/selfplay/teach/copilot run, as if --web were given (--no-web)
+# feedback box (docs/web.md). play/selfplay/teach/coach start it with --web; `ygo-agent web` browses recorded games.
+auto = false         # true = start it with every play/selfplay/teach/coach run, as if --web were given (--no-web)
 host = "127.0.0.1"   # keep it local: the panel serves your game logs and writes feedback notes
 port = 7930          # --web-port
 open_browser = false # open the panel in your browser when it starts

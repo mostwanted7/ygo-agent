@@ -1,5 +1,7 @@
 """Turns the bot's raw JSON (state, options, events) into readable text for the model and for the logs."""
 
+from .carddb import ATTRIBUTES, RACES
+
 LOC = {0x1: "Deck", 0x2: "hand", 0x4: "Monster Zone", 0x8: "Spell/Trap Zone", 0x10: "GY", 0x20: "banished",
        0x40: "Extra Deck", 0x80: "Xyz material", 0x100: "Field Zone", 0x200: "Pendulum Zone"}
 PHASES = {0x1: "Draw Phase", 0x2: "Standby Phase", 0x4: "Main Phase 1", 0x8: "Battle Phase (start step)",
@@ -10,7 +12,6 @@ REASONS = [(0x1, "destroyed"), (0x2, "Tributed"), (0x20, "by battle"), (0x40, "b
            (0x4000, "discarded"), (0x8, "as material"), (0x40000, "Fusion"), (0x80000, "Synchro"),
            (0x100000, "Ritual"), (0x200000, "Xyz"), (0x10000000, "Link"), (0x20000, "returned"),
            (0x400, "by rule")]
-ATTRIBUTE_FLAGS = {0x1: "EARTH", 0x2: "WATER", 0x4: "FIRE", 0x8: "WIND", 0x10: "LIGHT", 0x20: "DARK", 0x40: "DIVINE"}
 
 HINT_ATTACK_TARGET = 549
 CANNOT_ATTACK = {"EFFECT_CANNOT_ATTACK", "EFFECT_CANNOT_ATTACK_ANNOUNCE"}
@@ -282,9 +283,8 @@ class Describer:
         if kind == "announce_card":
             return self.db.name(opt)
         if kind == "announce_attrib":
-            return ATTRIBUTE_FLAGS.get(opt, str(opt))
+            return ATTRIBUTES.get(opt, str(opt))
         if kind == "announce_race":
-            from .carddb import RACES
             bit = opt.bit_length() - 1
             return RACES[bit] if 0 <= bit < len(RACES) else str(opt)
         return str(opt)
@@ -613,9 +613,8 @@ class Describer:
             if kind == "card":
                 return f'{who} declared "{db.name(value)}".'
             if kind == "attribute":
-                return f"{who} declared {' and '.join(n for b, n in ATTRIBUTE_FLAGS.items() if value & b)}."
+                return f"{who} declared {' and '.join(n for b, n in ATTRIBUTES.items() if value & b)}."
             if kind == "race":
-                from .carddb import RACES
                 return f"{who} declared {' and '.join(RACES[i] for i in range(len(RACES)) if value >> i & 1)}."
             if kind == "number":
                 return f"{who} declared the number {value}."

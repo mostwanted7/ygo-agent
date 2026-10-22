@@ -107,15 +107,19 @@ def builtin_rules(ctx):
     return None
 
 
+def load_rules(path):
+    """The RULES list of a deck's rules.py (empty without the file); a broken file raises."""
+    if not os.path.isfile(path):
+        return []
+    spec = importlib.util.spec_from_file_location("deck_rules", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return list(getattr(module, "RULES", []))
+
+
 class Rules:
     def __init__(self, deck_dir):
-        self.deck_rules = []
-        path = os.path.join(deck_dir, "rules.py")
-        if os.path.exists(path):
-            spec = importlib.util.spec_from_file_location("deck_rules", path)
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
-            self.deck_rules = list(getattr(module, "RULES", []))
+        self.deck_rules = load_rules(os.path.join(deck_dir, "rules.py"))
 
     def decide(self, ctx):
         """Returns (Decide, rule name) or (None, None)."""

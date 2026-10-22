@@ -7,7 +7,6 @@ import os
 from .. import decks, paths
 from . import prompts
 
-CARD_TEXT_MODES = ("full", "compact", "none")
 COMPACT_COVERED, COMPACT_OTHER = 160, 300  # effect characters kept per card in "compact" mode
 
 
@@ -27,11 +26,6 @@ def parse_ydk(path):
             elif line.isdigit():
                 section.append(int(line))
     return main, extra, side
-
-
-def deck_keys(cfg=None):
-    """Every deck profile's name, in the repo's decks/ and the user decks dir."""
-    return decks.keys(cfg)
 
 
 def find_playbook(ydk):

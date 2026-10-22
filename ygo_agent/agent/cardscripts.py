@@ -8,9 +8,10 @@ left out.
 
 from __future__ import annotations
 
-import os
 import re
 from dataclasses import dataclass
+
+from ..core.scripts import ScriptLoader
 
 RANGES = {"LOCATION_DECK": 0x1, "LOCATION_HAND": 0x2, "LOCATION_MZONE": 0x4, "LOCATION_SZONE": 0x8,
           "LOCATION_GRAVE": 0x10, "LOCATION_REMOVED": 0x20, "LOCATION_EXTRA": 0x40, "LOCATION_FZONE": 0x100,
@@ -75,36 +76,19 @@ def parse(source: str, code: int) -> list[Effect]:
 
 
 class ScriptIndex:
-    """Card scripts from the EDOPro install (its search order), parsed once per card. `sources` ({code: Lua text})
-    stands in for the install in tests."""
+    """Card scripts parsed once per card. `loader` is the core's ScriptLoader over the install's script search
+    path (core/scripts.py); `sources` ({code: Lua text}) stands in for it in tests. Neither: no card has a script."""
 
-    def __init__(self, edopro_dir: str | None = None, sources: dict[int, str] | None = None):
-        self.root = edopro_dir
+    def __init__(self, loader: ScriptLoader | None = None, sources: dict[int, str] | None = None):
+        self.loader = loader
         self.sources = sources
-        self._dirs = None
         self._cache: dict[int, list[Effect]] = {}
-
-    @property
-    def dirs(self) -> list[str]:
-        if self._dirs is None:
-            self._dirs = []
-            if self.root:
-                from ..core.install import EdoproInstall, InstallError
-                try:
-                    self._dirs = EdoproInstall.find(self.root).script_dirs
-                except (InstallError, OSError):
-                    pass
-        return self._dirs
 
     def source(self, code: int) -> str | None:
         if self.sources is not None:
             return self.sources.get(code)
-        for d in self.dirs:
-            path = os.path.join(d, f"c{code}.lua")
-            if os.path.isfile(path):
-                with open(path, encoding="utf-8", errors="replace") as f:
-                    return f.read()
-        return None
+        data = self.loader.read(f"c{code}.lua") if self.loader else None
+        return data.decode("utf-8", errors="replace") if data is not None else None
 
     def effects(self, code: int) -> list[Effect]:
         if code not in self._cache:

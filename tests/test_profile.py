@@ -2,14 +2,14 @@ import os
 
 import pytest
 
-from ygo_agent import paths
+from ygo_agent import decks, paths
 from ygo_agent.agent import prompts
-from ygo_agent.agent.profile import Profile, deck_keys, parse_ydk
+from ygo_agent.agent.profile import Profile, parse_ydk
 
 
 def test_decks_are_self_contained():
-    assert {"saffira", "blackwing"} <= set(deck_keys())
-    for key in deck_keys():
+    assert {"saffira", "blackwing"} <= set(decks.keys())
+    for key in decks.keys():
         main, extra, side = parse_ydk(os.path.join(paths.DECKS, key, "deck.ydk"))
         assert 40 <= len(main) <= 60 and len(extra) <= 15
 

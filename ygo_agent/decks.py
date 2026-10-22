@@ -146,16 +146,10 @@ def deck_settings(folder: str, key: str, cfg: dict | None = None) -> dict:
 
 def rules_count(folder: str) -> int | None:
     """How many functions the deck's rules.py lists in RULES (0 without a rules.py, None if it doesn't load)."""
-    import importlib.util
-    path = os.path.join(folder, "rules.py")
-    if not os.path.isfile(path):
-        return 0
+    from .agent.rules import load_rules
     try:
-        spec = importlib.util.spec_from_file_location(f"_deck_rules_{os.path.basename(folder)}", path)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        return len(getattr(module, "RULES", []))
-    except Exception:
+        return len(load_rules(os.path.join(folder, "rules.py")))
+    except Exception:  # a listing must survive one deck's broken rules.py, whatever the error
         return None
 
 

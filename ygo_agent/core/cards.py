@@ -14,6 +14,17 @@ _SELECT = ("select d.id, d.ot, d.alias, d.setcode, d.type, d.atk, d.def, d.level
            " from datas d left join texts t on t.id = d.id")
 
 
+def cdb_rows(path: str):
+    """The rows of one .cdb, read-only: (id, ot, alias, setcode, type, atk, def, level, race, attribute, category,
+    name, desc, str1..str16), with the texts columns None for a card that has no text row. The one place that
+    reads EDOPro's card databases; the agent's CardDB and the core's CardDatabase both build on it."""
+    con = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+    try:
+        yield from con.execute(_SELECT)
+    finally:
+        con.close()
+
+
 @dataclass(slots=True)
 class CardData:
     code: int
@@ -83,12 +94,8 @@ class CardDatabase:
         self.paths = list(paths)
         self.cards: dict[int, CardData] = {}
         for path in self.paths:
-            con = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
-            try:
-                for row in con.execute(_SELECT):
-                    self.cards[row[0]] = _row_to_card(row)
-            finally:
-                con.close()
+            for row in cdb_rows(path):
+                self.cards[row[0]] = _row_to_card(row)
 
     def __contains__(self, code: int) -> bool:
         return code in self.cards
@@ -145,14 +152,3 @@ class Strings:
 
     def system(self, key: int) -> str:
         return self.get("system", key)
-
-    def describe(self, desc: int, cards: CardDatabase | None = None) -> str:
-        """An effect description (DataManager::GetDesc): `code << 20 | index` is card string `index` of
-        `code`; with code 0 it is system string `index`."""
-        code, index = desc >> 20, desc & 0xFFFFF
-        if code == 0:
-            return self.system(index) or f"system string {index}"
-        card = cards.get(code) if cards else None
-        if card and index < len(card.strings) and card.strings[index]:
-            return card.strings[index]
-        return f"effect {index} of {cards.name(code) if cards else code}"

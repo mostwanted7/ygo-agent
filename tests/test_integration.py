@@ -22,6 +22,23 @@ def test_card_database_loads(real_db):
     assert real_db.system.get(506)  # hint strings come from strings.conf
 
 
+def test_agent_db_is_the_core_db(real_db):
+    """CardDB reads the install the way the core (and EDOPro) does: same files, same cards, the repositories'
+    strings too, and card scripts through the core's loader."""
+    from ygo_agent.core.cards import CardDatabase
+    assert real_db.install is not None and real_db.db_paths == real_db.install.cdb_paths
+    core = CardDatabase(real_db.db_paths)
+    assert set(core.cards) == set(real_db.cards)
+    for cid, card in real_db.cards.items():
+        c = core.cards[cid]
+        assert (card.name, card.text, card.type, card.atk, list(card.strings)) == (c.name, c.text, c.type, c.attack,
+                                                                                   list(c.strings))
+    assert real_db.counters and real_db.setnames and real_db.victory.get(1)
+    assert "Blackwing" in real_db.setnames.values()
+    assert real_db.scripts.source(56350972).startswith("--")
+    assert real_db.scripts.effects(56350972)
+
+
 def test_fixture_matches_the_install(real_db, db):
     """tests/fixtures/cards.json is a faithful extract (regenerate it with tests/fixtures/make_cards.py)."""
     for cid, card in db.cards.items():

@@ -24,6 +24,8 @@ FAKE = textwrap.dedent("""\
         text = json.loads(line)["message"]["content"]
         if "SLEEP" in text:
             time.sleep(5)
+        if "QUIT" in text:
+            sys.exit(3)
         total += 0.01
         print(json.dumps({"type": "assistant", "message": {}}), flush=True)
         if "GARBAGE" in text:
@@ -81,6 +83,21 @@ def test_unparseable_result_and_timeout(fake_claude):
     assert reply is None and "timed out" in info["error"] and not session.alive
 
 
-def test_missing_cli():
+def test_crashed_session_is_reported_and_cleaned_up(fake_claude, tmp_path):
+    profile, _ = fake_claude
+    session = backends.create(profile).open_session("S", SCHEMA)
+    reply, info = session.ask(Request("QUIT", None, SCHEMA, 10))
+    assert reply is None and "session ended" in info["error"] and not session.alive
+    assert os.path.exists(session.prompt_file)
+    session.close()  # what the brain does with a dead session
+    assert not os.path.exists(session.prompt_file) and session.proc.returncode == 3
+    session.close()  # closing twice is harmless
+
+
+def test_missing_cli(monkeypatch, tmp_path):
     with pytest.raises(backends.BackendError, match="claude"):
         backends.check({"name": "x", "type": "claude-code", "command": "/nonexistent/claude"})
+    monkeypatch.setattr("ygo_agent.backends.claude_code.WORKDIR", str(tmp_path / "work"))
+    with pytest.raises(OSError):
+        backends.create({"name": "x", "type": "claude-code", "command": "/nonexistent/claude"}).open_session("S", SCHEMA)
+    assert not list((tmp_path / "work").glob("system-*.md"))  # no prompt file left behind

@@ -9,7 +9,7 @@ import pytest
 
 from ygo_agent import decks, paths
 from ygo_agent.agent import replay
-from ygo_agent.agent.profile import Profile, deck_keys
+from ygo_agent.agent.profile import Profile
 from ygo_agent.match import MatchError, load_profile
 
 SAFFIRA = os.path.join(paths.ROOT, "decks", "saffira")
@@ -55,7 +55,7 @@ def test_both_roots_are_searched_repo_first(roots, cfg, db):
     repo, user = roots
     make_deck(repo, "saffira")
     mine = make_deck(user, "geargia", name="My Geargia")
-    assert deck_keys(cfg) == ["geargia", "saffira"]
+    assert decks.keys(cfg) == ["geargia", "saffira"]
     assert [(d.key, d.location) for d in decks.scan(cfg)] == [("saffira", "repo"), ("geargia", "user")]
     found = decks.find("GEARGIA", cfg)
     assert found.dir == mine and found.location == "user" and found.key == "geargia"

@@ -96,6 +96,29 @@ def test_rollover_carries_the_plan_and_the_turns_decisions(db, cfg, scripted):
     assert stats["rollovers"] >= 1 and stats["sessions"] > stats["rollovers"]
 
 
+def test_rules_answering_a_turns_first_decisions_is_not_a_rollover(db, cfg, scripted):
+    cfg["backends"]["test"]["max_session_messages"] = 1
+    brain = DuelBrain(cfg, db, Profile("saffira", db, cfg), prewarm=False)
+    code = brain.profile.main[0]
+    side = {"lp": 8000, "hand": [], "mz": [None] * 7, "sz": [None] * 8, "gy": [], "ban": [], "deck": 30, "extra": []}
+    state = {"turn": 1, "turn_player": 0, "phase": 4, "chain": [], "me": side, "opp": side}
+    brain.on_event({"t": "event", "e": "start", "first": True, "lp": [8000, 8000], "names": ["A", "B"]})
+    brain.on_event({"t": "event", "e": "new_turn", "turn": 1, "player": 0})
+    only = {"t": "decide", "id": 1, "kind": "position", "state": state, "card_id": code, "options": [1]}
+    scripted["decision"] = only
+    assert brain.on_decide(only)["choice"] == [0] and brain.session is None  # a built-in rule: no session yet
+    ask = {"t": "decide", "id": 2, "kind": "position", "state": state, "card_id": code, "options": [1, 4]}
+    scripted["decision"] = ask
+    brain.on_decide(ask)
+    assert (brain.stats.sessions, brain.stats.rollovers) == (1, 0)
+    first = scripted["sessions"][0].prompts[0]
+    assert "Decisions already made this turn" in first and "previous session for this turn ended" not in first
+    brain.on_decide(dict(ask, id=3))  # over the message limit: this one is a rollover
+    assert (brain.stats.sessions, brain.stats.rollovers) == (2, 1)
+    assert "previous session for this turn ended" in scripted["sessions"][1].prompts[0]
+    brain.close()
+
+
 def test_stats_labels_and_invalid_replies(db, cfg, scripted):
     seen = set()
     legal = Policy(db)

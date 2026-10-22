@@ -60,6 +60,8 @@ def same_pick(choice, advised, kind=None):
     if kind == "select_unselect" and advised:
         return list(choice)[:1] == list(advised)[:1]
     return list(choice) == list(advised)
+
+
 USAGE = ("seconds", "input_tokens", "output_tokens", "cache_read_tokens", "cache_write_tokens", "cost_usd")
 
 

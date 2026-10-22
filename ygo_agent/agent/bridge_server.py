@@ -80,7 +80,7 @@ class Match:
 
 def handle(conn, runtime):
     match = Match(runtime)
-    reader = conn.makefile("r", encoding="utf-8", newline="\n")
+    reader = conn.makefile("r", encoding="utf-8", errors="replace", newline="\n")
     writer = conn.makefile("w", encoding="utf-8", newline="\n")
     try:
         for line in reader:
@@ -96,10 +96,11 @@ def handle(conn, runtime):
         print(paint(RED, f"[brain] connection error: {e}"))
     finally:
         match.close()
-        try:
-            conn.close()
-        except OSError:
-            pass
+        for f in (reader, writer, conn):  # the socket only really closes once its file objects are closed too
+            try:
+                f.close()
+            except OSError:
+                pass
         print(paint(BOLD, "[brain] bot disconnected."))
 
 
@@ -114,9 +115,13 @@ def listen(port, host="127.0.0.1"):
 
 
 def serve(srv, runtime):
-    """Accept bot connections forever, one thread each, so a stale connection can never block the next duel."""
+    """Accept bot connections until the server socket is closed, one thread each, so a stale connection can never
+    block the next duel."""
     while True:
-        conn, _ = srv.accept()
+        try:
+            conn, _ = srv.accept()
+        except OSError:
+            return  # the socket was closed (shutdown): not an error
         threading.Thread(target=handle, args=(conn, runtime), daemon=True).start()
 
 
