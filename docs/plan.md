@@ -470,3 +470,22 @@ Usage window nearly exhausted, so this waits for the reset. Then:
   summon wording, `RoomConfig.first`, user decks dir, attack-available line, bench smoke output dir).
   Next: (c) the model comparison, then the Geargia evaluation (new playbook vs none) with the chosen model,
   then the user's coach-mode test with Geargia.
+
+## Status 2026-10-22 (commit 9a68082): feature-complete, ready for the user's review session
+- Done since the feedback:
+  - principle-first playbooks and the trainer style;
+  - the rules policy with `test --ablate-rules`;
+  - summon-window wording, the attack note (excludes monsters a face-up card stops from attacking), chain
+    target stats, shared-effect-label qualifiers;
+  - `RoomConfig.first`; the user decks dir plus `ygo-agent decks`;
+  - `bench exam` (a blind Opus judge plus a Sonnet second judge).
+- **Opus is the play model** (exam: 3.73 vs Sonnet 3.30 vs Haiku 3.15; 0.2 vs 1.0 vs 2.0 mistakes per game).
+  `decks/geargia` is the user's Gadget Geargia list.
+- Open:
+  - the user's coached Gadget Geargia game (coach mode has never had a real human);
+  - the attack note still misses non-negating locks (Spellbinding Circle, Swords). An exact fix needs
+    card-target links in the decision JSON, i.e. a C# change;
+  - `train-compare` for Geargia (now with Opus as the player);
+  - local models on the desktop: exam → hybrid routing (local model for routine decisions, escalate hard
+    ones to Opus) → maybe distillation (fine-tune on logged Opus decisions);
+  - Stage 9 polish (user's session); publishing (needs confirmation).
