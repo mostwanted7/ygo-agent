@@ -487,7 +487,7 @@ Usage window nearly exhausted, so this waits for the reset. Then:
   - more coached games from the EDOPro GUI (the user played two on 2026-10-22);
   - the attack note still misses non-negating locks (Spellbinding Circle, Swords). An exact fix needs
     card-target links in the decision JSON, i.e. a C# change;
-  - `train-compare` for Geargia (now with Opus as the player);
+  - ~~`train-compare` for Geargia (now with Opus as the player)~~ done 2026-10-22 (see the end of this file);
   - local models on the desktop: exam → hybrid routing (local model for routine decisions, escalate hard
     ones to Opus) → maybe distillation (fine-tune on logged Opus decisions);
   - publishing (needs confirmation).
@@ -508,3 +508,17 @@ Usage window nearly exhausted, so this waits for the reset. Then:
 ## Published 2026-10-22
 Public at https://github.com/mostwanted7/ygo-agent. `windbot-src` is a submodule pointing at
 https://github.com/mostwanted7/windbot (branch `brain-bridge`, a fork of ProjectIgnis/windbot).
+
+## train-compare for Geargia (2026-10-22): training stays
+- `train-compare --name geargia --variants trained,none --games 4 --parallel 2` with Opus against WindBot Blue-Eyes,
+  stopped by hand after 3 paired games (same seeds, same first player): trained 2-1, no playbook 2-1, each pair
+  with the same result (won first, lost second). About $11 in API-price dollars, 15 minutes.
+- The win rate can't tell them apart (Blue-Eyes games are decided mostly by who goes first), but the play did:
+  in game 1 the trained player found exact lethal on turn 5 (Gear Gigant X searched Gold Gadget before the Normal
+  Summon, Gold Gadget brought Geargiarmor, Limiter Removal for 6600 into 4200), where the untrained one spent its
+  Normal Summon first and left the opponent on 100 LP; in game 2 the untrained player cleared its own board with
+  Limiter Removal and lost two turns earlier. Game 3 was even.
+- "Trained" is the playbook as it stands (trainer lessons, the user's Geargia insights, the principle-first
+  rewrite); the study draft was left out because it was written for the pre-Gadget list.
+- **Decision (user): training stays part of the project.** It is cheap and it works. For firmer numbers later, a
+  few pairs against a longer-game deck (Time Thief, Dragunity) say more than more Blue-Eyes games.
