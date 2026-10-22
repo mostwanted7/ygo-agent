@@ -39,8 +39,8 @@ class Profile:
 
     Normally a deck folder (deck.json, the .ydk, playbook.md, rules.py, tests/) found by name in decks/ or the user
     decks dir (`location` says which), or the folder given as `folder`. `ydk=` makes one from a loose .ydk file
-    instead (e.g. a deck in EDOPro's deck folder), with an optional `playbook` file; its rules.py and tests/, if
-    any, are looked up next to the .ydk. A name that doesn't resolve raises decks.DeckError (a FileNotFoundError)."""
+    instead (e.g. a deck in EDOPro's deck folder), with an optional `playbook` file and its saved tests/ next to
+    the .ydk; a rules.py next to a loose .ydk is never run (only deck folders' are). A name that doesn't resolve raises decks.DeckError (a FileNotFoundError)."""
 
     def __init__(self, deck_key, db, cfg=None, ydk=None, playbook=None, folder=None):
         self.key = deck_key

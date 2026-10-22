@@ -257,7 +257,7 @@ Status: ☐ todo · ◐ in progress · ☑ done (verified by the orchestrator)
 - Publish, **only after the user confirms**:
   1. fork `ProjectIgnis/windbot` → `mostwanted7/windbot` and push branch `brain-bridge`;
   2. add `windbot-src` as a submodule;
-  3. create the public repo `mostwanted7/ygo-agent` and push. Commit identity: Rebel <laki@hotmail.rs>.
+  3. create the public repo `mostwanted7/ygo-agent` and push.
 
 ## Notes from finished stages
 

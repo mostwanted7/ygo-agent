@@ -89,7 +89,8 @@ def play(runtime, brain_only=False):
     print(paint(DIM, f"Brain listening on 127.0.0.1:{cfg['bot']['brain_port']}."))
     if brain_only:
         command = bot_command(cfg, runtime.db, runtime.profile, protocol_version(cfg))
-        print(paint(DIM, "Start the bot yourself with (from windbot-src/):\n  " + " ".join(command)))
+        shown = ["HostInfo=<password>" if a.startswith("HostInfo=") and a != "HostInfo=" else a for a in command]
+        print(paint(DIM, "Start the bot yourself with (from windbot-src/):\n  " + " ".join(shown)))
         threading.Event().wait()
     while True:
         print(paint(YELLOW, "\nIn EDOPro: LAN mode → Host Duel (set a long or no time limit), then wait in the room."))

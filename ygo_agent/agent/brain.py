@@ -59,7 +59,7 @@ class DuelBrain:
         self.cfg = cfg
         self.db = db
         self.profile = profile
-        self.rules = Rules(profile.dir)
+        self.rules = Rules.for_profile(profile)
         self.describer = Describer(db, attack_note=cfg["agent"].get("attack_note", True))
         self._log = log
         self.game_id = game_id  # the web panel's ids for this game and seat (several seats can share a game)

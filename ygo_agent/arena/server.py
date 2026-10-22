@@ -740,6 +740,9 @@ class Room:
         pending = self.duel.pending
         if pending is None or c.team != pending.team:
             return
+        if len(data) > P.SIZE_RETURN_VALUE:  # EDOPro's host ignores oversized responses too
+            log.warning("response of %d bytes from %r ignored", len(data), c)
+            return
         c.state = STATE_NONE
         c.seat.deliver(data)
 

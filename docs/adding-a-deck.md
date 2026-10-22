@@ -47,7 +47,8 @@ ydk = "~/Games/ProjectIgnis/deck/Chaos.ydk"
 
 A deck without a folder works too: `ygo-agent play --deck ~/Games/ProjectIgnis/deck/Chaos.ydk` (or just the name of
 a deck in EDOPro's deck folder) plays it with `Chaos.md` next to the file as its playbook, if there is one, and
-`playbooks/general.md` alone otherwise.
+`playbooks/general.md` alone otherwise. Hard rules (`rules.py`) are only read from deck folders, never from next
+to a loose `.ydk`, so playing a downloaded deck file never runs code that came with it.
 
 ### The playbook
 

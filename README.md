@@ -42,7 +42,8 @@ ok    deck blackwing          repo: playbook 13.0 KB, 1 rule, 3 cases, ydk decks
 Then in EDOPro: **LAN Mode**, type the Host address `127.0.0.1` and port `7911`, **Join**. Type the address rather
 than waiting for the room list: EDOPro may not list the room, and its LAN Refresh button can crash EDOPro. Pick your
 deck, ready up, and the duel starts. You get 600 s per turn (`--time-limit`); the AI has no limit. EDOPro offers a
-rematch after each game; Ctrl+C closes the room and prints the results.
+rematch after each game; Ctrl+C closes the room and prints the results. The room is open to other machines on your
+network as well (EDOPro on a laptop can join it): `--password` asks for one, `--no-lan` stops announcing it.
 
 While you play, the terminal shows every decision: the options, the choice, why, and the plan for the turn. The duel
 chat stays quiet apart from a few jokes per duel (`chat = "off"` in the config silences them). Type `!` followed by a

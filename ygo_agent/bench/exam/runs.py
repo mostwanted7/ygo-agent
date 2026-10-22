@@ -101,6 +101,13 @@ class ExamRun:
     def path(self, name: str) -> str:
         return os.path.join(self.folder, name)
 
+    def cache_path(self, name: str) -> str:
+        """A file of the run that must stay out of the repo (raw `claude -p` transcripts carry local paths and
+        session ids): ~/.cache/ygo-agent/exam/<run>/<name>."""
+        path = os.path.join(paths.CACHE, "exam", os.path.basename(os.path.normpath(self.folder)), name)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        return path
+
     def profile(self, deck: str):
         if deck not in self.profiles:
             from ...match import load_profile
@@ -384,7 +391,7 @@ class ExamRun:
             f.write(prompt)
         remaining = (self.budget - self.spent) if self.budget else None
         out, info = rv.ask("exam-judge", J.system(rules, rv.agentic), prompt, J.JUDGE_SCHEMA, timeout=1800,
-                           transcript=self.path(f"judge/{call_id}.transcript.jsonl") if rv.agentic else None,
+                           transcript=self.cache_path(f"judge/{call_id}.transcript.jsonl") if rv.agentic else None,
                            max_cost=remaining)
         with WRITE_LOCK:
             self.spent += info.get("cost_usd") or 0
@@ -465,7 +472,7 @@ class ExamRun:
             prompt = J.game_prompt(info_game, self.deck_context(g["deck"]), ref, logs.problems(md))
             with open(self.path(f"games/{g['id']}.prompt.md"), "w", encoding="utf-8") as f:
                 f.write(prompt)
-            transcript = self.path(f"games/{g['id']}.transcript.jsonl") if rv.agentic else None
+            transcript = self.cache_path(f"games/{g['id']}.transcript.jsonl") if rv.agentic else None
             out, info = rv.ask("exam-game", J.game_system(meta.get("rules") or "MR3", rv.agentic), prompt,
                                J.GAME_SCHEMA, timeout=2400, transcript=transcript)
             with WRITE_LOCK:

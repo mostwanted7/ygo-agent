@@ -119,7 +119,14 @@ def load_rules(path):
 
 class Rules:
     def __init__(self, deck_dir):
-        self.deck_rules = load_rules(os.path.join(deck_dir, "rules.py"))
+        """The built-in rules plus the deck folder's rules.py (`deck_dir` None: built-in only)."""
+        self.deck_rules = load_rules(os.path.join(deck_dir, "rules.py")) if deck_dir else []
+
+    @classmethod
+    def for_profile(cls, profile):
+        """A deck folder's rules.py is trusted code the user put there; a loose .ydk (EDOPro's deck folder, a
+        downloaded deck pack) gets the built-in rules only, so playing a file never runs code found next to it."""
+        return cls(None if getattr(profile, "adhoc", False) else profile.dir)
 
     def decide(self, ctx):
         """Returns (Decide, rule name) or (None, None)."""

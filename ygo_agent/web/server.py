@@ -10,6 +10,7 @@ recorded games, and the feedback box. It binds 127.0.0.1 by default: it serves y
     POST /api/feedback          {"game_id", "seat", "text", "decision"?, "turn"?} -> saved like a `!note`
 """
 
+import ipaddress
 import json
 import mimetypes
 import os
@@ -115,16 +116,25 @@ class Handler(BaseHTTPRequestHandler):
                         status)
 
     def local_request(self):
-        """Refuse other sites' pages (DNS rebinding, cross-site POSTs) when the panel is bound to a local address."""
-        if self.panel.host not in LOCAL_HOSTS:
-            return True
+        """Refuse other sites' pages (DNS rebinding, cross-site POSTs): bound to a local address only local names
+        pass; bound to an interface, an IP literal, localhost or the bound hostname (a rebinding attack needs a
+        DNS name of its own, which none of those are)."""
         host = (self.headers.get("Host") or "").rsplit(":", 1)[0]
-        if host and host not in LOCAL_HOSTS:
-            return False
         origin = self.headers.get("Origin")
-        if origin and urlparse(origin).hostname not in LOCAL_HOSTS:
+        return self.host_ok(host) and (not origin or self.host_ok(urlparse(origin).hostname))
+
+    def host_ok(self, name):
+        if not name or name in LOCAL_HOSTS:
+            return True
+        if self.panel.host in LOCAL_HOSTS:
             return False
-        return True
+        if name == self.panel.host:
+            return True
+        try:
+            ipaddress.ip_address(name.strip("[]"))
+            return True
+        except ValueError:
+            return False
 
     # ---- routes ----
 

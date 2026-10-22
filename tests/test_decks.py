@@ -10,6 +10,7 @@ import pytest
 from ygo_agent import decks, paths
 from ygo_agent.agent import replay
 from ygo_agent.agent.profile import Profile
+from ygo_agent.agent.rules import Rules
 from ygo_agent.match import MatchError, load_profile
 
 SAFFIRA = os.path.join(paths.ROOT, "decks", "saffira")
@@ -66,6 +67,10 @@ def test_both_roots_are_searched_repo_first(roots, cfg, db):
     assert load_profile("Geargia", db, cfg).dir == mine
     loose = load_profile(os.path.join(mine, "deck.ydk"), db, cfg)
     assert loose.adhoc and loose.ydk == os.path.join(mine, "deck.ydk")
+    # a rules.py is only run for a deck folder, never for a loose .ydk (a downloaded deck pack could carry code)
+    with open(os.path.join(mine, "rules.py"), "w", encoding="utf-8") as f:
+        f.write("def never(ctx):\n    return None\nRULES = [never]\n")
+    assert len(Rules.for_profile(p).deck_rules) == 1 and Rules.for_profile(loose).deck_rules == []
     with pytest.raises(MatchError, match="no deck 'nope'"):
         load_profile("nope", db, cfg)
 

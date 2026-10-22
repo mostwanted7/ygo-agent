@@ -86,6 +86,9 @@ LAN_DISCOVERY_PORT, LAN_REPLY_PORT = 7920, 7921
 MAX_PAYLOAD = 0xFFFF - 1
 
 
+SIZE_RETURN_VALUE = 64  # the most a client may answer the core with (EDOPro's host drops longer ones)
+
+
 class ProtocolError(ValueError):
     pass
 

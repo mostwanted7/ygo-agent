@@ -193,7 +193,8 @@ play itself and which answers are as good. Answers that make the same move (anot
 cards in a different order) share one label, so identical choices always get the same grade. The judge is the
 trainer's reviewer (`trainer/llm.py`): agentic `claude -p` with only Read/Grep/Glob in a sandbox of the card scripts,
 so it can check rulings (`--inline-judge` turns the tools off). It grades `--judge-batch` positions per call (3, one
-deck per call). Its prompts and tool transcripts are kept in the run's `judge/` folder.
+deck per call). Its prompts are kept in the run's `judge/` folder; the raw `claude -p` transcripts (which carry local paths and
+session ids) go to `~/.cache/ygo-agent/exam/<run>/`, out of the repo.
 
 **Checking the judge.** The report flags self-preference: the judge's own model graded best far more often than the
 others when its answer differs from every other candidate's. In a share of the positions (`--probe`, 15%) where two
