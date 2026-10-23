@@ -264,7 +264,7 @@ def parse_field(raw: bytes) -> FieldState:
     options = r.u32()
     players = []
     for _ in range(2):
-        lp = r.u32()
+        lp = r.i32()  # the core can leave LP below zero after lethal damage
         zones = []
         for _count in (7, 8):
             row = []

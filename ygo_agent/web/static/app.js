@@ -278,6 +278,11 @@ function boardAt(g, seat, upto, god = false) {
     const m = g.msgs[i];
     if (m.type === "event" && (m.seat || 0) === seat) applyEvent(st, m.ev, m);
   }
+  for (const side of [st.me, st.opp]) {
+    // Older logs decoded the core's negative int32 LP as uint32 (e.g. -2100 became 4294965196).
+    const lp = side.lp ?? 8000;
+    side.lp = Math.max(0, lp >= 0x80000000 && lp <= 0xffffffff ? lp - 0x100000000 : lp);
+  }
   return st;
 }
 

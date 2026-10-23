@@ -1130,7 +1130,9 @@ class Recover(_PlayerAmount):
 @message(Msg.LPUPDATE)
 @dataclass(slots=True)
 class LpUpdate(_PlayerAmount):
-    pass
+    @classmethod
+    def read(cls, r):
+        return cls(r.u8(), r.i32())
 
 
 @message(Msg.PAY_LPCOST)

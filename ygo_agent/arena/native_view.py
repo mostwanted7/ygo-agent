@@ -415,7 +415,7 @@ class NativeView:
         """A custom start state (Debug.ReloadFieldEnd): rebuild every pile and zone from the public field info."""
         fs = m.state
         for p, pf in enumerate(fs.players):
-            self.lp[p] = pf.lp
+            self.lp[p] = max(0, pf.lp)
             for loc, row in ((LOCATION_MZONE, pf.mzone), (LOCATION_SZONE, pf.szone)):
                 self.zones[(p, loc)] = [None if z is None else self._zone_card(z) for z in row]
             for loc, n in ((LOCATION_DECK, pf.deck), (LOCATION_HAND, pf.hand), (LOCATION_GRAVE, pf.grave),
@@ -452,8 +452,8 @@ class NativeView:
         return [{"e": kind, "player": self.local(player), "amount": amount, "lp": self.lp[player]}]
 
     def _lp_update(self, m: M.LpUpdate) -> list[dict]:
-        self.lp[m.player] = m.amount
-        return [{"e": "lp", "player": self.local(m.player), "lp": m.amount}]
+        self.lp[m.player] = max(0, m.amount)
+        return [{"e": "lp", "player": self.local(m.player), "lp": self.lp[m.player]}]
 
     def _summoning(self, m, special: bool, flip: bool = False) -> list[dict]:
         """MSG_SUMMONING, SPSUMMONING and FLIPSUMMONING (WindBot treats a Flip Summon as a Normal Summon here).
@@ -601,7 +601,7 @@ class NativeView:
         fs = v.field()
         sides = {}
         for side, p in (("me", self.team), ("opp", 1 - self.team)):
-            out = {"lp": fs.players[p].lp}
+            out = {"lp": max(0, fs.players[p].lp)}
             for name, loc in STATE_PILES:
                 cards = self._sync(p, loc, v.location(p, loc))
                 out[name] = [self.card_dict(c, p, loc, i, ref=False) for i, c in enumerate(cards)]
@@ -618,7 +618,7 @@ class NativeView:
             out["mz"] = (out["mz"] + [None] * 7)[:7]
             out["sz"] = (out["sz"] + [None] * 8)[:8]
             sides[side] = out
-        self.lp = [fs.players[0].lp, fs.players[1].lp]
+        self.lp = [max(0, p.lp) for p in fs.players]
         chain = []
         for card, player, desc, code in self.chain:
             chain.append({"card": self.ref(card), "id": code, "player": player, "desc": desc})

@@ -108,3 +108,12 @@ def test_parse_field():
     assert f.players[1].lp == 7000 and f.players[0].mzone[0].overlay_count == 2
     assert f.players[0].mzone[1] is None and f.players[0].deck == 30
     assert f.chain[0].code == 99 and f.chain[0].description == 99 << 20
+
+
+def test_field_lp_is_signed_after_overkill():
+    raw = struct.pack("<I", 0)
+    for lp in (6700, -2100):
+        raw += struct.pack("<i", lp) + b"\0" * 15 + struct.pack("<6I", 30, 5, 0, 0, 15, 0)
+    raw += struct.pack("<I", 0)
+    state = Q.parse_field(raw)
+    assert [p.lp for p in state.players] == [6700, -2100]

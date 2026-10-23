@@ -46,6 +46,17 @@ def test_unknown_and_truncated_messages():
         M.decode(bytes([Msg.MOVE, 1, 2]), strict=True)
 
 
+def test_lp_updates_are_signed_but_damage_amounts_are_unsigned():
+    from ygo_agent.arena.native_view import NativeView
+    payload = bytes([1]) + struct.pack("<i", -2100)
+    update = M.decode(bytes([Msg.LPUPDATE]) + payload, strict=True)
+    assert update.amount == -2100
+    view = NativeView(0)
+    assert view.on_message(update) == [{"e": "lp", "player": 1, "lp": 0}]
+    assert view.lp[1] == 0
+    assert M.decode(bytes([Msg.DAMAGE]) + payload, strict=True).amount == 4294965196
+
+
 def _loc(c, l, s, p=0):
     return LocInfo(c, l, s, p).pack()
 

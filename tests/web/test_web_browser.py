@@ -157,6 +157,36 @@ def final_board(game_dir):
     return str(turn), [str(lp[1]), str(lp[0])]
 
 
+@pytest.mark.parametrize("source", ["decision", "spectator_state", "event"])
+def test_old_wrapped_lp_shows_zero_after_lethal(panel, tmp_path, source):
+    browser_or_skip()
+    from ygo_agent.web.bus import BUS
+    gid = "wrapped-lp-" + source
+    side = {"lp": 6700, "deck": 20, "hand": [], "extra": [], "gy": [], "ban": [],
+            "mz": [None] * 7, "sz": [None] * 8}
+    state = {"turn": 5, "turn_player": 0, "phase": 8, "me": side, "opp": copy.deepcopy(side), "chain": []}
+    state["opp"]["lp"] = 4294965196 if source != "event" else 800
+    base = {"game_id": gid, "seat": 0}
+    BUS.publish({**base, "type": "game_start", "deck_name": "Winner"})
+    BUS.publish({**base, "type": "decision", "decision": {
+        "id": 1, "kind": "yesno", "options": [], "state": state}})
+    if source == "spectator_state":
+        BUS.publish({**base, "type": "spectator_state", "state": state})
+    elif source == "event":
+        BUS.publish({**base, "type": "event", "ev": {"e": "damage", "player": 1,
+                                                      "amount": 2900, "lp": 4294965196}})
+    BUS.publish({**base, "type": "game_end", "result": "win", "reason": 1})
+    values = run_check(f"{panel.url}?game={gid}", [
+        {"wait": "app.board && document.querySelector('#status-chip').textContent === 'ENDED'"},
+        {"eval": BOARD},
+        {"eval": "document.querySelector('#god').click()"},
+        {"eval": BOARD},
+    ], tmp_path)
+    for v in (values[1], values[3]):
+        assert v["lp"] == ["0", "6700"] and v["state"] == [0, 6700]
+        assert v["errors"] == 0
+
+
 def test_the_board_follows_a_live_native_game_to_the_end(panel, agent_cfg, agent_db, tmp_path):
     browser_or_skip()
     from ygo_agent.web.bus import BUS
