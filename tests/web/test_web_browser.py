@@ -7,6 +7,7 @@ LIVE. Clicking the newest decision card pinned the timeline cursor on it, so new
 reasoning list but the board and the timeline stayed put."""
 
 import json
+import copy
 import os
 import shutil
 import subprocess
@@ -87,6 +88,61 @@ CLICK_NEWEST = ("(() => { const cards = document.querySelectorAll('#stream .dc')
                 "c.querySelector('.q').click(); return c.querySelector('.num').textContent; })()")
 CLICK_OLD = "(() => { const c = document.querySelectorAll('#stream .dc')[2]; c.querySelector('.q').click(); " \
             "return c.querySelector('.num').textContent; })()"
+
+
+@pytest.mark.parametrize("mode", ["selfplay", "play", "coach", "teach"])
+def test_god_view_reveals_hands_and_set_cards(panel, tmp_path, mode):
+    browser_or_skip()
+    from ygo_agent.web.bus import BUS
+    gid = "god-" + mode
+    side = {"lp": 8000, "deck": 30, "extra": [], "gy": [], "ban": [],
+            "hand": [{"id": 89631139, "c": 0, "l": 2, "s": 0, "p": 10}],
+            "mz": [{"id": 89631139, "c": 0, "l": 4, "s": 0, "p": 8}] + [None] * 6,
+            "sz": [{"id": 53129443, "c": 0, "l": 8, "s": 0, "p": 10}] + [None] * 7}
+    state = {"turn": 1, "turn_player": 0, "phase": 4, "me": side, "opp": copy.deepcopy(side), "chain": []}
+    for zone in ("hand", "mz", "sz"):
+        state["opp"][zone][0]["c"] = 1
+    filtered = copy.deepcopy(state)
+    for zone in ("hand", "mz", "sz"):
+        filtered["opp"][zone][0]["id"] = 0
+    for seat in range(2 if mode == "selfplay" else 1):
+        base = {"game_id": gid, "seat": seat}
+        BUS.publish({**base, "type": "game_start", "deck_name": f"Player {seat}", "mode": mode})
+        BUS.publish({**base, "type": "spectator_state", "state": copy.deepcopy(state)})
+        # The other AI hasn't made a decision yet. Its private hand must still be visible in God view.
+        if seat == 0:
+            BUS.publish({**base, "type": "decision", "decision": {
+                "id": 1, "kind": "yesno", "options": [], "state": filtered}})
+    later, later_filtered = copy.deepcopy(state), copy.deepcopy(filtered)
+    later["me"]["hand"][0]["id"] = later_filtered["me"]["hand"][0]["id"] = 46986414
+    BUS.publish({"game_id": gid, "seat": 0, "type": "spectator_state", "state": later})
+    BUS.publish({"game_id": gid, "seat": 0, "type": "decision", "decision": {
+        "id": 2, "kind": "yesno", "options": [], "state": later_filtered}})
+    counts = """({hands: [...document.querySelectorAll('.hand')].map(e => e.querySelectorAll('[data-card]').length),
+        sets: document.querySelectorAll('.zone .card.mine-set[data-card]').length,
+        toggle: !document.querySelector('#god-toggle').classList.contains('hidden')})"""
+    steps = [
+        {"wait": "app.board && app.game.decs.length === 2"},
+        {"eval": counts},
+        {"eval": "document.querySelector('#god').click()"},
+        {"eval": counts},
+        {"eval": "document.querySelector('#god').click()"},
+        {"eval": counts},
+    ]
+    steps += [{"eval": "app.board.me.hand[0].id"},
+              {"eval": "document.querySelector('#stream .dc .q').click()"},
+              {"eval": "app.board.me.hand[0].id"}]
+    if mode == "selfplay":
+        steps += [{"eval": "document.querySelector('[data-seat=\"1\"]').click()"}, {"eval": counts},
+                  {"eval": "[app.board.turn_player, app.board.me.hand[0].c, app.board.opp.hand[0].c]"}]
+    values = run_check(f"{panel.url}?game={gid}", steps, tmp_path)
+    revealed = {"hands": [1, 1], "sets": 4, "toggle": True}
+    assert values[1] == values[5] == revealed
+    assert values[3] == {"hands": [0, 1], "sets": 2, "toggle": True}
+    assert values[6] == 46986414 and values[8] == 89631139  # scrubbing cannot borrow future knowledge
+    if mode == "selfplay":
+        assert values[-2] == revealed
+        assert values[-1] == [1, 0, 1]
 
 
 def final_board(game_dir):

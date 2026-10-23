@@ -244,6 +244,8 @@ def load_game(game_dir, db, name=None):
             if msg.get("e") == "win" and not any(m["type"] == "game_end" for m in out):
                 out.append({**base, "type": "game_end", "ts": ts, "result": RESULTS.get(msg.get("result"), "draw"),
                             "reason": msg.get("reason")})
+        elif kind == "spectator_state":
+            out.append({**base, "type": "spectator_state", "ts": ts, **msg})
         elif kind == "decide" and msg.get("kind") != "game_over":
             block = md.get(msg.get("id")) or {}
             d = {**base, "type": "decision", "ts": ts, "decision": msg}

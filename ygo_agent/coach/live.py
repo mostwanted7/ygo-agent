@@ -143,6 +143,8 @@ class Coach(RoomObserver):
         with self.lock:
             self.game = game
             self.games.append(game)
+        from ..arena.spectator import SpectatorFeed
+        duel.observers.append(SpectatorFeed(human.team, game.on_spectator))
         duel.observers.append(SeatWatcher(human.team, self.cards, on_event=game.on_event,
                                           on_decision=game.on_decision, on_choice=game.on_choice))
 
@@ -296,6 +298,9 @@ class CoachGame:
 
     def on_event(self, ev):
         self.submit(self.event, ev)
+
+    def on_spectator(self, state):
+        self.submit(lambda: self.log.record("spectator_state", {"state": state}))
 
     def on_decision(self, d):
         self.shown[d["id"]] = time.monotonic()

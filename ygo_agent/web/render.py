@@ -72,6 +72,8 @@ class Renderer:
                 for link in state.get("chain") or []:
                     link.setdefault("desc_text", self.db.desc(link.get("desc")))
             ids |= {i for i in words.ids_in_decision(d) if self.db.get(i)}
+        elif kind == "spectator_state":
+            ids = words.ids_in_state(msg.get("state") or {})
         elif kind == "game_end" and "reason_text" not in msg:
             msg["reason_text"] = self.db.victory.get(msg.get("reason"), "")
         if ids:

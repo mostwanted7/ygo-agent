@@ -108,6 +108,9 @@ def test_a_coached_game_with_a_thoughtful_human(engine, agent_db, agent_cfg, liv
     (game,) = coach.games
     assert coach.detection.key == "saffira" and game.brain.profile.key == "saffira"
     msgs = messages(live_bus, game)
+    snapshots = [m["state"] for m in live_bus.backlog(game.log.web.game_id) if m["type"] == "spectator_state"]
+    assert snapshots and all(c["id"] for c in snapshots[0]["opp"]["hand"])
+    assert len(snapshots[0]["opp"]["hand"]) >= 5
     decisions = msgs["decision"]
     assert len(decisions) > 20 and set(msgs["advice"]) == {m["decision"]["id"] for m in decisions.values()}
     backend = {i: a for i, a in msgs["advice"].items() if a["source"] == "backend"}

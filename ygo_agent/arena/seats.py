@@ -138,9 +138,29 @@ class SeatFeed(DuelObserver):
     def __init__(self, seat: Seat, team: int):
         self.seat, self.team = seat, team
         self.views = frozenset({VIEW_TEAM0 + team})
+        self.spectator = None
+        if callable(getattr(seat, "record_spectator", None)):
+            from .spectator import SpectatorFeed
+            self.spectator = SpectatorFeed(team, seat.record_spectator)
+            self.views |= self.spectator.views
+
+    def on_start(self, duel):
+        if self.spectator:
+            self.spectator.on_start(duel)
 
     def on_message(self, view: int, msg: Message) -> None:
-        self.seat.on_message(msg)
+        if view == VIEW_TEAM0 + self.team:
+            self.seat.on_message(msg)
+        elif self.spectator:
+            self.spectator.on_message(view, msg)
+
+    def on_prompt(self, team, prompt, retry):
+        if self.spectator:
+            self.spectator.on_prompt(team, prompt, retry)
+
+    def on_end(self, duel, result):
+        if self.spectator:
+            self.spectator.on_end(duel, result)
 
 
 def resolve(value):

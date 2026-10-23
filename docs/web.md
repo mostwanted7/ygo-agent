@@ -194,8 +194,11 @@ Using it:
   `- (turn T, right after decision #N) text`. During a live game it goes through the seat's DuelBrain (same counter,
   and `game.md` gets a "Web panel feedback" line); if you scrolled back, it is tagged with the decision on screen. For
   a recorded game it is appended to that folder's `feedback.md`.
-- **Self-play** (two seats in one game): seat tabs switch the bottom side; "both" shows both seats' reasoning;
-  "God view" shows the other seat's hand from its own view.
+- **God view** reveals both hands and face-down monsters and Spell/Trap cards in every locally hosted mode,
+  including AI vs AI, play, teach and coach. Viewer-only snapshots are saved for replay; AI and coach prompts
+  still receive their normal private views. Older logs and games joined on an external host can only reveal
+  identities they actually recorded.
+- **Self-play** (two seats in one game): seat tabs switch the bottom side; "both" shows both seats' reasoning.
 - **Games** (`G`, or the title): live games on the bus and every log under `games/`.
 
 Card pictures come from `~/Games/ProjectIgnis/pics`. A missing one is downloaded from the URL EDOPro uses

@@ -245,9 +245,30 @@ function applyEvent(st, ev, m) {
   }
 }
 
-function boardAt(g, seat, upto) {
+function oppositeState(state) {
+  const flip = (value) => {
+    if (Array.isArray(value)) return value.map(flip);
+    if (!value || typeof value !== "object") return value;
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k,
+      ["c", "player", "turn_player", "summon_player"].includes(k) && (v === 0 || v === 1) ? 1 - v : flip(v)]));
+  };
+  const st = flip(state);
+  [st.me, st.opp] = [st.opp, st.me];
+  if (st.battling) st.battling.reverse();
+  return st;
+}
+
+function boardAt(g, seat, upto, god = false) {
   let start = -1, st = null;
-  for (let k = g.decs.length - 1; k >= 0; k--) {
+  if (god) {
+    for (let k = Math.min(upto, g.msgs.length - 1); k >= 0; k--) {
+      const m = g.msgs[k];
+      if (m.type === "spectator_state" && m.state?.me) {
+        start = k; st = (m.seat || 0) === seat ? clone(m.state) : oppositeState(m.state); break;
+      }
+    }
+  }
+  for (let k = g.decs.length - 1; !st && k >= 0; k--) {
     const r = g.decs[k];
     if (r.i <= upto && r.seat === seat && r.d.state && r.d.state.me) { start = r.i; st = clone(r.d.state); break; }
   }
@@ -328,7 +349,7 @@ function cardSig(c, extra = "") {
 function cardEl(c, side, where) {
   const e = el("div", "card");
   const faceDown = (c.p & 0xa) && (where === "field");
-  const hidden = !c.id || (faceDown && side === "opp");
+  const hidden = !c.id || (faceDown && side === "opp" && !app.god);
   if (hidden) e.append(el("div", "back"));
   else {
     const img = el("img");
@@ -360,7 +381,7 @@ function statsHtml(c) {
 }
 
 function renderZone(z, c, side, opts = {}) {
-  const sig = cardSig(c, `${opts.chainNo || ""}${opts.chainP || ""}`);
+  const sig = cardSig(c, `${opts.chainNo || ""}|${opts.chainP || ""}|${app.god}`);
   if (z._sig === sig) return;
   const prevId = z._id;
   z._sig = sig;
@@ -514,11 +535,16 @@ function renderBoard(animate) {
   if (!board.built) buildBoard();
   $("#board").classList.remove("empty");
   const upto = uptoIndex(g);
-  const st = boardAt(g, app.seat, upto);
-  // God view (self-play): the other seat's own state knows its hand.
-  if (g.multi && app.god) {
+  const st = boardAt(g, app.seat, upto, app.god);
+  // Older self-play logs have no spectator snapshots: use the other seat's known cards where possible.
+  const hasSpectator = g.msgs.slice(0, upto + 1).some((m) => m.type === "spectator_state");
+  if (g.multi && app.god && !hasSpectator) {
     const other = boardAt(g, 1 - app.seat, upto);
     if (other.me && other.me.hand && other.me.hand.length === st.opp.hand.length) st.opp.hand = other.me.hand.map((c) => ({ ...c, c: 1 }));
+    for (const zone of ["mz", "sz"]) {
+      st.opp[zone] = st.opp[zone].map((c, i) => c && other.me[zone][i]?.id && c.p === other.me[zone][i].p
+        ? { ...c, id: other.me[zone][i].id } : c);
+    }
   }
   const labels = names(g);
   const marks = chainMarks(st);
@@ -1179,7 +1205,7 @@ function renderHeader() {
   document.title = `${n.me[0]} vs ${n.opp[0]} · ygo-agent`;
   const tabs = $("#seat-tabs");
   tabs.classList.toggle("hidden", !g.multi);
-  $("#god-toggle").classList.toggle("hidden", !g.multi);
+  $("#god-toggle").classList.remove("hidden");
   if (g.multi) {
     const seats = [...g.seats.keys()].sort();
     tabs.innerHTML = seats.map((s) => `<button data-seat="${s}" class="${s === app.seat ? "on" : ""}"><span class="sw" style="background:var(${s === 0 ? "--me" : "--opp"})"></span>${esc(g.seat(s).deck_name || "Seat " + s)}</button>`).join("")

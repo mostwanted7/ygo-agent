@@ -184,6 +184,8 @@ class GameLog:
             self.web.send("decision", decision=payload)
         elif kind == "reply":
             self._publish_reply(payload)
+        elif kind == "spectator_state":
+            self.web.send("spectator_state", **payload)
         elif kind == "advice":
             usage = self._usage.pop(payload.get("id"), None)
             self.web.send("advice", **payload, **({"usage": usage} if usage else {}))

@@ -174,6 +174,13 @@ class AgentSeat(Seat):
             return info
         return self._run(run)
 
+    def record_spectator(self, state):
+        # Queue behind the seat's events, but bypass the brain and its prompt/history entirely.
+        def record():
+            if self.brain and self.brain._log:
+                self.brain._log.record("spectator_state", {"state": state})
+        self._run(record)
+
     def _event(self, ev: dict) -> None:
         brain = self._brain_for(ev)
         try:
@@ -386,6 +393,11 @@ class PacedSeat(Seat):
 
     def on_message(self, msg):
         self.inner.on_message(msg)
+
+    def record_spectator(self, state):
+        publish = getattr(self.inner, "record_spectator", None)
+        if publish:
+            publish(state)
 
     def rps(self):
         return self.inner.rps()
