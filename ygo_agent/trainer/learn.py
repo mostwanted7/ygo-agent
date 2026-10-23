@@ -179,17 +179,24 @@ def run(cfg: dict, deck_key: str, *, games: list[str] | None = None, include_unt
 
 class Learner:
     def __init__(self, cfg, deck, todo, tips, base, *, reviewer, player, gate_repeat, budget, agentic, quiet, db):
-        from ..backends import BackendError
+        from ..backends import BackendError, check
         from .pipeline import Options, Trainer
         from .workspace import LearnWorkspace
         self.cfg, self.deck, self.todo, self.tips_info, self.summary = cfg, deck, todo, tips, dict(base)
         self.run_id = time.strftime("%Y-%m-%d_%H%M%S")
         self.quiet = quiet
-        opts = Options(ydk=None, name=deck.key, backend=reviewer or (cfg.get("trainer") or {}).get("backend", "opus"),
-                       player_backend=player or "", out=deck.dir, gate_repeat=gate_repeat, budget=budget,
+        trainer = cfg.get("trainer") or {}
+        opts = Options(ydk=None, name=deck.key, backend=reviewer or trainer.get("backend", "opus"),
+                       player_backend=player or trainer.get("player_backend") or "",
+                       out=deck.dir, gate_repeat=gate_repeat, budget=budget,
                        rules=cfg["duel"]["rules"], agentic=agentic, echo="off")
         self.t = Trainer(opts, cfg, db=db, quiet=quiet, interview="skip")
-        self.t.backend_profile(opts.player_backend)  # a bad profile name fails here, before anything is written
+        player_profile = self.t.backend_profile(opts.player_backend)
+        if gate_repeat > 0:
+            try:
+                check(player_profile)
+            except BackendError as e:
+                raise TrainerError(f"the saved-case player can't run: {e}") from None
         try:
             self.t.reviewer.check()
         except BackendError as e:

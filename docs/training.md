@@ -159,7 +159,8 @@ are not necessarily Opus's. The reviewer is `--backend` (default `trainer.backen
   [edited: <the sections that really changed>]; case <name>`. A marked note is never used again; a note the reviewer
   gave no verdict for stays pending. An edit the case check rejected is marked "not applied" with the reason.
 - **Options.** `--game DIR` (only that game; repeatable), `--backend` (the reviewer), `--player-backend` (replays
-  the cases; default the play model), `--gate-repeat N`, `--budget-usd` (per run), `--inline`, `--games-dir`.
+  the cases; default `trainer.player_backend`, else the play model), `--gate-repeat N`, `--budget-usd` (per run),
+  `--inline`, `--games-dir`.
   `--list --json` prints `{"deck", "name", "dir", "games_dir", "notes": [every pending note, with "trusted" and
   "used"], "to_learn", "tips": {"path", "count", "changed", "new"}, "pending"}`. Exit codes: 0 done or nothing to
   learn, 2 stopped (budget, usage limit, error, Ctrl+C: the notes learned so far stay marked), 1 a bad argument.

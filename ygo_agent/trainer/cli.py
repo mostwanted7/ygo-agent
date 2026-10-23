@@ -81,8 +81,8 @@ def register(sub) -> None:
                    help="also use notes from spectators and from games you didn't play (not used by default: anyone "
                         "in the room can type them)")
     p.add_argument("--backend", dest="reviewer", metavar="NAME", help="the reviewer's backend profile (default trainer.backend: opus)")
-    p.add_argument("--player-backend", metavar="NAME", help="replays the saved cases when an edit is checked (default: the play model, "
-                                            "agent.backend)")
+    p.add_argument("--player-backend", metavar="NAME", help="replays the saved cases when an edit is checked (default: "
+                                            "trainer.player_backend, else the play model agent.backend)")
     p.add_argument("--gate-repeat", type=int, default=2, metavar="N",
                    help="runs per saved case when an edit is checked against them (default 2; 0 turns the check off)")
     p.add_argument("--budget-usd", type=float, metavar="USD", help="stop cleanly before this run goes over this (API-price USD)")

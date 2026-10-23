@@ -151,6 +151,47 @@ def test_nothing_pending_means_no_call_and_no_files(cfg, db, deck):
     assert not (deck / "train" / "state.json").exists() and not (deck / "train" / "learn").exists()
 
 
+@pytest.mark.parametrize("configured,explicit,expected", [
+    ("configured", None, "configured"),
+    ("configured", "explicit", "explicit"),
+    ("", None, "default"),
+])
+def test_saved_case_player_selection(cfg, db, deck, configured, explicit, expected):
+    game(cfg)
+    calls = reviewer(cfg, lambda task, prompt: reply(lessons=[]))
+    decisions = []
+    def policy(name):
+        def choose(d):
+            decisions.append(name)
+            return [1]
+        return choose
+    for name in ("default", "configured", "explicit"):
+        cfg["backends"][name] = {"type": "scripted", "policy": policy(name)}
+    cfg["agent"]["backend"] = "default"
+    cfg["trainer"]["player_backend"] = configured
+    result = learn.run(cfg, "geartest", reviewer="fake", player=explicit, gate_repeat=1, quiet=True, db=db)
+    assert result["status"] == "done" and calls
+    assert decisions and set(decisions) == {expected}
+
+
+def test_unavailable_case_player_fails_before_reviewer_or_writes(cfg, db, deck, monkeypatch):
+    from ygo_agent.trainer.workspace import TrainerError
+    folder = game(cfg)
+    calls = reviewer(cfg, lambda task, prompt: reply())
+    cfg["backends"]["unavailable"] = {"type": "openai", "model": "test", "api_key_env": "TEST_LEARN_KEY"}
+    cfg["trainer"]["player_backend"] = "unavailable"
+    monkeypatch.delenv("TEST_LEARN_KEY", raising=False)
+    with pytest.raises(TrainerError, match="saved-case player can't run.*TEST_LEARN_KEY"):
+        learn.run(cfg, "geartest", reviewer="fake", quiet=True, db=db)
+    assert not calls
+    assert (deck / "playbook.md").read_text() == PLAYBOOK
+    assert not (deck / "train" / "learn").exists()
+    assert not (deck / "train" / "state.json").exists()
+    assert "Learned" not in open(os.path.join(folder, "feedback.md")).read()
+    # Disabling the gate doesn't require a working player.
+    assert run(cfg, db)["status"] == "done"
+
+
 def test_new_tips_get_a_call_of_their_own_and_only_once(cfg, db, deck):
     tips.add(str(deck), "Use Geargiagear at the end of the opponent's turn.", name="Geargia")
 
