@@ -91,6 +91,9 @@ def test_cli_options_resume_with_the_runs_own(tmp_path, monkeypatch):
     from ygo_agent import cli, paths
     from ygo_agent.trainer import pipeline
     monkeypatch.setattr(paths, "DECKS", str(tmp_path))
+    # Exercise the shipped defaults, independently of the developer's backend and trainer overrides.
+    config = tmp_path / "config.toml"
+    config.write_text("")
     seen = []
 
     class FakeTrainer:
@@ -106,17 +109,17 @@ def test_cli_options_resume_with_the_runs_own(tmp_path, monkeypatch):
         "ydk": "/x/Geargia.ydk", "games": 2, "max_rounds": 2, "lab_hands": 9, "budget": 45.0,
         "phases": ["study", "lab"],
         "echo": "off", "player_backend": "sonnet"}}))
-    args = cli.parser().parse_args(["train", "--name", "geargia", "--resume", "--budget-usd", "60"])
+    args = cli.parser().parse_args(["train", "--config", str(config), "--name", "geargia", "--resume", "--budget-usd", "60"])
     assert args.handler(args, cli.configure(args)) == 0
     opts, resume = seen[-1]
     assert resume and opts.ydk == "/x/Geargia.ydk" and opts.games == 2 and opts.lab_hands == 9
     assert opts.budget == 60 and opts.phases == ("study", "lab") and opts.echo == "off"
-    args = cli.parser().parse_args(["train", "new.ydk", "--name", "other", "--games", "3"])
+    args = cli.parser().parse_args(["train", "new.ydk", "--config", str(config), "--name", "other", "--games", "3"])
     args.handler(args, cli.configure(args))
     opts, resume = seen[-1]
     assert not resume and opts.games == 3 and opts.lab_hands == 6 and opts.backend == "opus"  # [trainer] defaults
     assert opts.max_rounds == 1
-    args = cli.parser().parse_args(["train", "new.ydk", "--name", "third", "--backend", "sonnet"])
+    args = cli.parser().parse_args(["train", "new.ydk", "--config", str(config), "--name", "third", "--backend", "sonnet"])
     cfg = cli.configure(args)
     args.handler(args, cfg)
     opts, _ = seen[-1]

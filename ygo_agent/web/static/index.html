@@ -33,7 +33,7 @@
     <svg class="chev" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
   </button>
   <div class="spacer"></div>
-  <div id="seat-tabs" class="seg hidden"></div>
+  <div id="seat-tabs" class="seg hidden" role="group" aria-label="Player at the bottom of the board"></div>
         <label id="god-toggle" class="switch hidden" title="Reveal both hands and set cards">
     <input type="checkbox" id="god" checked><span class="track"><span class="knob"></span></span><span>God view</span>
   </label>
@@ -70,6 +70,7 @@
         <input type="checkbox" id="show-auto"><span class="track"><span class="knob"></span></span><span>auto</span>
       </label>
     </div>
+    <div id="reasoning-seats" class="seg hidden" role="group" aria-label="Whose reasoning to show"></div>
     <div id="plan" class="plan hidden"></div>
     <div class="panes">
       <div id="stream" class="pane scroll"></div>

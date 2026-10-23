@@ -1,9 +1,22 @@
 # Changelog
 
-## Unreleased
+## 0.1.0 beta 2 (2026-10-23)
 
 - The train wizard showed the report instead of your questions after "Read the deck"; a deck page mid-training
   now opens the wizard.
+- Fixed signed life-point decoding and clamped lethal damage to zero, preventing negative totals from appearing
+  as huge positive numbers in the board and logs.
+- God view now reveals both hands and Set cards across hosted play, teach, coach and AI-vs-AI games, including
+  recorded viewer snapshots. The player and coach still receive only their permitted information.
+- Board perspective and reasoning filters are independent. Players keep their colors when the board flips,
+  and matching deck names get numbered labels so mirror matches are easier to follow.
+- Clarified general and Blackwing playbook guidance on activation locations, immunity, interruption timing and
+  optional "when" triggers; tightened the Geargia reference playbook.
+- Rewrote the README around installation, the gameplay loop and a compact summary of the measured benchmarks.
+- Isolated the trainer CLI defaults test from personal configuration overrides.
+
+This release includes browser and engine regression coverage for the fixes. It does not change model effort
+defaults or introduce automatic learning after ordinary games.
 
 ## 0.1.0 beta 1 (2026-10-22)
 

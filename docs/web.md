@@ -198,7 +198,7 @@ Using it:
   including AI vs AI, play, teach and coach. Viewer-only snapshots are saved for replay; AI and coach prompts
   still receive their normal private views. Older logs and games joined on an external host can only reveal
   identities they actually recorded.
-- **Self-play** (two seats in one game): seat tabs switch the bottom side; "both" shows both seats' reasoning.
+- **Self-play** (two seats in one game): **Board** chooses the player at the bottom; **Show reasoning** independently filters the decision feed to either player or both. Each player keeps their color when the board flips. Labels use deck names, adding numbers only for identical names (for example, Blackwing 1 and Blackwing 2); model details remain below the board names and on decisions.
 - **Games** (`G`, or the title): live games on the bus and every log under `games/`.
 
 Card pictures come from `~/Games/ProjectIgnis/pics`. A missing one is downloaded from the URL EDOPro uses

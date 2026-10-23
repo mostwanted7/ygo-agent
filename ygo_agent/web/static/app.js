@@ -342,9 +342,19 @@ function names(g) {
   const oppName = other ? other.deck_name || other.deck || "Seat " + (1 - s) : mine.opponent || "Opponent";
   const coached = mine.mode === "coach" && !g.multi;
   return {
-    me: [meName, coached ? `you · coach ${(mine.label || "").split(" (")[0]}`.trim() : mine.label || (mine.mode && mine.mode !== "play" ? mine.mode : "")],
-    opp: [oppName, other ? other.label || "" : mine.opponent ? "opponent" : ""],
+    me: [g.multi ? playerLabel(g, s) : meName, coached ? `you · coach ${(mine.label || "").split(" (")[0]}`.trim() : mine.label || (mine.mode && mine.mode !== "play" ? mine.mode : "")],
+    opp: [g.multi ? playerLabel(g, 1 - s) : oppName, other ? other.label || "" : mine.opponent ? "opponent" : ""],
   };
+}
+
+function playerLabel(g, seat) {
+  const nameOf = (s) => {
+    const info = g.seat(s);
+    return info.deck_name || info.deck || info.name || "Player";
+  };
+  const name = nameOf(seat);
+  const matching = [...g.seats.keys()].filter((s) => nameOf(s) === name).sort((a, b) => a - b);
+  return matching.length > 1 ? `${name} ${matching.indexOf(seat) + 1}` : name;
 }
 
 function cardSig(c, extra = "") {
@@ -773,7 +783,7 @@ function fillCard(card, rec) {
   card.className = `dc src-${src.startsWith("rule") ? "rule" : src || "none"} ${auto ? "compact is-auto" : ""} ${!r && !rec.human ? "pending" : ""}`;
   card.dataset.i = rec.i;
   const [q, sub] = headline(rec);
-  const seatB = g.multi ? `<span class="seatb s${rec.seat}">${esc(g.seat(rec.seat).deck_name || "seat " + rec.seat)}</span>` : "";
+  const seatB = g.multi ? `<span class="seatb s${rec.seat}">${esc(playerLabel(g, rec.seat))}</span>` : "";
   const head = `<div class="hd"><span class="num">#${rec.d.id}</span><span class="kind">${KIND[rec.d.kind] || rec.d.kind}</span>${seatB}
     <span class="meta">${verdictHtml(rec)}<span class="usage">${usageText(r)}</span>${sourceBadge(rec, g)}</span></div>`;
   if (auto) {
@@ -931,6 +941,7 @@ function ingest(g, m, animate) {
     case "game_start": case "meta":
       for (const k of ["deck", "deck_name", "mode", "opponent", "first", "rules", "dir", "name", "result", "demo", "recorded"]) if (m[k] != null) info[k] = m[k];
       if (m.backend && m.backend.label) info.label = m.backend.label;
+      if (m.backend && m.backend.model) info.model = m.backend.model;
       scheduleHeader();
       break;
     case "decision": {
@@ -1209,12 +1220,21 @@ function renderHeader() {
   renderStatus();
   document.title = `${n.me[0]} vs ${n.opp[0]} · ygo-agent`;
   const tabs = $("#seat-tabs");
+  document.body.dataset.viewSeat = g.multi ? app.seat : 0;
   tabs.classList.toggle("hidden", !g.multi);
+  const reasoning = $("#reasoning-seats");
+  reasoning.classList.toggle("hidden", !g.multi || app.tab !== "stream");
   $("#god-toggle").classList.remove("hidden");
   if (g.multi) {
     const seats = [...g.seats.keys()].sort();
-    tabs.innerHTML = seats.map((s) => `<button data-seat="${s}" class="${s === app.seat ? "on" : ""}"><span class="sw" style="background:var(${s === 0 ? "--me" : "--opp"})"></span>${esc(g.seat(s).deck_name || "Seat " + s)}</button>`).join("")
-      + `<button data-seat="all" class="${app.streamSeats === "all" ? "on" : ""}" title="Reasoning from both seats">both</button>`;
+    const playerSig = JSON.stringify(seats.map((s) => playerLabel(g, s)));
+    if (g.playerSig !== playerSig) {
+      // A second seat's metadata can arrive after the first seat's decision cards.
+      for (const rec of g.decs) if (rec.el?.isConnected) fillCard(rec.el, rec);
+      g.playerSig = playerSig;
+    }
+    tabs.innerHTML = `<span class="seg-label">Board</span>` + seats.map((s) => `<button data-seat="${s}" class="${s === app.seat ? "on" : ""}" aria-pressed="${s === app.seat}" title="${esc(`Show ${playerLabel(g, s)} at the bottom of the board`)}"><span class="sw" style="background:var(--seat-${s})"></span>${esc(playerLabel(g, s))}</button>`).join("");
+    reasoning.innerHTML = `<span class="seg-label">Show reasoning</span>` + ["all", ...seats].map((s) => `<button data-stream-seat="${s}" class="${s === app.streamSeats ? "on" : ""}" aria-pressed="${s === app.streamSeats}">${s === "all" ? "Both players" : `<span class="sw" style="background:var(--seat-${s})"></span>${esc(playerLabel(g, s))}`}</button>`).join("");
   }
   renderPlan();
 }
@@ -1601,11 +1621,18 @@ function wire() {
   $("#god").onchange = (e) => { app.god = e.target.checked; store.set("god", app.god); renderBoard(false); };
   for (const t of $$(".tab")) t.onclick = () => setTab(t.dataset.tab);
   $("#seat-tabs").onclick = (e) => {
-    const b = e.target.closest("button");
+    const b = e.target.closest("button[data-seat]");
     if (!b) return;
-    if (b.dataset.seat === "all") app.streamSeats = app.streamSeats === "all" ? app.seat : "all";
-    else { app.seat = +b.dataset.seat; if (app.streamSeats !== "all") app.streamSeats = app.seat; for (const z of Object.values(board.zones)) z._sig = null; }
+    app.seat = +b.dataset.seat;
+    for (const z of Object.values(board.zones)) z._sig = null;
     app.prevLp = {};
+    renderHeader();
+    rebuildPanes();
+  };
+  $("#reasoning-seats").onclick = (e) => {
+    const b = e.target.closest("button[data-stream-seat]");
+    if (!b) return;
+    app.streamSeats = b.dataset.streamSeat === "all" ? "all" : +b.dataset.streamSeat;
     renderHeader();
     rebuildPanes();
   };
@@ -1706,6 +1733,7 @@ function setTab(tab) {
   $("#stream").classList.toggle("hidden", tab !== "stream");
   $("#log").classList.toggle("hidden", tab !== "log");
   $("#review").classList.toggle("hidden", tab !== "review");
+  $("#reasoning-seats").classList.toggle("hidden", tab !== "stream" || !app.game?.multi);
   $("#feedback").classList.toggle("hidden", tab === "review");
   if (tab === "log") { const l = $("#log"); if (!app.game || app.game.cursor == null) l.scrollTop = l.scrollHeight; else { const f = $$("#log > :not(.future)"); const last = f[f.length - 1]; if (last) l.scrollTop = last.offsetTop - l.clientHeight + 60; } }
 }

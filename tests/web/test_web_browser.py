@@ -145,6 +145,66 @@ def test_god_view_reveals_hands_and_set_cards(panel, tmp_path, mode):
         assert values[-1] == [1, 0, 1]
 
 
+
+def test_player_colors_and_reasoning_filter_are_independent(panel, tmp_path):
+    browser_or_skip()
+    from ygo_agent.web.bus import BUS
+    gid = "mirror-colors"
+    side = {"lp": 8000, "deck": 30, "hand": [], "extra": [], "gy": [], "ban": [],
+            "mz": [None] * 7, "sz": [None] * 8}
+    for seat, model in enumerate(("Model Alpha", "Model Beta")):
+        base = {"game_id": gid, "seat": seat}
+        BUS.publish({**base, "type": "game_start", "deck_name": "Blackwing", "mode": "selfplay",
+                     "backend": {"model": model, "label": model}})
+        state = {"turn": 1, "turn_player": seat, "phase": 4,
+                 "me": copy.deepcopy(side), "opp": copy.deepcopy(side), "chain": []}
+        BUS.publish({**base, "type": "decision", "decision": {
+            "id": 1, "kind": "yesno", "options": [], "state": state}})
+    snapshot = """({seat: app.seat, filter: app.streamSeats,
+        buttons: [...document.querySelectorAll('#seat-tabs button')].map(e => e.textContent),
+        dots: [...document.querySelectorAll('#seat-tabs .sw')].map(e => getComputedStyle(e).backgroundColor),
+        badges: [...document.querySelectorAll('#stream .seatb')].map(e => ({text: e.textContent, color: getComputedStyle(e).color})),
+        bottom: document.querySelector('#side-me .nm b').textContent,
+        bottomColor: getComputedStyle(document.body).getPropertyValue('--me').trim(),
+        topColor: getComputedStyle(document.body).getPropertyValue('--opp').trim(),
+        bar: getComputedStyle(document.querySelector('#side-me .lpbar .fill')).backgroundImage,
+        filterVisible: !document.querySelector('#reasoning-seats').classList.contains('hidden')})"""
+    steps = [
+        {"wait": "app.board && app.game.decs.length === 2 && document.querySelectorAll('#seat-tabs button').length === 2"},
+        {"eval": snapshot},
+        {"eval": "document.querySelector('#seat-tabs [data-seat=\"1\"]').click()"},
+        {"eval": snapshot},
+        {"eval": "document.querySelector('#reasoning-seats [data-stream-seat=\"0\"]').click()"},
+        {"eval": snapshot},
+        {"eval": "document.querySelector('#seat-tabs [data-seat=\"0\"]').click()"},
+        {"eval": snapshot},
+        {"eval": "document.querySelector('#reasoning-seats [data-stream-seat=\"all\"]').click()"},
+        {"eval": snapshot},
+        {"eval": "document.querySelector('#theme-btn').click()"},
+        {"eval": snapshot},
+        {"eval": "document.querySelector('#seat-tabs [data-seat=\"1\"]').click()"},
+        {"eval": snapshot},
+        {"eval": "document.querySelector('[data-tab=\"log\"]').click()"},
+        {"eval": snapshot},
+    ]
+    values = run_check(f"{panel.url}?game={gid}", steps, tmp_path)
+    a, b, filtered, flipped, both, light_a, light_b, log = values[1::2]
+    assert a["buttons"] == b["buttons"] == ["Blackwing 1", "Blackwing 2"]
+    assert a["dots"] == b["dots"] and a["dots"][0] != a["dots"][1]
+    assert a["badges"] == b["badges"]
+    assert a["bottom"] == "Blackwing 1" and b["bottom"] == "Blackwing 2"
+    assert a["bottomColor"] == b["topColor"] and a["topColor"] == b["bottomColor"]
+    assert a["bar"] != b["bar"]
+    assert a["filter"] == b["filter"] == "all"
+    assert filtered["seat"] == 1 and filtered["filter"] == 0
+    assert [x["text"] for x in filtered["badges"]] == ["Blackwing 1"]
+    assert flipped["seat"] == 0 and flipped["filter"] == 0
+    assert both["seat"] == 0 and both["filter"] == "all" and len(both["badges"]) == 2
+    assert light_a["dots"] == light_b["dots"] and light_a["dots"] != a["dots"]
+    assert light_a["bottomColor"] == light_b["topColor"]
+    assert light_a["badges"] == light_b["badges"]
+    assert log["filterVisible"] is False
+
 def final_board(game_dir):
     """Turn and LP (opponent, me: the board's plate order) after the game's last events."""
     turn, lp = 0, [8000, 8000]

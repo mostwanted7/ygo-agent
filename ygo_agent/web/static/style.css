@@ -16,10 +16,10 @@
   --accent-2: #b3a8ff;
   --accent-bg: rgba(139, 124, 246, .13);
   --accent-line: rgba(139, 124, 246, .45);
-  --me: #4cc2ff;
-  --me-bg: rgba(76, 194, 255, .1);
-  --opp: #ff6b81;
-  --opp-bg: rgba(255, 107, 129, .1);
+  --seat-0: #4cc2ff;
+  --seat-0-bg: rgba(76, 194, 255, .1);
+  --seat-1: #ff6b81;
+  --seat-1-bg: rgba(255, 107, 129, .1);
   --good: #34d399;
   --good-bg: rgba(52, 211, 153, .12);
   --warn: #fbbf24;
@@ -53,10 +53,10 @@
   --accent-2: #5a48d6;
   --accent-bg: rgba(109, 92, 232, .1);
   --accent-line: rgba(109, 92, 232, .4);
-  --me: #0d8fd6;
-  --me-bg: rgba(13, 143, 214, .09);
-  --opp: #e0405c;
-  --opp-bg: rgba(224, 64, 92, .08);
+  --seat-0: #0d8fd6;
+  --seat-0-bg: rgba(13, 143, 214, .09);
+  --seat-1: #e0405c;
+  --seat-1-bg: rgba(224, 64, 92, .08);
   --good: #0f9f6e;
   --good-bg: rgba(15, 159, 110, .1);
   --warn: #c27a00;
@@ -71,6 +71,16 @@
   --mat-2: #d3dae7;
   --glass: rgba(255, 255, 255, .88);
   color-scheme: light;
+}
+
+/* Player identity stays fixed; me/opp are relative to the board orientation. */
+body {
+  --me: var(--seat-0); --me-bg: var(--seat-0-bg);
+  --opp: var(--seat-1); --opp-bg: var(--seat-1-bg);
+}
+body[data-view-seat="1"] {
+  --me: var(--seat-1); --me-bg: var(--seat-1-bg);
+  --opp: var(--seat-0); --opp-bg: var(--seat-0-bg);
 }
 
 * { box-sizing: border-box; }
@@ -137,6 +147,9 @@ svg { display: block; }
   border: 0; background: none; padding: 5px 10px; border-radius: 7px; font-size: 12.5px; font-weight: 600; color: var(--dim);
   display: flex; align-items: center; gap: 6px; white-space: nowrap;
 }
+.seg-label { align-self: center; padding: 0 7px; color: var(--dim); font-size: 11px; white-space: nowrap; }
+#seat-tabs { flex: none; }
+#reasoning-seats { flex: none; margin: 8px 12px 0; flex-wrap: wrap; }
 .seg button .sw { width: 8px; height: 8px; border-radius: 50%; }
 .seg button.on { background: var(--panel-3); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.3); }
 
@@ -345,8 +358,8 @@ svg { display: block; }
   width: 26px; height: 26px; border-radius: 8px; flex: none; display: grid; place-items: center;
   font-weight: 800; font-size: 12px; color: #fff;
 }
-.side.me .plate .avatar { background: linear-gradient(135deg, var(--me), #2563eb); }
-.side.opp .plate .avatar { background: linear-gradient(135deg, var(--opp), #be185d); }
+.side.me .plate .avatar { background: linear-gradient(135deg, var(--me), color-mix(in srgb, var(--me) 60%, #172554)); }
+.side.opp .plate .avatar { background: linear-gradient(135deg, var(--opp), color-mix(in srgb, var(--opp) 60%, #172554)); }
 .plate .nm { min-width: 0; flex: 1; }
 .plate .nm b { display: block; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .plate .nm span { display: block; font-size: 11px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -357,8 +370,8 @@ svg { display: block; }
 .lpbar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: inherit; }
 .lpbar .ghost { background: var(--bad); transition: width .9s ease .45s; }
 .lpbar .fill { transition: width .45s ease; }
-.side.me .lpbar .fill { background: linear-gradient(90deg, #2563eb, var(--me)); }
-.side.opp .lpbar .fill { background: linear-gradient(90deg, #be185d, var(--opp)); }
+.side.me .lpbar .fill { background: linear-gradient(90deg, color-mix(in srgb, var(--me) 60%, #172554), var(--me)); }
+.side.opp .lpbar .fill { background: linear-gradient(90deg, color-mix(in srgb, var(--opp) 60%, #172554), var(--opp)); }
 .floater {
   position: absolute; right: -2px; top: -30px; z-index: 6; font: 800 18px/1 var(--mono); pointer-events: none; white-space: nowrap;
   padding: 3px 7px; border-radius: 7px; background: var(--panel-3); border: 1px solid var(--line-2); box-shadow: var(--card-shadow);
@@ -501,8 +514,8 @@ svg { display: block; }
 .dc .num { font: 700 11.5px/1 var(--mono); color: var(--faint); flex: none; }
 .dc .kind { font-size: 11px; font-weight: 700; color: var(--dim); text-transform: uppercase; letter-spacing: .07em; white-space: nowrap; }
 .dc .seatb { font-size: 10.5px; font-weight: 700; padding: 2px 6px; border-radius: 5px; white-space: nowrap; }
-.dc .seatb.s0 { color: var(--me); background: var(--me-bg); }
-.dc .seatb.s1 { color: var(--opp); background: var(--opp-bg); }
+.dc .seatb.s0 { color: var(--seat-0); background: var(--seat-0-bg); }
+.dc .seatb.s1 { color: var(--seat-1); background: var(--seat-1-bg); }
 .dc .meta { margin-left: auto; display: flex; align-items: center; gap: 7px; min-width: 0; flex-wrap: wrap; justify-content: flex-end; }
 .dc .usage { font: 500 11px/1 var(--mono); color: var(--faint); white-space: nowrap; }
 .src { font-size: 11px; font-weight: 700; padding: 3px 7px; border-radius: 6px; white-space: nowrap; max-width: 190px; overflow: hidden; text-overflow: ellipsis; }
