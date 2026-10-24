@@ -423,7 +423,7 @@ def _common_host(p: argparse.ArgumentParser) -> None:
     p.add_argument("--pace", type=float, default=0.0, metavar="SECONDS",
                    help="minimum time per AI decision (agent: and ai: seats), so a spectator can follow")
     p.add_argument("--games-dir", default=None, help="where agent: seats write their game logs (default: config)")
-    p.add_argument("--chat", choices=("banter", "off"), default=None, help="agent: seats' chat (default: config)")
+    p.add_argument("--chat", choices=("banter", "off"), default=None, help=argparse.SUPPRESS)  # legacy no-op
 
 
 def build_parser() -> argparse.ArgumentParser:

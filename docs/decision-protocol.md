@@ -142,8 +142,7 @@ Chat details: `position` is the bot's own room seat. `player` is the sender's se
 `player == position` is the bot's own echo, which the agent ignores), 7 for spectators and 8+ for system messages.
 EDOPro hosts send chat as `STOC_CHAT_2` (0xF3: type, is_team, name, message), which the fork converts into this event:
 own team → `player = position`, other team → `1 - position`. Older hosts' `STOC_CHAT` (0x19) carries the seat
-directly. A message starting with `!` is a coaching note: the agent saves it to the game's `feedback.md` and
-acknowledges it in chat.
+directly. A message starting with `!` is a coaching note: the agent saves it to the game's `feedback.md` silently.
 
 ## Decisions
 
@@ -166,8 +165,8 @@ acknowledges it in chat.
   answer after a `retry`), so `choice` is never null; see docs/backends.md. The reply `source` of a `place` (and a
   long `announce_card`) is `auto` either way.
 - `choice: []` = pass / cancel / finish, where the kind allows it (below). Otherwise it is treated as a fallback.
-- `say`: optional chat text, sent to the room right away. `\n` separates lines; lines longer than 240 characters are
-  split. The agent uses it for its rare banter and to acknowledge `!notes`, never for explanations.
+- `say`: legacy bridge field, always `null` from the agent. The agent never sends chat, including acknowledgments
+  of `!notes`. Old logs may contain chat text here.
 
 ### Kinds
 
@@ -267,12 +266,12 @@ encoding.
 room                                   (join)
 [go_first]                             (game 1: whoever won RPS chooses)
 start · new_turn · new_phase · ...     (events and decisions)
-win → game_over (reply may carry say)
+win → game_over (choice and say are null)
 [go_first]                             (game 2: the loser of game 1 chooses; decision ids restart at 1)
 start · ...
 ```
 
-The agent starts a fresh game (new `DuelBrain`: log folder, history, banter count) on the first decision or `start`
+The agent starts a fresh game (new `DuelBrain`: log folder and history) on the first decision or `start`
 event after a `win`. Chat that arrives between a `win` and the next game still belongs to the finished game, so a
 `!note` typed right after the game lands in that game's `feedback.md`.
 
@@ -281,7 +280,7 @@ event after a `win`. Chat that arrives between a `win` and the next game still b
 Each game's `games/<time>_<deck>-vs-<opponent>/game.jsonl` holds one JSON object per line:
 `{"ts": unix time, "kind": "event" | "decide" | "reply" | "advice", "msg": ...}`. `event` and `decide` are the messages above,
 exactly as received (the `room` event comes first). `reply` records what was sent back:
-`{"id", "choice", "source"}`, plus `say` when chat was sent. `source` is `backend` (the configured backend
+`{"id", "choice", "source"}` (older logs also include `say` when chat was sent). `source` is `backend` (the configured backend
 answered; logs before Stage 1 say `llm`), `rule:<name>`, `auto`, `fallback`, `game_over`, or `human`: in a coach
 game (docs/coach.md) every reply is the human's own move, with `advised`, `matched`, `seconds` (their thinking time)
 and `trivial`, and the coach's recommendations are `advice` rows (`{"id", "choice", "why", "plan", "source", "late",

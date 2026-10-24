@@ -42,8 +42,7 @@ def test_fixture_plays_through(path, db, cfg, scripted):
             assert r["choice"][0] in d["options"]  # announce_card replies with the card id itself
         elif r["choice"] is not None and d["kind"] == "select_unselect":
             assert len(r["choice"]) <= 1  # one pick per prompt; the rest is planned
-    says = [r["say"] for r in replies if r["say"]]
-    assert len(says) <= 4 and all(not s.startswith("[") for s in says), says  # banter only, no explanations
+    assert all(r["say"] is None for r in replies)
     # Every decision got its reply logged, with where it came from.
     recs = records(brain.log.dir)
     logged = [r["msg"] for r in recs if r["kind"] == "reply"]
@@ -71,7 +70,7 @@ def test_feedback_note_and_spectator_chat(db, cfg, scripted):
     brain.on_event({"t": "event", "e": "chat", "player": 0, "position": 0, "message": "my own line", "source": "duelist"})
     brain.on_event({"t": "event", "e": "chat", "player": 7, "position": 0, "message": "nice", "source": "spectator"})
     brain.on_event({"t": "event", "e": "chat", "player": 8, "position": 0, "message": "joined", "source": "system"})
-    assert brain.say_queue == ["Noted feedback #1."]
+    assert brain.reply({"id": 1, "kind": "game_over"}, None, "game_over")["say"] is None
     assert brain.history == ['A spectator says in chat: "nice"']
     with open(os.path.join(brain.log.dir, "feedback.md"), encoding="utf-8") as f:
         assert "save Veiler" in f.read()
@@ -83,6 +82,7 @@ def ev(e, **fields):
 
 
 def test_match_starts_a_fresh_game_for_each_game_of_a_bo3(db, cfg, scripted):
+    cfg["chat"] = "banter"  # even a caller bypassing load_config cannot restore outgoing chat
     profile = Profile("saffira", db, cfg)
     match = Match(Runtime(cfg, db, profile), prewarm=False)
     state = {"turn": 1, "turn_player": 0, "phase": 4, "chain": [],
@@ -98,10 +98,11 @@ def test_match_starts_a_fresh_game_for_each_game_of_a_bo3(db, cfg, scripted):
     assert decide(1, "go_first", options=[])["choice"] == [1]
     match.on_message(ev("start", first=True, lp=[8000, 8000], names=["Agent", "Rival"]))
     game1 = match.brain
-    assert decide(2)["choice"] == [0]
+    reply = decide(2)
+    assert reply["choice"] == [0] and reply["say"] is None
     match.on_message(ev("win", result=1, reason=1))
     end = decide(3, "game_over", result=1, reason=1)
-    assert end["choice"] is None and end["say"]  # the loss line rides on the game_over reply
+    assert end["choice"] is None and end["say"] is None
     match.on_message(ev("chat", player=1, position=0, message="!good game", source="duelist"))
     assert match.brain is game1  # a note typed after the game still belongs to it
     decide(1)  # game 2: decision ids restart, and a new brain/log takes over

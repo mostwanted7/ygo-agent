@@ -7,7 +7,6 @@ import time
 from .. import backends, paths
 from ..backends import Request
 from ..config import backend as backend_profile
-from .banter import Banter
 from .describe import Describer
 from .gamelog import GameLog, paint, BOLD, YELLOW
 from .prompts import SCHEMA, rules_from_flags
@@ -15,9 +14,6 @@ from .rules import Context, Rules
 from .stats import GameStats
 from .validate import validate
 
-BOSS_TYPES = 0x40 | 0x80 | 0x2000 | 0x800000 | 0x4000000  # Fusion, Ritual, Synchro, Xyz, Link
-BOSS_ATK = 2500
-FIELD = (0x4, 0x8)
 KEY_ACTIONS = ("activate", "summon", "spsummon", "set_monster", "set_spell", "attack", "reposition")
 # Backend profile keys meta.json records (never headers or keys).
 META_KEYS = ("name", "type", "model", "effort", "base_url", "json_mode", "structured", "api_key_env", "temperature",
@@ -85,8 +81,6 @@ class DuelBrain:
         self._fallback_policies = {}
         self.room = room
         self._system_prompt = None
-        # A coach's moves are the human's, so no jokes in coach mode.
-        self.banter = Banter(enabled=cfg.get("chat") == "banter" and self.mode != "coach")
         self.history = []
         self.pending = []
         self.pending_ids = set()
@@ -99,7 +93,6 @@ class DuelBrain:
         self.retry = False
         self.plan = []
         self.plan_hint = None
-        self.say_queue = []
         self.last_decision = None
         self.feedback = 0
         self.stats = GameStats()
@@ -108,8 +101,6 @@ class DuelBrain:
         self.memory_turn = None
         self.started = False  # got this game's `start` event
         self.over = False     # got its `win` event
-        self.chain_players = {}
-        self.wiped = 0
 
     @property
     def log(self):
@@ -147,10 +138,6 @@ class DuelBrain:
                                                              self.opponent)
         return self._system_prompt
 
-    def say(self, line):
-        if line:
-            self.say_queue.append(line)
-
     # ---- events ----
 
     def on_event(self, ev):
@@ -171,7 +158,6 @@ class DuelBrain:
             self.log.write_meta(opponent=names[1] if len(names) > 1 else None, first=ev.get("first"))
             if self.runtime:
                 self.runtime.duel_started.set()
-            self.say(self.banter.line("start"))
         if e == "chat":
             return self.on_chat(ev)
         if e == "new_turn":
@@ -179,7 +165,6 @@ class DuelBrain:
             self.new_turn_memory(ev["turn"])
         if e == "retry":
             self.retry = True
-        self.watch_for_big_plays(ev)
         self.pending_ids |= event_ids(ev)
         for line in self.describer.lines(ev):
             self.add_line(line)
@@ -189,29 +174,7 @@ class DuelBrain:
             self.over = True
             self.log.write_meta(result={0: "win", 1: "loss"}.get(ev.get("result"), "draw"),
                                 ended=time.strftime("%Y-%m-%d %H:%M:%S"))
-            self.say(self.banter.result(ev.get("result")))
             self.summary()
-
-    def watch_for_big_plays(self, ev):
-        """Banter cues: our boss monster hits the field, or our chain link clears 3+ of the opponent's cards."""
-        e = ev["e"]
-        if e == "summoning" and ev.get("special") and ev.get("to", {}).get("c") == 0:
-            card = self.db.get(ev.get("id"))
-            if card and card.type & BOSS_TYPES and card.atk >= BOSS_ATK:
-                self.say(self.banter.line("boss"))
-        elif e == "chaining":
-            self.chain_players[ev.get("link")] = ev.get("player")
-        elif e == "chain_solved":
-            self.chain_players.pop(ev.get("link"), None)
-        elif e == "chain_end":
-            self.chain_players, self.wiped = {}, 0
-        elif e == "move" and self.chain_players:
-            src, dst = ev.get("from", {}), ev.get("to", {})
-            resolving = self.chain_players[max(self.chain_players)]
-            if resolving == 0 and src.get("c") == 1 and src.get("l") in FIELD and dst.get("l") not in FIELD:
-                self.wiped += 1
-                if self.wiped == 3:
-                    self.say(self.banter.line("wipe"))
 
     def add_line(self, line):
         """A duel-log line: the history, what the backend hasn't seen yet, game.md."""
@@ -238,7 +201,6 @@ class DuelBrain:
             if ev.get("name"):
                 author += f" {ev['name']}"
             self.log.feedback(msg[1:].strip(), context, who=author)
-            self.say_queue.append(f"Noted feedback #{self.feedback}.")
         else:
             self.add_line(f'{who} says in chat: "{msg}"')
 
@@ -379,7 +341,7 @@ class DuelBrain:
         self.log.record("decide", d)
         kind = d["kind"]
         if kind == "game_over":
-            return self.reply(d, None, "game_over")  # only a chance to send the end-of-duel chat line
+            return self.reply(d, None, "game_over")
         if d.get("state", {}).get("me"):
             self.fill_extra(d["state"])
         self.last_decision = d["id"]
@@ -494,15 +456,11 @@ class DuelBrain:
     def reply(self, d, choice, source=None):
         if choice is not None and d["kind"] == "announce_card":
             choice = [d["options"][choice[0]]]
-        say = "\n".join(self.say_queue) or None
-        self.say_queue = []
         record = {"id": d["id"], "choice": choice, "source": source}
         if source != "game_over":
             self.stats.decision(source or "fallback")
-        if say:
-            record["say"] = say
         self.log.record("reply", record)
-        return {"id": d["id"], "choice": choice, "say": say}
+        return {"id": d["id"], "choice": choice, "say": None}  # legacy bridge field; the agent never chats
 
     def summary(self):
         self.log.write_meta(stats=self.stats.summary())

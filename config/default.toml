@@ -7,11 +7,6 @@ edopro_dir = "~/Games/ProjectIgnis"  # EDOPro install: card databases, strings a
 deck = "saffira"                     # deck profile: a deck folder's name (see [decks]), or a .ydk file
 games_dir = "games"                  # game logs (relative paths are relative to the repo)
 
-# In-duel chat: "banter" = at most a few short joke lines per duel (start, a big play, the result);
-# "off" = none. The reasoning is never sent to chat; it's in the terminal and the game log.
-# Either way, a "!note" typed in the duel chat is saved and acknowledged.
-chat = "banter"
-
 [decks]
 # Deck profiles live in two places, searched in this order: decks/ in the repo (the curated decks that ship with
 # ygo-agent), then your own decks dir, where `ygo-agent train` puts the decks it trains (`--into repo`: decks/).

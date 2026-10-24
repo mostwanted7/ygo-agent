@@ -63,7 +63,7 @@ def add_bot(p, arena=False):
     p.add_argument("--password", help="room password")
     p.add_argument("--name", help="the agent's player name in EDOPro")
     p.add_argument("--brain-port", type=int, help="with --join: local port for the bot ⇄ agent bridge")
-    p.add_argument("--chat", choices=("banter", "off"), help="in-duel chat: a few jokes, or none")
+    p.add_argument("--chat", choices=("banter", "off"), help=argparse.SUPPRESS)  # legacy no-op
     add_web(p)
     if arena:
         add_room(p)
@@ -113,7 +113,7 @@ def parser():
     p.add_argument("--timeout", type=float, help="give up a room after this many seconds")
     p.add_argument("--port", type=int, help="with --spectate: the room's port (default from the config: 7911)")
     p.add_argument("--password", help="room password")
-    p.add_argument("--chat", choices=("banter", "off"), help="in-duel chat: a few jokes, or none")
+    p.add_argument("--chat", choices=("banter", "off"), help=argparse.SUPPRESS)  # legacy no-op
     add_web(p)
     add_room(p)
     p.add_argument("--edopro-dir", help="EDOPro install folder")

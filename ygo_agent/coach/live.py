@@ -174,11 +174,6 @@ class Coach(RoomObserver):
         seat = result.seats[self.human_pos]
         game.submit(game.attach_result, result, seat)
 
-    def say_in_room(self, text):
-        """A system chat line in the room (the !note acknowledgements)."""
-        if self.room is not None and self.loop is not None and not self.loop.is_closed():
-            self.loop.call_soon_threadsafe(self.room.say, text)
-
     # ---- the deck ----
 
     def profile_for(self, human):
@@ -327,7 +322,6 @@ class CoachGame:
 
     def event(self, ev):
         self.brain.on_event(ev)
-        self.flush_say()
         if ev["e"] == "new_turn" and self.asking is None:
             self.prewarm(ev["turn"])
         elif ev["e"] == "win":
@@ -336,13 +330,6 @@ class CoachGame:
 
     def chat(self, ev):
         self.brain.on_event(ev)
-        self.flush_say()
-
-    def flush_say(self):
-        if self.brain.say_queue:
-            text = "\n".join(self.brain.say_queue)
-            self.brain.say_queue.clear()
-            self.coach.say_in_room(text)
 
     def prewarm(self, turn):
         if not self.over and self.brain.backend_cfg.get("type") not in ("heuristic", "random"):

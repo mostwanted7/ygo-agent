@@ -138,21 +138,18 @@ def test_after_a_retry_the_same_response_is_not_sent_again(make_seat, quiet):
     assert any("engine rejected" in line for line in seat.brain.history)
 
 
-def test_chat_notes_are_saved_and_acknowledged(make_seat, agent_cfg, engine, quiet):
-    said = []
-
+def test_chat_notes_are_saved(make_seat, agent_cfg, engine, quiet):
     class Noted(AgentSeat):
         def choose(self, prompt, retry):
-            if self.next_id == 3 and not said:
+            if self.next_id == 3:
                 self.room_chat("!keep the hand trap for their turn", "duelist", "Human")
                 self.room_chat("good luck", "spectator", "Watcher")
             return super().choose(prompt, retry)
     base = make_seat("saffira")
-    a = Noted("Noted", agent_cfg, base.db, base.profile, base.backend, cards=engine.cards, chat=said.append)
+    a = Noted("Noted", agent_cfg, base.db, base.profile, base.backend, cards=engine.cards)
     b = make_seat("blackwing")
     play(engine, (a, b), (a.deck(engine), b.deck(engine)), 11)
     a.close()
-    assert said and "Noted feedback #1" in said[0]
     folder = a.brain.log.dir
     assert "keep the hand trap" in open(os.path.join(folder, "feedback.md")).read()
     assert 'A spectator says in chat: "good luck"' in open(os.path.join(folder, "game.md")).read()
@@ -228,7 +225,7 @@ def test_watcher_builds_and_decodes_another_players_decisions(make_seat, engine,
 
 def test_agent_seat_in_a_room_with_a_client(make_seat, engine, quiet):
     """A network player (the stand-in for EDOPro) against an agent seat: the duel runs, the player's `!note` is
-    saved and acknowledged in the room's chat, and the agent's time doesn't count against anyone."""
+    saved without an agent chat reply, and the agent's time doesn't count against anyone."""
     from ygo_agent.arena import server as S
     from ygo_agent.arena.client import ArenaClient, chat_texts
     from ygo_agent.arena.native_seat import add_to_room
@@ -263,7 +260,7 @@ def test_agent_seat_in_a_room_with_a_client(make_seat, engine, quiet):
     (duel, result), = room.games
     assert result.retries == 0 and result.reason != WIN_REASON_TIMED_OUT
     agent.close()
-    assert any("Noted feedback #1" in t for t in chat_texts(client.log))
+    assert not any("Noted feedback" in t for t in chat_texts(client.log))
     assert "keep Veiler" in open(os.path.join(agent.brain.log.dir, "feedback.md")).read()
 
 

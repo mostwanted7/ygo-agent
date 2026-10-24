@@ -118,19 +118,17 @@ class CoachBrain(DuelBrain):
 
     # ---- chat and notes ----
 
-    def note(self, text, who, turn=None, decision=None, ack=True):
+    def note(self, text, who, turn=None, decision=None):
         """A note for whoever improves the coach and the playbook: feedback.md, tagged as a coach game."""
         self.feedback += 1
         after = decision or self.last_decision
         context = f"coach game, turn {turn or self.turn}, " + (f"right after decision #{after}" if after else
                                                                   "before the first decision")
         self.log.feedback(text, context, who=who)
-        if ack:
-            self.say_queue.append(f"Noted feedback #{self.feedback}.")
         return {"n": self.feedback, "context": context}
 
     def panel_note(self, text, decision=None, turn=None):
-        return self.note(text, "Web panel", turn, decision, ack=False)
+        return self.note(text, "Web panel", turn, decision)
 
     def on_chat(self, ev):
         msg = ev.get("message", "").strip()

@@ -7,7 +7,7 @@ from ygo_agent.config import ConfigError, backend, deck_overrides, load_config
 
 def test_defaults():
     cfg = load_config(local=None)
-    assert cfg["deck"] == "saffira" and cfg["chat"] == "banter"
+    assert cfg["deck"] == "saffira" and cfg["chat"] == "off"
     assert cfg["duel"]["rules"] == "MR3"
     assert cfg["room"] == {"host": "127.0.0.1", "port": 7911, "password": ""}
     assert cfg["bot"]["brain_port"] == 7922 and cfg["bot"]["protocol_version"] == 0
@@ -23,7 +23,7 @@ def test_defaults():
 
 def test_local_file_merges_tables(tmp_path):
     local = tmp_path / "local.toml"
-    local.write_text('chat = "off"\n[room]\nport = 7912\n[decks.saffira]\nydk = "~/x.ydk"\n'
+    local.write_text('chat = "banter"\n[room]\nport = 7912\n[decks.saffira]\nydk = "~/x.ydk"\n'
                      '[backends.fast]\ntype = "claude-code"\nmodel = "sonnet"\n[agent]\nbackend = "fast"\n')
     cfg = load_config(local=str(local))
     assert cfg["chat"] == "off"
@@ -33,8 +33,6 @@ def test_local_file_merges_tables(tmp_path):
 
 
 def test_bad_values_are_reported(tmp_path):
-    with pytest.raises(ConfigError):
-        load_config(local=None, overrides={"chat": "main"})
     with pytest.raises(ConfigError):
         load_config(local=None, overrides={"agent": {"backend": "nope"}})
     with pytest.raises(ConfigError, match="supported"):
@@ -53,7 +51,7 @@ def test_cli_flags_win(tmp_path):
     local = tmp_path / "local.toml"
     local.write_text('[room]\nport = 7912\n')
     args = parser().parse_args(["play", "--join", "--port", "7999", "--model", "sonnet", "--effort", "low",
-                                "--deck", "blackwing", "--chat", "off", "--brain-port", "7930",
+                                "--deck", "blackwing", "--chat", "banter", "--brain-port", "7930",
                                 "--config", str(local), "--games-dir", str(tmp_path)])
     cfg = configure(args)
     assert cfg["room"]["port"] == 7999 and cfg["deck"] == "blackwing" and cfg["chat"] == "off"

@@ -347,9 +347,9 @@ def test_ports_in_use_warn(fake):
 
 
 def test_broken_config_is_a_finding_and_the_report_goes_on(fake):
-    fake["local"].write_text("chat = 'loud'\n")
+    fake["local"].write_text("[agent]\nfallback = 'loud'\n")
     rows = run(fake)
-    assert rows["config"].status == "FAIL" and "chat must be one of" in rows["config"].detail
+    assert rows["config"].status == "FAIL" and "agent.fallback must be one of" in rows["config"].detail
     assert "the checks below use the defaults" in rows["config"].hint
     assert "7930" in rows["ports"].detail  # the defaults
     rows = run(fake, overrides={"edopro_dir": str(fake["install"])})

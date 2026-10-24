@@ -12,7 +12,7 @@ GAMES=$(mktemp -d "${TMPDIR:-/tmp}/ygo-bridge-test.XXXXXX")
 LOG="$GAMES/brain.log"
 PY=python3
 [ -x .venv/bin/python ] && PY=.venv/bin/python
-$PY -m ygo_agent play --join --brain-only --brain-port "$PORT" --games-dir "$GAMES" --chat banter "$@" > "$LOG" 2>&1 &
+$PY -m ygo_agent play --join --brain-only --brain-port "$PORT" --games-dir "$GAMES" "$@" > "$LOG" 2>&1 &
 BRAIN=$!
 trap 'kill $BRAIN 2>/dev/null' EXIT
 sleep 4

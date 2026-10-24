@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Removed agent chat, including canned banter and feedback acknowledgments. Human `!notes` still save to the
+  game log. Legacy `--chat` flags and config values are accepted but cannot enable chat.
+
 ## 0.1.0 beta 2 (2026-10-23)
 
 - The train wizard showed the report instead of your questions after "Read the deck"; a deck page mid-training

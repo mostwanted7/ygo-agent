@@ -60,8 +60,7 @@ p95), how many came late, and the cost.
 ## Notes
 
 A `!note` typed in the duel chat, or the panel's note box, goes to the coached game's `feedback.md` as usual, tagged
-`coach game`: `- (coach game, turn T, right after decision #N) text`. The room acknowledges a chat note with a system
-line.
+`coach game`: `- (coach game, turn T, right after decision #N) text`. Chat notes are saved silently.
 
 ## The review
 

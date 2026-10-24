@@ -124,20 +124,16 @@ static class BridgeTest
             Check("select_unselect second pick from plan", second >= 0 && second < 2 && (DateTime.Now - t).TotalSeconds < 2);
         }
 
-        // A "!note" from the opponent is acknowledged in chat with the next reply; the explanations aren't sent.
+        // A "!note" from the opponent is saved silently; the agent never sends chat.
         bridge.Event("chat", new Dictionary<string, object> { { "player", 1 }, { "position", 0 }, { "message", "!bridge test note" }, { "source", "duelist" } });
-        int before = chat.Count;
         bool? yes = bridge.SelectEffectYn(duel.Fields[0].MonsterZone[2], ((long)Saffira << 20) | 0);
         Check("effect_yn answered", yes.HasValue);
-        Check("feedback note acknowledged", chat.Skip(before).Any(m => m.StartsWith("Noted feedback")));
-        Check("no explanation chat", chat.All(m => !m.StartsWith("[")));
+        Check("no agent chat", chat.Count == 0);
 
-        // End of game 1: the game_over round trip carries the result line, then game 2 starts on the same connection.
+        // End of game 1: game_over stays silent, then game 2 starts on the same connection.
         bridge.Event("win", new Dictionary<string, object> { { "result", 0 }, { "reason", 1 } });
-        before = chat.Count;
         bridge.GameOver(0, 1);
-        Check("game over line sent", chat.Count == before + 1);
-        Check("at most 4 banter lines in game 1", chat.Count(m => !m.StartsWith("Noted feedback")) <= 4);
+        Check("game over stays silent", chat.Count == 0);
         bool? game2First = bridge.SelectFirst();
         Check("game 2: go_first answered", game2First == true);
         duel.Turn = 1; duel.Player = 0;

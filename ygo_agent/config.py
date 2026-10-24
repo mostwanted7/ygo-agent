@@ -12,7 +12,6 @@ from .paths import CONFIG_DIR, ROOT
 
 DEFAULT_PATH = os.path.join(CONFIG_DIR, "default.toml")
 LOCAL_PATH = os.path.join(ROOT, "config.local.toml")
-CHAT_MODES = ("banter", "off")
 FALLBACKS = ("bot", "heuristic")
 CARD_TEXTS = ("full", "compact", "none")
 
@@ -46,13 +45,13 @@ def load_config(local=LOCAL_PATH, overrides=None):
         cfg = merge(cfg, _read(local))
     if overrides:
         cfg = merge(cfg, overrides)
+    # Accept old config files and launch scripts, but chat can no longer be enabled.
+    cfg["chat"] = "off"
     check(cfg)
     return cfg
 
 
 def check(cfg):
-    if cfg.get("chat") not in CHAT_MODES:
-        raise ConfigError(f'chat must be one of {", ".join(CHAT_MODES)} (got {cfg.get("chat")!r})')
     agent = cfg["agent"]
     if agent.get("fallback", "bot") not in FALLBACKS:
         raise ConfigError(f'agent.fallback must be one of {", ".join(FALLBACKS)} (got {agent.get("fallback")!r})')

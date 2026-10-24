@@ -11,7 +11,7 @@ and never blocks the event loop; heuristic/random backends answer inline. When t
 answers something the engine can't take, the heuristic policy answers; after an engine RETRY the brain answers with
 its own fallback, and the seat makes sure the same response isn't sent twice.
 
-Also here: `add_to_room` (an AgentSeat at a Room position, with chat both ways), `link` (seats of one duel share
+Also here: `add_to_room` (an AgentSeat at a Room position, receiving human chat), `link` (seats of one duel share
 the web panel's game id), `PacedSeat` (a minimum time per answer for any in-process seat) and `SeatWatcher` (the
 decisions of a seat someone else plays, and their responses as option indices: coach mode).
 """
@@ -37,12 +37,12 @@ INLINE_BACKENDS = ("heuristic", "random", "scripted")  # fast, pure: no worker t
 
 class AgentSeat(Seat):
     def __init__(self, name: str, cfg: dict, db, profile, backend: dict, *, cards=None, pace: float = 0.0,
-                 threaded: bool | None = None, position: int = 0, chat=None, timeout: float | None = None,
+                 threaded: bool | None = None, position: int = 0, timeout: float | None = None,
                  mode: str | None = None, opponent: dict | None = None, log_options: dict | None = None):
         """`cfg`: the agent config (config.load_config()); `db`: the agent CardDB; `profile`: the deck Profile;
         `backend`: a backend profile dict ({"name", "type", ...}). `cards`: the arena CardDatabase (printed stats
         and declarable names); `pace`: minimum seconds per decision; `position`: the lobby seat (chat events);
-        `chat(text)`: sends the agent's chat lines to the room. `mode`, `opponent` and `log_options` go to each
+        `mode`, `opponent` and `log_options` go to each
         game's DuelBrain (the prompt's mode and opponent, the log's terminal tag and verbosity)."""
         self.name = name
         self.cfg, self.db, self.profile, self.backend = cfg, db, profile, backend
@@ -52,7 +52,6 @@ class AgentSeat(Seat):
         self.native = NativeView(0, cards)
         self.pace = pace
         self.position = position
-        self.chat = chat
         if threaded is None:
             threaded = backend.get("type") not in INLINE_BACKENDS
         self._worker = concurrent.futures.ThreadPoolExecutor(1, thread_name_prefix=f"agent-{name}") if threaded \
@@ -65,7 +64,6 @@ class AgentSeat(Seat):
         self.next_id = 0
         self.fallback = Policy(db)
         self.random = RandomPolicy()
-        self._loop: asyncio.AbstractEventLoop | None = None
         self._last: tuple[int, bytes] | None = None  # (decision id, response) of the last answer, for RETRY
         self.trace: list | None = None   # tests: set to a list to collect every event and decision sent
         self.match_id: str | None = None  # the web panel's game id prefix, the same for both seats (see link())
@@ -103,29 +101,6 @@ class AgentSeat(Seat):
         """Run `fn` on the brain's thread and wait for it (only for quick, non-backend calls)."""
         result = self._run(fn)
         return result.result(timeout) if isinstance(result, concurrent.futures.Future) else result
-
-    def _say(self, text: str | None) -> None:
-        if not text or self.chat is None:
-            return
-        try:
-            self.chat(text)
-        except Exception:
-            traceback.print_exc()
-
-    def _say_later(self, text: str | None) -> None:
-        """Chat from the worker thread: hand it to the event loop's thread when there is one."""
-        if not text:
-            return
-        if self._loop is not None and self._worker is not None and not self._loop.is_closed():
-            self._loop.call_soon_threadsafe(self._say, text)
-        else:
-            self._say(text)
-
-    def _capture_loop(self) -> None:
-        try:
-            self._loop = asyncio.get_running_loop()
-        except RuntimeError:
-            pass
 
     def _record(self, msg: dict) -> None:
         if self.trace is not None:
@@ -211,7 +186,6 @@ class AgentSeat(Seat):
         self.set_room(view.config)
 
     def on_message(self, msg: Message) -> None:
-        self._capture_loop()
         for ev in self.native.on_message(msg):
             ev = {"t": "event", **ev}
             self._record(ev)
@@ -228,7 +202,7 @@ class AgentSeat(Seat):
             return empty_state()
 
     def _game_over(self, ev: dict, state: dict) -> None:
-        """`win`, then the game_over round trip (its reply may carry a last chat line); ids restart at 1."""
+        """`win`, then the game_over round trip; ids restart at 1."""
         self._event(ev)
         self.next_id += 1
         d = {"t": "decide", "id": self.next_id, "kind": "game_over", "result": ev["result"], "reason": ev["reason"],
@@ -236,8 +210,7 @@ class AgentSeat(Seat):
         self._record(d)
         self.next_id = 0
         try:
-            reply = self.brain.on_decide(d)
-            self._say_later(reply.get("say"))
+            self.brain.on_decide(d)
         except Exception:
             print("[agent seat] game_over failed:\n" + traceback.format_exc())
 
@@ -255,10 +228,6 @@ class AgentSeat(Seat):
             if self.brain is None:
                 return
             self.brain.on_event(ev)
-            if self.brain.say_queue:  # acknowledge a !note right away instead of with the next decision
-                text = "\n".join(self.brain.say_queue)
-                self.brain.say_queue.clear()
-                self._say_later(text)
         self._run(deliver)
 
     def go_first(self) -> bool:
@@ -268,7 +237,6 @@ class AgentSeat(Seat):
 
         def ask():
             reply = self._brain_for(d).on_decide(d)
-            self._say_later(reply.get("say"))
             return reply.get("choice")
         try:
             choice = self._call(ask)
@@ -278,7 +246,6 @@ class AgentSeat(Seat):
         return choice != [0]
 
     def choose(self, prompt: Prompt, retry: bool):
-        self._capture_loop()
         decision = build(prompt, self.native)
         if decision.kind is None:
             self.stats["auto"] += 1
@@ -323,8 +290,6 @@ class AgentSeat(Seat):
 
     def _answer(self, prompt: Prompt, decision: Decision, d: dict, reply: dict | None, retry: bool) -> bytes:
         choice = reply.get("choice") if reply else None
-        if reply:
-            self._say(reply.get("say"))
         data = None
         if choice is not None:
             try:
@@ -483,8 +448,8 @@ def link(*seats: AgentSeat, match_id: str | None = None) -> str:
 
 
 def add_to_room(room, pos: int, seat: AgentSeat, deck):
-    """Seat an AgentSeat at lobby position `pos` of an arena Room: its chat lines go to the room, and the room's chat
-    (human `!notes` included) comes to it. Returns the room's LocalPlayer."""
+    """Seat an AgentSeat at lobby position `pos` of an arena Room, receiving the room's chat (human `!notes`
+    included). Returns the room's LocalPlayer."""
     from .server import RoomObserver
 
     class ChatRelay(RoomObserver):
@@ -496,7 +461,6 @@ def add_to_room(room, pos: int, seat: AgentSeat, deck):
             seat.room_chat(text, "spectator" if spectator else "duelist", p.name if p else "", own=own)
     player = room.add_local(pos, seat, deck)
     seat.position = pos
-    seat.chat = lambda text: room.chat_as(player, text)
     seat.set_room(room.config.duel)
     room.room_observers.append(ChatRelay())
     return player

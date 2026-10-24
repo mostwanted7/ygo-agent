@@ -61,7 +61,7 @@ the coach each create a fresh one per game.
 **Events become history.** Every event the seat receives (draws, moves, summons, chain links, attacks, damage,
 chat) is turned into a line of English by `describe.py` and appended to the duel history, the same lines that go to
 `game.md` and the web panel. A chat line starting with `!` is a coaching note: it is saved to the game's
-`feedback.md` with the turn and the decision it followed, and acknowledged in chat.
+`feedback.md` with the turn and the decision it followed. The agent sends no chat, including acknowledgments.
 
 **A decision goes through, in order:**
 

@@ -1,6 +1,6 @@
 """The TCP server the WindBot fork's BrainBridge connects to: newline-delimited JSON, one connection per match.
 
-Each game of the match gets its own DuelBrain (and so its own log, history and banter); see
+Each game of the match gets its own DuelBrain (and so its own log and history); see
 docs/decision-protocol.md for the messages.
 """
 
