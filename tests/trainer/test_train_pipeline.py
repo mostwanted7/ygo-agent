@@ -33,10 +33,6 @@ Make Rank 4s.
 
 **Line 1: Geargiarsenal + any Geargia** *(unverified)*
 1. Normal Summon Geargiarsenal, Tribute it for Geargiarmor.
-
-## Known pitfalls (from reviewed games, newest first)
-
-None yet: specific mistakes from reviewed games go here, one or two lines each.
 """
 QUOTE = {"source": "script", "file": "c73428497.lua", "decision": 0, "quote": "e2:SetCost(Cost.SelfTribute)"}
 
@@ -117,7 +113,7 @@ def test_dry_run_of_the_whole_pipeline(tmp_path, decks_dir, engine, agent_db, ge
     assert calls.count("study") == 1 and calls.count("lab-review") == 1  # round 2: L1 verified, no lab
     assert calls.count("review") == 2
     text = (deck / "playbook.md").read_text()
-    assert "*(verified in lab)*" in text and "## Going second / breaking boards" in text
+    assert "verified in lab" not in text and "## Going second / breaking boards" in text
     assert text.count("Tribute it** for a body") == 1  # the second game repeated it: deduplicated
     assert "invented ruling" not in text
     state = json.loads((train / "state.json").read_text())

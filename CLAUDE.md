@@ -36,9 +36,11 @@ route below stays for the developer, and for what `learn` can't do (describe.py,
      reference): principles first, phrased as conditions with their reason ("consider X when Y, because Z"), which
      the player may override when the board calls for it; no step-by-step scripts. When a principle is missing or
      wrong, fix that section, generalised beyond this game. A specific mistake that is significant and repeatable
-     (a misread ruling, an engine quirk) goes to **Known pitfalls** at the bottom: one or two lines, dated, naming
-     the game. Saffira's playbook keeps the user's own **Coaching lessons** on top (newest first, dated). Correct or
-     remove text a fix contradicts, and drop "(untested)"/"(unverified)" from what a game has confirmed. Keep it
+     (a misread ruling, an engine quirk) goes to **Known pitfalls** at the bottom: one or two reusable sentences.
+     Omit the section when empty. Playbooks must never include dates, game IDs, match results, opponent assessments,
+     praise, anecdotes, verification history, or statements such as "None outstanding" about resolved mistakes.
+     Keep provenance in review reports and regression cases. Saffira keeps its generalized **Coaching lessons**.
+     Correct or remove text a fix contradicts; integrate the useful principle without narrating the fix. Keep it
      tight (≤ 8 KB): the model reads all of it on every decision. A lesson that holds for every deck goes in
      `playbooks/general.md`.
    - **Hard rules** (`decks/<deck>/rules.py`, Context helpers in `ygo_agent/agent/rules.py`) are only for a mistake
@@ -72,7 +74,8 @@ For `decks/blackwing` the user is learning the deck and can't spot mistakes, so 
   Black-Winged Dragon on the field.
 - Check doubtful rulings in the card script before writing a lesson. Never write a lesson you haven't verified
   against the script or the engine log.
-- Promote steps the engine actually allowed from *(unverified)* to verified, and fix steps that failed.
+- Fix steps the engine disproved and generalize useful corrections. Keep verification status in the report;
+  initial practice games validate basics and combos, not a history to include in the playbook.
 - In coach games (`meta.json` `mode: "coach"`, docs/coach.md) every move is the user's own, not Claude's: game.md
   tags each decision `human` (✅ marks the move they played) and puts the coach's advice under it as a `🎓 Coach`
   line; in `game.jsonl` the replies have `"source": "human"` with `advised`/`matched`, and the coach's advice is in

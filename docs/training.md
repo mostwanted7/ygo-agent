@@ -7,7 +7,8 @@ LLM for every deck, and what it knows about yours is a folder of text it reads w
 
 - `playbook.md`: the strategy, read on every decision, so the player doesn't spend its time on the basics or make
   basic mistakes. Principles first ("consider X when Y, because Z"), a few checked rulings, and at the bottom the
-  Known pitfalls: specific mistakes from reviewed games. 5-8 KB.
+  Known pitfalls, if needed: reusable cautions. 5-8 KB. No dates, game IDs, results, opponent assessments,
+  anecdotes, verification history or empty/resolved-pitfall commentary. Evidence stays in reports and test cases.
 - `tips.md`: your own advice about the deck, in your words. The trainer writes the playbook from it and never
   contradicts it silently; nothing but you (and the commands that save your answers) writes it.
 - `tests/*.json`: regression cases, past decisions with a known right answer. Every edit to the playbook is replayed
@@ -16,6 +17,10 @@ LLM for every deck, and what it knows about yours is a folder of text it reads w
 
 Because it is all text, any backend can play a trained deck, you can read and edit every line of it, and a deck is
 shared by copying its folder.
+
+Initial practice games validate the basics: common combos, obvious errors and contradictions in the draft.
+Their playbook corrections must generalize beyond the particular hand or match. A successful play or a single
+opponent's behavior is not, by itself, a new rule for the deck.
 
 ## The loop
 
@@ -167,8 +172,8 @@ are not necessarily Opus's. The reviewer is `--backend` (default `trainer.backen
 
 ### What keeps it honest
 
-- **No lesson without evidence.** Every Known pitfall must quote a script line or the game log (with the decision
-  number); the quote is checked against the file, give or take punctuation. Pitfalls that fail, or repeat one already
+- **No lesson without evidence.** Every proposed pitfall needs a script or game-log quote in the review's evidence
+  fields, outside the playbook; the quote is checked against the file, give or take punctuation. Pitfalls that fail, or repeat one already
   in the playbook, are dropped and listed in the report.
 - **No rewrite that loses behaviour.** Every section rewrite, condense and learn edit is replayed against the saved
   cases with the player's backend (`--gate-repeat` runs each, default 2; 0 turns it off). If the cases pass less
@@ -177,8 +182,8 @@ are not necessarily Opus's. The reviewer is `--backend` (default `trainer.backen
 - **Regression cases are checked too:** the decision must exist in the log, the choices must be legal for it, and
   the case must not "expect" what the player actually did.
 - **Your words stay yours.** Section edits, condenses and fix-ups never touch Known pitfalls (the trainer writes those
-  itself, dated and naming the game) or a section you wrote (Saffira's "Coaching lessons"); a hand-written playbook
-  keeps its own layout when it is condensed. A tip is never contradicted silently: a conflict with a script becomes
+  itself as generalized cautions, with provenance in the report) or a section you wrote (Saffira's "Coaching lessons");
+  a hand-written playbook keeps its own layout when condensed. A tip is never contradicted silently: a conflict with a script becomes
   an open question.
 - **The reviewer can't write anything.** With the claude-code backend it runs `claude -p` with only Read, Grep and
   Glob, `--permission-mode dontAsk --restricted`, no settings, MCP servers or slash commands, in a sandbox folder

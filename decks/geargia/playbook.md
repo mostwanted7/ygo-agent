@@ -1,7 +1,7 @@
 ## How to use this playbook
 
 These are principles, not scripts: read the board, and when you see a better play, make it and say why in `why`.
-Trust the engine's options over this text. Known pitfalls (at the bottom) are real mistakes from past games.
+Trust the engine's options over this text.
 
 ## Game plan
 
@@ -71,7 +71,7 @@ Before "Go to the Battle Phase" and before ending your turn, count the most dama
   unused this turn floats), so play it for lethal or a battle you must win, after the summons it should boost.
 - **Gagaga Cowboy** in **Defense Position**: detach → 800 damage (in Attack it only gains ATK). The finisher: in
   Main Phase 2, overlay two Lv4s that already attacked into it in Defense and burn: at 800 LP or less, any two Lv4s
-  are lethal through any blockers. *(script-checked)*
+  are lethal through any blockers.
 - Nothing attacks directly until their last monster is destroyed, so each blocker costs one attack that surely
   destroys it (a face-down one's DEF is unknown: use a big attacker), unless Castel, Dark Rebellion, Droplet or
   Fiendish Chain removes it first. If the rest reaches their LP, make the summons and position changes in Main
@@ -86,14 +86,14 @@ Before "Go to the Battle Phase" and before ending your turn, count the most dama
   101 if it was Special Summoned.
 - If you can't break through, build instead: a Rank 4 or Gadget + face-down Armor, traps Set, and grind.
 
-## Known pitfalls (from reviewed games, newest first)
+## Known pitfalls
 
 - **Negating a summon.** When Solemn Strike or Judgment is offered while an opponent's monster is being Special
-  Summoned, the summon hasn't happened yet: that is the window to negate it. *(2026-10-21, r2-g2)*
+  Summoned, the summon hasn't happened yet: that is the window to negate it.
 - **Forbidden Droplet after an attack is declared.** If your monster already beats the halved attacker, pay the cost
-  from the hand or the Spell/Trap Zone: a monster leaving your field replays the attack. *(2026-10-21, r2-g2)*
+  from the hand or the Spell/Trap Zone: a monster leaving your field replays the attack.
 - **Forbidden Droplet facing a big attack.** Count every monster that can still attack you this turn (one in Defense
   can switch to Attack unless it was summoned this turn) against your blockers, and halve as many as you need to
-  survive, usually the maximum: two cards left exact lethal on board. *(2026-10-21, r2-g1)*
+  survive. Check the remaining damage after halving; stopping only the biggest attacker may still leave lethal.
 - **Monsters that Tribute themselves to negate.** Stardust Dragon/Assault Mode negates one thing and returns only in
-  the End Phase: feed it your least important activation, then make your real plays. *(2026-10-21, r1-g2)*
+  the End Phase: feed it your least important activation, then make your real plays.

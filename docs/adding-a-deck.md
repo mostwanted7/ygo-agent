@@ -67,8 +67,12 @@ about 8 KB. `decks/geargia/playbook.md` is the reference; its shape, in order:
 4. **Situational considerations**: the judgment calls as conditions with their reason ("consider X when Y, because
    Z"), which the model may override.
 5. **Lethal check** (decks with boosts, burn or OTKs) and **Going second / breaking boards**.
-6. **Known pitfalls**, always last: the specific, repeatable mistakes from reviewed games, one or two lines each,
-   dated and naming the game.
+6. **Known pitfalls**, optional and last: reusable cautions, one or two sentences each. Omit when empty.
+
+Playbooks contain generalized guidance only: no dates, game IDs, match results, opponent assessments, anecdotes,
+verification history or comments about resolved mistakes. Keep evidence and provenance in reports and regression
+cases. Initial practice games check obvious errors, contradictions and common combos; only reusable corrections
+belong in the playbook.
 
 Principles first, because games vary too much for step-by-step scripts. A lesson that holds for every deck goes in
 `playbooks/general.md`, not the deck's playbook. `ygo-agent learn --deck chaos` turns the notes you typed during

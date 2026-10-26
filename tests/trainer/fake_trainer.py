@@ -25,10 +25,6 @@ Make Rank 4s.
 ## Situational considerations
 
 - **Consider Gear Gigant X when a Geargiano is in the GY**, because it floats.
-
-## Known pitfalls (from reviewed games, newest first)
-
-None yet: specific mistakes from reviewed games go here, one or two lines each.
 """
 
 

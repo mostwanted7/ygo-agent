@@ -120,7 +120,7 @@ def test_a_note_becomes_a_principle_a_pitfall_and_a_case(cfg, db, deck):
         assert want in prompt, want
     text = (deck / "playbook.md").read_text()
     assert "Set a blocker when your field is empty" in text
-    assert "Tribute it** for a body. *(" in text and "owner's note on game 2026-10-22_130750)*" in text
+    assert "Tribute it** for a body." in text and "2026-10-22_130750" not in text
     assert pb.problems(text) == []
     case = json.loads((deck / "tests" / "set-blocker-on-empty-field.json").read_text())
     assert case["expect"] == [[1]] and case["messages"][-1]["id"] == 183
@@ -246,7 +246,7 @@ def test_keep_owner_and_new_problems():
     assert pb.keep_owner(before, "## Coaching lessons\n\n- changed\n\n## Game plan\n\nB.\n").startswith(owner)
     # a hand-written playbook isn't held to the house style, only to keeping what it had
     assert pb.new_problems(before, pb.keep_owner(before, "## Game plan\n\nB.\n")) == []
-    assert pb.new_problems(before, "## Game plan\n\nB.\n") == ["no known pitfalls section"]
+    assert pb.new_problems(before, "## Game plan\n\nB.\n") == []  # pitfalls are optional
     assert pb.new_problems(PLAYBOOK, "## Game plan\n\nB.\n")  # a house-style one may not lose its sections
     assert not pb.house_style(before) and pb.house_style(PLAYBOOK)
 

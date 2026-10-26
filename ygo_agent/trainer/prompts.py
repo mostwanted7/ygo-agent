@@ -24,6 +24,12 @@ What is true, in order: what the engine did (a game or lab log), the card's Lua 
 card text. Never write a claim about how a card works that you haven't checked in its script; when the text and the \
 script seem to differ, the script wins. Never write a lesson you haven't verified against a script or a log.
 
+Playbook text must be GENERALIZED: reusable conditions, actions, reasons and rulings only. Never include dates, \
+game IDs, decision numbers, match results, opponent performance, praise, anecdotes, provenance tags or verification \
+history. Keep evidence and source references in the structured review/report fields, outside the playbook. A \
+pitfall is a concrete reusable caution: omit an empty pitfalls section, and never write "None yet", "None \
+outstanding", or commentary about a resolved mistake. Update an existing principle rather than duplicating it.
+
 {tools}"""
 
 TOOLS_AGENTIC = """You have read-only tools (Read, Grep, Glob) in a working folder that holds: scripts/c<id>.lua (the \
@@ -36,15 +42,14 @@ output, and the trainer applies it."""
 TOOLS_INLINE = """Everything you need is in the message: the card texts, the relevant Lua scripts and the logs."""
 
 SECTIONS = """1. `## How to use this playbook`: two or three sentences: these are principles, not scripts; read the board \
-and deviate when a better play exists, saying why in `why`; trust the engine's options over the text; Known pitfalls \
-(at the bottom) are real mistakes from past games.
+and deviate when a better play exists, saying why in `why`; trust the engine's options over the text.
 2. `## Game plan`: what kind of deck it is (e.g. "Rank 4 stun-beatdown"), how it wins, what a good first turn \
 leaves on the board, how it grinds, and how it closes games.
 3. `## Card roles`: short, grouped by role (starters and extenders, searchers, walls, Extra Deck answers, traps, hand \
 traps): what each card is for in this deck, plus only the rulings that decide plays and aren't obvious from the text \
 (hard or soft once per turn, cost vs effect, "when" triggers that miss timing, what counts as an archetype member, \
-summoning conditions, locks), each checked in the script, with a short "(script: ...)" note where it's easy to get \
-wrong. One line of how-to-use beats three of what-it-does.
+summoning conditions, locks), each checked in the script. Keep citations in the report, outside the playbook. \
+One line of how-to-use beats three of what-it-does.
 4. `## Situational considerations`: the judgment calls, each as a condition with its reason: "**Consider X when Y**, \
 because Z". Which plays fit which hands and boards, when a card is worth more held than used, which Extra Deck \
 monster fits which board, what to search given the hand, when to commit and when to just set up. Give the trade-off \
@@ -54,10 +59,10 @@ damage this turn with this deck's pieces: the attackers still makeable, boosts a
 finishers, ways to remove blockers, and the non-obvious lethals (with one worked example).
 6. `## Going second / breaking boards`: how the deck gets through an established board, in what order, and when to \
 just build instead.
-7. `## Example sequences` (optional, at most three, short): the deck's most common hands played out, each marked \
-*(unverified)* until the lab or a game shows it working. Examples, not scripts.
-8. `## Known pitfalls (from reviewed games, newest first)`: always last; at first only "None yet: ...". The trainer \
-adds the specific mistakes from reviewed games here; never write into it yourself except when condensing."""
+7. `## Example sequences` (optional, at most three, short): common starting conditions and a useful route. \
+Examples, not scripts; no match histories or verification labels.
+8. `## Known pitfalls` (optional): always last when present. Only concrete, reusable cautions not already covered \
+elsewhere. Omit this section when empty; never add a placeholder or a note about a resolved mistake."""
 
 STYLE = f"""## The house style of a playbook
 
@@ -205,7 +210,7 @@ correct line was missed, put it in `player_errors` with the wording that would f
 2. Correct the playbook. Return each section you change whole, with its heading, in `sections`:
    - fix the card rulings and considerations the lab disproved (check the script before you write the fix), and turn \
 what the hands showed into conditions ("consider X when Y, because Z"), not new step-by-step scripts;
-   - in Example sequences, replace *(unverified)* with *(verified in lab)* for verified lines and fix failed steps;
+   - fix failed steps in Example sequences; keep verification status in `verification`, not in the playbook;
    - random hands show what the deck does with an ordinary draw: if no principle covers a common hand, add one.
    Keep the playbook within 8 KB (now {kb:.1f} KB): when you add, cut what matters less. Don't touch Known pitfalls.
 3. `new_lines`: lines you added or changed that need a lab test next round (structured as below; keep the ids of \
@@ -248,7 +253,11 @@ def game_review(name: str, playbook: str, game: dict, log_ref: str, problems: li
 
 The AI player ({game.get('backend', 'the player')}) played {name} against {game.get('opponent_text', 'an opponent')} \
 and {result} in {game.get('turns', '?')} turns, going {first} ({game.get('reason', '')}). You are its coach: it is \
-learning the deck and nobody else reviews its games. {log_ref}
+checking the basics of the deck's playbook. {log_ref}
+
+These practice games test common combos, obvious errors and contradictions. Revise the general guidance only \
+when the evidence supports a reusable correction. Do not turn an individual game's sequence, result, opponent \
+behavior or successful play into a playbook entry. Keep those details in the review report.
 
 Go through the game turn by turn, the way a coach reviews a student's game:
 - Judge each play on the board, not on whether it followed the playbook: the playbook is guidance, and a deviation \
@@ -272,9 +281,9 @@ Then return:
 - `mistakes` (all you verified) and `significant_mistakes` (how many are major).
 - `sections`: the main way to improve the playbook. When a mistake shows a principle is missing, wrong or misleading, \
 rewrite that section whole (with the heading), as conditions with reasons, generalised beyond this game. Don't touch \
-Known pitfalls. The playbook is {kb:.1f} KB of an 8 KB budget: when you add text, cut text that matters less. Promote \
-Example sequences this game showed working from *(unverified)* to *(verified in game)* and name them in \
-`confirmed_lines`.
+Known pitfalls. The playbook is {kb:.1f} KB of an 8 KB budget: when you add text, cut text that matters less. Correct \
+failed steps in Example sequences when needed. Record working lines only in `confirmed_lines`, without adding \
+verification history to the playbook.
 - `lessons`: only for significant, repeatable mistakes that a principle can't carry (a ruling the player keeps \
 misreading, an engine quirk, a matchup trap). Each becomes a Known pitfall: one or two sentences, generalised ("**When \
 X, do Y** because Z", not this game's exact board), with `evidence`: at least one short verbatim quote from a script \
@@ -322,8 +331,9 @@ CONDENSE_RULES = """- Keep the house style's section order and headings, princip
 - Turn step-by-step scripts into conditions with their reasons ("consider X when Y, because Z"); keep at most three \
 short Example sequences.
 - Known pitfalls: fold the ones a principle now covers into that principle and drop them from the list; merge \
-pitfalls that say the same thing; keep each one or two sentences with its *(date, game)* tag.
-- Keep every checked ruling and "(script: ...)" note, every *(verified ...)* mark, and the Lethal check's numbers.
+pitfalls that say the same thing; keep each one or two sentences. Omit the section if nothing remains.
+- Keep every checked ruling and the Lethal check's numbers. Remove dates, game references, source citations, \
+verification labels, results, praise and resolved-mistake commentary.
 - Keep the point of every owner's tip (when tips are listed below): cut its wording, never what it says.
 - Copy a section the deck's owner wrote (e.g. "Coaching lessons") exactly as it is: it is theirs.
 - Cut repetition, generic advice the general playbook covers, game anecdotes and restated card texts. Don't add claims."""
@@ -453,6 +463,8 @@ LEARN_STYLE_OWN = """- This playbook is hand-written, not in the house style: ke
 still phrase what you add as a condition with its reason, generalised beyond this game."""
 LEARN_RULES = """- Never edit the Known pitfalls section or a section the owner wrote (e.g. "Coaching lessons"): \
 pitfalls go in `lessons`, and the owner's sections are theirs.
+- All playbook edits and `lessons` must be reusable guidance: no dates, game IDs, decision numbers, match results, \
+opponent assessments, verification labels or empty/resolved-pitfall commentary.
 - The playbook is {kb:.1f} KB of an 8 KB budget: when you add, cut what matters less in the same section.
 - `open_questions`: what a human must settle (a note or a tip that a script contradicts: name both); usually none.
 - `summary`: two or three sentences on what this taught the playbook."""

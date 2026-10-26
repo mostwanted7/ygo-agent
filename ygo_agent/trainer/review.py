@@ -43,7 +43,7 @@ def game_usage_limited(game_dir: str) -> str | None:
 
 
 def apply_lessons(text: str, lessons: list[dict], tag: str, evidence: pb.Evidence) -> tuple[str, list, list]:
-    """Add the lessons whose evidence checks out as Known pitfalls tagged *(tag)*. Returns (text, accepted, rejected);
+    """Add generalized lessons whose evidence checks out. Returns (text, accepted, rejected);
     each entry is {"text", "severity", "notes"}."""
     accepted, rejected = [], []
     for lesson in lessons or []:

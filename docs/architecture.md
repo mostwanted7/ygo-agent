@@ -149,7 +149,8 @@ too, with `<name>.md` next to it as its playbook.
 
 - **The playbook** is what the model reads on every decision, so it stays under about 8 KB: principles first, phrased
   as conditions with their reason, which the model may override when the board calls for it; specific, repeatable
-  mistakes go to a dated *Known pitfalls* section at the bottom. `decks/geargia/playbook.md` is the reference, and
+  mistakes become reusable cautions in an optional *Known pitfalls* section at the bottom. Dates, game IDs and
+  match narratives belong in reports and regression cases, never in playbooks. `decks/geargia/playbook.md` is the reference, and
   `playbooks/general.md` holds what applies to every deck.
 - **Feedback becomes lessons.** After a game, the user tells Claude Code what went wrong (`!notes` in `feedback.md`
   mark the moments). The procedure in `CLAUDE.md` finds the decision in `game.md`, works out whether the cause was

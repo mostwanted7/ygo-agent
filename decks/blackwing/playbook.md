@@ -1,50 +1,7 @@
-## Lessons from games (newest first; these override everything below)
+## How to use this playbook
 
-Your opponent is learning this deck from you, so these come from reviewing your own games against the card
-scripts and the engine log.
-
-### 2026-10-21 game 2 (vs WindBot Blue-Eyes) — won; your opponent rated the play as near perfect
-1. **The main Simoon line is verified** (see "Main line"), including two upgrades you found: activate a second
-   Black Whirlwind from hand before Normal Summoning Sudri (one summon → three searches), and Harmattan copying
-   Boreastorm's Level 4 → Lv6, + Oroshi → a third body, Armor Master.
-2. **The Assault Dragon wipe is one-sided with Full Armor Master on the field:** FAM is unaffected, so it survives.
-   The right moment was the opponent's End Phase, once they had committed everything (4 Dragons + a Set card for
-   Assault + two spent Continuous Spells). Then FAM attacked into an empty board. The wipe only works on the
-   opponent's turn, so their End Phase is your LAST chance before your own turn: if they have more monsters than
-   you can beat in battle, wipe there instead of waiting.
-3. **Use Chinook after the attack is declared,** on the attacking monster. Then they can't back out, and the -700
-   plus negation turns their attack into their own monster's destruction (Giganticastle 3100 → 2200 into FAM).
-4. **Keep Blackbird Close in hand** while you control a Blackwing Synchro. It can be activated from hand then, and
-   it's hidden and safe from Spell/Trap removal (Dragon Spirit of White banishes Spells/Traps).
-5. Black Feather Whirlwind's counter protection saved Armor Master once. Letting Armor Master die later instead of
-   spending Chinook/Blackbird Close on it was fine, since those were saved for bigger threats.
-
-### 2026-10-21 game 1 (vs a Plant deck: Lonefire Blossom, Spore, Witch of the Black Rose) — won
-1. **Only ONE Black-Winged Dragon is in the Extra Deck.** Once it's banished (Assault Dragon's summon) or used,
-   Vata's effect, Twin Shadow → BWD and Blackbird Close's bonus summon are all dead. On turn 5 you Normal Summoned
-   Vata for its BWD effect after BWD was already banished, so it did nothing. Check YOUR EXTRA DECK in the state
-   before any line that needs a specific Extra Deck monster.
-2. **"Blackwing" means the name contains "Blackwing".** Black-Winged Dragon and Black-Winged Assault Dragon are
-   NOT Blackwings. They don't let Kris, Bora, Gale, Vata, Harmattan or Oroshi Special Summon from hand, and
-   they don't turn on Delta Crow. Armor Master, Full Armor Master, Boreastorm, Nothung, Armed Wing and
-   Silverwind are Blackwings.
-3. **Simoon needs an empty board AND another Blackwing in hand to banish.** If Simoon is stuck in hand behind a
-   board, keep a spare Blackwing in hand as its future cost instead of summoning it for no value. Plan for a
-   turn where your board is empty, e.g. after Assault Dragon's wipe or after the opponent removes your monsters,
-   and run the full Simoon engine then.
-4. **Holding Assault Dragon's wipe was right.** It's a Quick Effect on the opponent's turn. Save it for a real
-   threat: removal aimed at Assault, a boss monster, or an overcommitted board. Don't spend it on two weak
-   monsters. Meanwhile each opponent monster effect burns 700; in this game that was 2800 damage.
-5. **Gofu hand with no searcher (verified, see "Other starts"):** turning four monsters into one Assault Dragon is
-   about the best that hand can do. The alternative is stopping at Armor Master + BWD: two bodies, and Armor
-   Master (a Blackwing) turns on Delta Crow. Prefer Assault against decks that activate many monster effects.
-
-## Status of this playbook
-
-Built from the card texts, the EDOPro card scripts, and published Blackwing combo guides adapted to this exact
-list. The main Simoon line and the Gofu line are verified in real games; anything still marked *(unverified)*
-hasn't been played in this engine yet. If the engine offers something
-different from what a line expects, trust the engine's options and adapt; don't force the line.
+Read the board and adapt the lines to your available cards, zones and locks. Trust the engine's options over this
+text; check the Deck and Extra Deck before committing to a line that needs a particular card.
 
 ## Game plan
 
@@ -57,7 +14,7 @@ then into a board of **Blackwing Full Armor Master** (unaffected by other cards,
 
 - **Simoon is the key starter.** If you control NO monsters: banish another Blackwing from hand → place
   **Black Whirlwind** face-up from the Deck, then Normal Summon Simoon without Tributing. That Normal Summon does
-  NOT use your normal Normal Summon (confirmed in the script), so you still get your own Normal Summon after.
+  NOT use your normal Normal Summon, so you still get your own Normal Summon after.
   Costs: only DARK monsters from the Extra Deck for the rest of the turn (all Blackwing Synchros are DARK;
   Clear Wing, Black Rose, PSY-Framelord Omega and Coral Dragon are not). In the End Phase, Black Whirlwind goes
   to the GY and you take 1000 damage.
@@ -105,7 +62,7 @@ then into a board of **Blackwing Full Armor Master** (unaffected by other cards,
   opponent's monster loses 700 ATK and has its effects negated. It's a Quick Effect while you control a DARK
   Synchro. It's also how to put BWD in the GY for Assault Dragon.
 
-## Main line: Simoon + any other Blackwing (verified in game 2)
+## Main line: Simoon + any other Blackwing
 
 1. Simoon: banish the least useful other Blackwing from hand → place Black Whirlwind → Normal Summon Simoon.
 2. Black Whirlwind: add **Sudri**.
@@ -122,12 +79,9 @@ then into a board of **Blackwing Full Armor Master** (unaffected by other cards,
 11. Set traps (Twin Shadow, Icarus Attack, Blackbird Close, Delta Crow) and end. Black Whirlwind goes to the GY in
     the End Phase (1000 damage, or a counter if BWD is still out).
 
-Game 2's version (hand: Simoon, Gofu, Sudri, Shamal, Black Whirlwind): Simoon banished Gofu → Vata; second Black
-Whirlwind from hand; Sudri → Blackbird Close, the two Whirlwinds → Oroshi + Harmattan; Shamal → Black Feather
-Whirlwind; Vata sent itself + Kris + Chinook → BWD; Black Feather Whirlwind revived Vata, Shamal added Chinook back;
-Boreastorm (Vata + Sudri) sent the 2nd Shamal to become Lv4; Harmattan copied Lv4 → Lv6; Full Armor Master
-(Boreastorm + Simoon); Armor Master (Oroshi + Harmattan); Assault Dragon (banish BWD + Boreastorm from GY).
-Final board: Full Armor Master, Assault Dragon, Armor Master, with Blackbird Close + Chinook in hand.
+With a second Black Whirlwind, activate it before Normal Summoning Sudri for an additional search. With spare
+materials, Harmattan copying a Lv4 Boreastorm becomes Lv6; pair it with Oroshi for Armor Master. Check that these
+extra summons leave the materials and zones needed for Full Armor Master and Assault Dragon.
 
 Exact routes vary with the hand. Before each step, check zones (5 Main Monster Zones), what is still in the Deck,
 and that the next Synchro's Levels and Tuner requirement work.
@@ -137,7 +91,7 @@ and that the next Synchro's Levels and Tuner requirement work.
 - **Ahrima** without Simoon: summon Ahrima, Tribute another DARK monster → add Simoon. You need an empty board
   for Simoon, so plan around it.
 - **Sudri** as your Normal Summon: add Vata → Special Summon Vata → BWD.
-- **Gofu** on an empty board, **verified in game 1** with Gofu + Bora + Gale + Oroshi: Special Summon Gofu (take the
+- **Gofu + Bora + Gale + Oroshi** on an empty board: Special Summon Gofu (take the
   2 tokens) → Special Summon Bora and Gale (Gofu is a Blackwing) → Armor Master (Gale 3 + Bora 4) → Special Summon
   Oroshi → Black-Winged Dragon (Oroshi 1 + Armor Master 7) → Gofu's effect: banish Gofu + both tokens (5+1+1 = 7) to
   revive Armor Master as a Tuner → Assault Dragon by banishing Armor Master + BWD. The tokens can't be Synchro
@@ -153,14 +107,33 @@ and that the next Synchro's Levels and Tuner requirement work.
 - Gale halves a monster's ATK/DEF, Chinook gives -700 and negates, and Nothung's summon deals 800 and gives -800.
 - Black Rose Dragon wipes the field, but only on a turn you haven't used Simoon or Vata (it's FIRE).
 
+## Situational considerations
+
+- **Assault Dragon's wipe leaves Full Armor Master alive**, because Full Armor Master is unaffected by other
+  cards. Consider the wipe when it answers removal, a major threat or a board you cannot beat in battle. It only
+  works during the opponent's turn: their End Phase is the last opportunity to clear blockers before your turn.
+- **Chinook can turn an attack against its attacker.** When its Quick Effect is available and the ATK reduction
+  or negation wins the battle, use it after the attack is declared.
+- **Keep Blackbird Close in hand while you control a Blackwing Synchro**, because it can activate from hand
+  then and avoids Spell/Trap removal.
+- **Spend protection according to the threat.** Black Feather Whirlwind's counter protection can preserve a
+  useful body; save Chinook and Blackbird Close for threats that would otherwise break your board.
+- **Keep a spare Blackwing for Simoon** when you expect your board to be cleared. Simoon needs both an empty
+  field and another Blackwing in hand to banish.
+- **Gofu without a searcher:** consider Armor Master + BWD when two bodies or enabling Delta Crow matters;
+  consider Assault Dragon against decks that activate many monster effects.
+
 ## Locks and traps to respect
 
 - **Blackbird Close** only negates effects activated by an opponent's monster on the field, not in hand/GY;
   it cannot stop Honest. It also needs a face-up Blackwing you can send to the GY as cost. Full Armor Master's
   immunity does not stop Honest boosting its attacker. Consider stopping a starter that enables a lock before
   it resolves, rather than saving Close for a response it cannot make (Tour Guide into Djinn Releaser).
-  *(2026-10-22, tournament l1-r4-p1 vs Saffira)*
 - Simoon or Vata used this turn → DARK-only Extra Deck. Sudri's Tribute effect → Synchro-only Extra Deck.
 - Gofu and Simoon each need an empty board: decide which one starts.
 - Black Whirlwind only triggers on **Normal** Summons, not Special Summons.
 - Watch the 5 Main Monster Zones: Gofu tokens and extenders fill them fast.
+- **Only one Black-Winged Dragon is in the Extra Deck.** Once it leaves, check whether Vata, Twin Shadow or
+  Blackbird Close still has a valid Extra Deck target before committing resources.
+- **Black-Winged Dragon and Black-Winged Assault Dragon are not Blackwings.** They do not enable extenders
+  that require another Blackwing or count toward Delta Crow's Blackwing requirement.

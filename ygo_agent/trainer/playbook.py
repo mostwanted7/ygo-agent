@@ -1,8 +1,8 @@
-"""Playbook edits from the reviewer's JSON: section replacements, dated pitfalls, verified-line markers, and the
+"""Playbook edits from the reviewer's JSON: section replacements, generalized pitfalls, and the
 evidence check that keeps unverified lessons out.
 
 A playbook is Markdown split by "## " headings, principles first (TEMPLATE). The last section, Known pitfalls, holds
-the specific mistakes from reviewed games (newest on top); the trainer adds them there itself, so a section
+reusable cautions; the trainer adds them there itself, so a section
 replacement can never rewrite or drop them. Older playbooks (decks/blackwing) keep their lessons section on top; it
 counts as the same section. A section the deck's owner writes (Saffira's "Coaching lessons") is theirs: no edit,
 condense or pitfall ever goes into it (`is_owner`, `keep_owner`).
@@ -14,12 +14,12 @@ import difflib
 import os
 import re
 
-LESSONS_HEADING = "## Known pitfalls (from reviewed games, newest first)"
-NO_LESSONS = "None yet: specific mistakes from reviewed games go here, one or two lines each."
+LESSONS_HEADING = "## Known pitfalls"
+NO_LESSONS = "None yet: specific mistakes from reviewed games go here, one or two lines each."  # legacy input only
 # The house style: (heading, required). Pitfalls always come last.
 TEMPLATE = (("## How to use this playbook", True), ("## Game plan", True), ("## Card roles", True),
             ("## Situational considerations", True), ("## Lethal check", False),
-            ("## Going second / breaking boards", False), ("## Example sequences", False), (LESSONS_HEADING, True))
+            ("## Going second / breaking boards", False), ("## Example sequences", False), (LESSONS_HEADING, False))
 REQUIRED = ("how to use", "game plan", "card roles", "situational considerations")
 OWNER = ("coaching lessons", "owner")  # headings of sections the deck's owner writes
 TARGET_KB = (5, 8)
@@ -143,22 +143,27 @@ def strip_heading(content: str, heading: str) -> str:
 
 
 def ensure_lessons(text: str) -> str:
-    """The pitfalls section exists (added last when missing)."""
-    sections = split(text)
-    if not any(is_lessons(h) for h, _ in sections):
-        sections.append((LESSONS_HEADING, NO_LESSONS))
+    """Normalize optional pitfalls; never manufacture an empty section or a status message."""
+    sections = []
+    for heading, body in split(text):
+        if is_lessons(heading) and not is_owner(heading):
+            body = body.replace(NO_LESSONS, "").strip()
+            body = re.sub(r"(?im)^[-*]?\s*None (?:yet|outstanding|open)\b[^\n]*", "", body).strip()
+            if not body:
+                continue
+            heading = LESSONS_HEADING
+        sections.append((heading, body))
     return join(sections)
 
 
 def add_lessons(text: str, tag: str, lessons: list[str], intro: str | None = None) -> str:
-    """Put each lesson as a bullet ending in *(tag)* (the date and the game) at the top of the pitfalls section,
-    below its intro line if it has one."""
+    """Add reusable advice. `tag` is accepted for old callers; provenance belongs in review reports."""
     if not lessons:
-        return text
+        return ensure_lessons(text)
     sections = split(ensure_lessons(text))
     i = next((k for k, (h, _) in enumerate(sections) if is_lessons(h) and not is_owner(h)), None)
     if i is None:  # the only lessons section is the owner's: the pitfalls get their own, last
-        sections.append((LESSONS_HEADING, NO_LESSONS))
+        sections.append((LESSONS_HEADING, ""))
         i = len(sections) - 1
     heading, body = sections[i]
     body = body.replace(NO_LESSONS, "").strip("\n")
@@ -168,10 +173,10 @@ def add_lessons(text: str, tag: str, lessons: list[str], intro: str | None = Non
         lead, rest = [body[:first.start() if first else len(body)].strip("\n")], body[first.start():] if first else ""
     elif intro and not body:
         lead = [intro]
-    block = "\n".join(f"- {clean_lesson(t)} *({tag})*" for t in lessons)
+    block = "\n".join(f"- {clean_lesson(t)}" for t in lessons)
     sections[i] = (heading, "\n\n".join(p for p in lead + [block + ("\n" + rest.strip("\n") if rest.strip() else "")]
                                         if p))
-    return join(sections)
+    return ensure_lessons(join(sections))
 
 
 def clean_lesson(text: str) -> str:
@@ -180,14 +185,17 @@ def clean_lesson(text: str) -> str:
 
 
 def mark_verified(text: str, names: list[str], marker: str = "verified in lab") -> tuple[str, list[str]]:
-    """Lines whose name appears on a line still marked *(unverified)*: swap the mark for *(marker)*."""
+    """Remove obsolete uncertainty labels on confirmed lines; verification history stays in reports.
+
+    `marker` is retained for callers of the old API, but is never inserted into the playbook.
+    """
     changed = []
     out = []
     for line in text.splitlines():
         if "unverified" in line.lower():
             for name in names:
                 if name and norm(name) and norm(name) in norm(line):
-                    line = re.sub(r"\*?\((?:still )?unverified\)\*?", f"*({marker})*", line, flags=re.I)
+                    line = re.sub(r"\s*\*?\((?:still )?unverified\)\*?", "", line, flags=re.I)
                     changed.append(name)
                     break
         out.append(line)
@@ -201,9 +209,7 @@ def problems(text: str) -> list[str]:
     for want in REQUIRED:
         if not any(k.startswith(want) or want in k for k in keys):
             out.append(f"no '{want}' section")
-    if not any(is_lessons("## " + k) for k in keys):
-        out.append("no known pitfalls section")
-    elif not is_lessons("## " + keys[-1]):
+    if any(k.startswith("known pitfalls") for k in keys) and not keys[-1].startswith("known pitfalls"):
         out.append("known pitfalls is not the last section")
     size = len(text.encode())
     if size > LIMIT_BYTES:
