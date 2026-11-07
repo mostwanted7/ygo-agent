@@ -4,6 +4,8 @@
 
 - Removed agent chat, including canned banter and feedback acknowledgments. Human `!notes` still save to the
   game log. Legacy `--chat` flags and config values are accepted but cannot enable chat.
+- Four more trained decks ship with playbooks: Chain Beat, Domain Monarchs, Galaxy-Eyes and Rose Garden. Saffira's
+  deck list now matches the owner's current list, and Blackwing's playbook takes a new lesson on holding Icarus Attack.
 
 ## 0.1.0 beta 2 (2026-10-23)
 

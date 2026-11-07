@@ -45,8 +45,8 @@ edopro_dir = "/path/to/ProjectIgnis"
 **Duel the agent**, start the game, then join from EDOPro's **LAN Mode** using host **127.0.0.1**, port **7911**.
 Select your deck and ready up. Enter the address directly rather than relying on LAN discovery.
 
-Three deck profiles are included: **Saffira, Blackwing and Geargia**. Use **Decks → New deck** to prepare your own
-`.ydk` deck.
+Seven deck profiles are included: **Saffira, Blackwing, Geargia, Chain Beat, Domain Monarchs, Galaxy-Eyes and Rose
+Garden**. Use **Decks → New deck** to prepare your own `.ydk` deck.
 
 **Current supported focus: pre-Pendulum play (MR2-era mechanics).** The browser board has no complete Pendulum-zone layout;
 Pendulum and Link formats are outside the supported UI scope. The engine currently defaults to **Master Rule 3**,
