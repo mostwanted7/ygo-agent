@@ -5,13 +5,14 @@ room and one training per deck at a time, and the record a restarted app reads b
 import json
 import os
 import signal
+import socket
 import sys
 import textwrap
 import time
 
 import pytest
 
-from ygo_agent.web.jobs import Builder, JobError, JobRunner, Plan, display_command, processes_with
+from ygo_agent.web.jobs import Builder, JobError, JobRunner, Plan, display_command, port_free, processes_with
 
 BOTS = ["Blue-Eyes", "Dragunity"]
 
@@ -214,6 +215,23 @@ def test_exit_status_and_one_room_at_a_time(runner):
     assert wait(lambda: not first.running)
     assert runner.launch(Plan("teach", ["calm"], "now it's free", room=dict(room))).running
     assert deck.running and [j.id for j in runner.list()][:1] != [job.id]  # running jobs first
+
+
+def test_a_room_that_just_closed_leaves_the_port_free():
+    """A room that closed with a client connected leaves the port in TIME_WAIT for a minute; the arena can listen
+    there again at once (SO_REUSEADDR), so the app mustn't call the port busy. A live listener still is."""
+    srv = socket.socket()
+    srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    srv.bind(("0.0.0.0", 0))
+    srv.listen()
+    port = srv.getsockname()[1]
+    client = socket.create_connection(("127.0.0.1", port))
+    conn, _ = srv.accept()
+    assert not port_free(port)          # listening
+    conn.close()                        # the room closes first: its side of the connection goes to TIME_WAIT
+    srv.close()
+    client.close()
+    assert port_free(port)
 
 
 def test_a_restarted_app_reads_the_jobs_back_and_stops_orphans(runner, cfg, tmp_path):

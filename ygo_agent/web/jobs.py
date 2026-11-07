@@ -374,8 +374,11 @@ class Job:
 
 
 def port_free(port):
-    """Whether a room could listen on `port` (the arena binds every interface for rooms a human joins)."""
+    """Whether a room could listen on `port` (the arena binds every interface for rooms a human joins). Binds like
+    the arena does (asyncio sets SO_REUSEADDR): a room that just closed leaves its connections in TIME_WAIT for a
+    minute, which doesn't stop a new room listening; another program listening there does."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
             s.bind(("0.0.0.0", port))
         except OSError:
