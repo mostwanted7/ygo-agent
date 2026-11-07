@@ -4,6 +4,8 @@
 
 - Removed agent chat, including canned banter and feedback acknowledgments. Human `!notes` still save to the
   game log. Legacy `--chat` flags and config values are accepted but cannot enable chat.
+- Games no longer crash when EDOPro's updater rewrites the core library mid-game: the core is loaded from a
+  private copy (in `~/.cache/ygo-agent/core`, the newest three kept).
 - Four more trained decks ship with playbooks: Chain Beat, Domain Monarchs, Galaxy-Eyes and Rose Garden. Saffira's
   deck list now matches the owner's current list, and Blackwing's playbook takes a new lesson on holding Icarus Attack.
 

@@ -35,6 +35,15 @@ def _no_user_decks(tmp_path_factory):
         os.environ["XDG_DATA_HOME"] = old
 
 
+@pytest.fixture(autouse=True, scope="session")
+def _private_core_cache(tmp_path_factory):
+    """The core's private copies (ocgcore._snapshot) go to a temporary dir, not ~/.cache/ygo-agent."""
+    from ygo_agent.core import ocgcore
+    old, ocgcore.CACHE = ocgcore.CACHE, str(tmp_path_factory.mktemp("cache"))
+    yield
+    ocgcore.CACHE = old
+
+
 @pytest.fixture(scope="session")
 def db():
     """Card data for the saved cases without an EDOPro install (tests/fixtures/make_cards.py makes it)."""

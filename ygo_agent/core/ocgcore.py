@@ -7,9 +7,13 @@ script readers wired in, the way EDOPro's Game::SetupDuel does it.
 from __future__ import annotations
 
 import ctypes as C
+import hashlib
+import os
 import struct
+import tempfile
 from collections.abc import Callable, Iterable
 
+from ..paths import CACHE
 from .cards import CardDatabase
 from .constants import OCG_DUEL_CREATION_STATUS, OCG_LOG_TYPE_ERROR
 from .scripts import ScriptLoader
@@ -59,12 +63,63 @@ class CoreError(RuntimeError):
     pass
 
 
+def _snapshot(path: str, cache_dir: str | None = None) -> str:
+    """A private copy of the core library, named by its content, to load instead of `path`.
+
+    EDOPro's updater rewrites repositories/*/bin/libocgcore.so in place when EDOPro starts; a process that
+    has the library mapped then runs half-replaced code and segfaults. A copy nobody else writes is safe.
+    Falls back to `path` itself when the copy can't be made."""
+    try:
+        for _ in range(3):  # re-read if the updater was writing the file while we read it
+            before = os.stat(path)
+            with open(path, "rb") as f:
+                data = f.read()
+            after = os.stat(path)
+            if before.st_size == after.st_size == len(data) and before.st_mtime_ns == after.st_mtime_ns:
+                break
+        else:
+            return path
+        cache_dir = cache_dir or os.path.join(CACHE, "core")
+        name = os.path.basename(path)
+        dest = os.path.join(cache_dir, f"{hashlib.sha256(data).hexdigest()[:16]}-{name}")
+        if not os.path.isfile(dest):
+            os.makedirs(cache_dir, exist_ok=True)
+            fd, tmp = tempfile.mkstemp(dir=cache_dir, prefix=".tmp-")
+            try:
+                with os.fdopen(fd, "wb") as f:
+                    f.write(data)
+                os.replace(tmp, dest)  # atomic: a concurrent loader never sees a partial copy
+            except OSError:
+                os.unlink(tmp)
+                raise
+            _prune(cache_dir, name, keep=dest)
+        return dest
+    except OSError:
+        return path
+
+
+def _prune(cache_dir: str, name: str, keep: str, count: int = 3) -> None:
+    """Keep the newest `count` copies of `name` (each EDOPro update adds one). A copy a running game still has
+    loaded stays valid after unlinking on Linux/macOS; on Windows the delete fails and is skipped."""
+    old = sorted((os.path.join(cache_dir, f) for f in os.listdir(cache_dir) if f.endswith("-" + name)),
+                 key=os.path.getmtime, reverse=True)
+    for p in old[count:]:
+        if p != keep:
+            try:
+                os.unlink(p)
+            except OSError:
+                pass
+
+
 class OcgCore:
-    """The loaded core library. Raises CoreError when the API major version isn't 11."""
+    """The loaded core library. Raises CoreError when the API major version isn't 11.
+
+    `path` is EDOPro's library; `loaded_from` is the private copy actually loaded (see `_snapshot`)."""
 
     def __init__(self, path: str):
         self.path = path
-        lib = C.CDLL(path)
+        self.loaded_from = _snapshot(path)
+        lib = C.CDLL(self.loaded_from)
         sig = {
             "OCG_GetVersion": ([C.POINTER(C.c_int), C.POINTER(C.c_int)], None),
             "OCG_CreateDuel": ([C.POINTER(OCG_Duel), C.POINTER(OCG_DuelOptions)], C.c_int),
