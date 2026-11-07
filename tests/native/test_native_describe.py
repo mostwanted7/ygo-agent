@@ -93,7 +93,8 @@ def retake():
 @pytest.mark.skipif(not CASES, reason="no saved cases")
 def test_history_lines_keep_every_event_line(db):
     """lines()/flush(), as DuelBrain uses them, give the same lines in the same order as event() on every saved case:
-    a held Summon line only moves to the next message, or reads as in progress at a response window."""
+    a held Summon line only moves to the next message, or reads as in progress at a response window. A Summon in its
+    negation window (`window`) that succeeds at the very next event reads as one line instead of two."""
     pending = re.compile(r'^(You are|Opponent is) (.+?)ing (".+") to (\S+), (.+) \(not complete yet: it can still be '
                          r'negated\)\.$')
 
@@ -107,16 +108,22 @@ def test_history_lines_keep_every_event_line(db):
     for path in CASES:
         case = load_case(path)
         plain, history = Describer(db), Describer(db)
-        want, got = [], []
+        want, got, prev = [], [], None
         for m in case["messages"]:
             if m.get("t") == "event":
-                want += [t for t in [plain.event(m)] if t]
+                line = plain.event(m)
+                merged = (m["e"] == "summoned" and prev is not None and prev["e"] == "summoning"
+                          and prev.get("window") and Describer._spot(prev) == Describer._spot(m))
+                if line and not merged:  # merged: "... succeeded." folds into the Summon's own line
+                    want.append(line)
                 got += history.lines(m)
+                prev = m
             elif m.get("t") == "decide":
                 got += history.flush(m)
+                prev = None
         got += history.flush()
         shown += sum(1 for line in got if pending.match(line))
-        assert [done(line) for line in got] == want, case_id(path)
+        assert [done(line) for line in got] == [done(line) for line in want], case_id(path)
     assert shown >= 11
 
 

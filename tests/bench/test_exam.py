@@ -124,7 +124,8 @@ def test_make_exam_and_select_command(games, db, cfg, tmp_path, monkeypatch):
     args = ap.parse_args(["bench", "exam", "t", "--select", "--positions", "8", "--sources", games, "--seed", "5"])
     assert E.main(args, cfg, args.what[1:]) == 0
     exam = E.load_json(str(tmp_path / "exams" / "t.json"))
-    assert len(exam["positions"]) == 8 and exam["seed"] == 5 and exam["pool"]["games"] == 5
+    assert len(exam["positions"]) == 8 and exam["seed"] == 5
+    assert exam["pool"]["games"] == sum(len(c) for c in CASES.values())
     args = ap.parse_args(["bench", "exam", "t", "--dry-run", "--backends", "opus,haiku"])
     assert E.main(args, cfg, args.what[1:]) == 0
 
