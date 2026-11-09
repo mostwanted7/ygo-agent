@@ -1,10 +1,10 @@
 ## How to use this playbook
 
-Principles, not scripts: when a better play exists, make it and say why. Trust the engine's options over this text.
+Principles, not scripts: make a better play when you see one. Trust the engine's options over this text.
 
 ## Game plan
 
-Tribute Summon control, no Extra Deck. Each turn, Tribute Summon a Monarch whose summon effect disrupts; Domain, Erupt, Majesty's Fiend and March stop their answers. A Tribute Summon needs a monster to Tribute plus a Monarch in hand, and the spells fetch both. A good first turn leaves a Tribute Summoned Erebus or Ehther behind Domain, with Escalation, Erupt, Prime or Stormforth Set, or an Ehther in hand for their turn. Grind with Erebus's GY effect, Pantheism and Prime. Close with 2800s (+800 when they attack a monster).
+Tribute Summon control, no Extra Deck. Each turn, Tribute Summon a Monarch whose summon effect disrupts; Domain, Erupt, Majesty's Fiend and March stop their answers. A good first turn leaves a Tribute Summoned Erebus or Ehther behind Domain, with Escalation, Erupt, Prime or Stormforth Set, or an Ehther in hand for their turn. Grind with Erebus's GY effect, Pantheism and Prime. Close with 2800s.
 
 ## Card roles
 
@@ -12,7 +12,6 @@ Tribute Summon control, no Extra Deck. Each turn, Tribute Summon a Monarch whose
 - **Edea**: both effects hard once per turn. Banish the S/T you want back (as Ehther's, Pantheism's or Prime's cost) before Edea reaches the GY. One for One fetches Edea and keeps your Normal Summon. With 2 Monarchs in hand, Edea takes Eidos; with 1, Landrobe (Tributed, it adds Mithra or Eidos, and Eidos in the GY can revive it).
 - **Eidos**: its extra Tribute Summon is mandatory; GY revive hard once per turn.
 - **Mithra**: its Vassal Token (their side) can be Stormforth's Tribute or a Landrobe/Caius target, but blocks your 800s.
-- **Only one extra Tribute Summon per turn**.
 - **Landrobe**: flips a face-up enemy monster face-down to summon itself; Tributed, adds an 800/1000 from the GY.
 
 **Monarchs**
@@ -20,8 +19,8 @@ Tribute Summon control, no Extra Deck. Each turn, Tribute Summon a Monarch whose
 - **Erebus/Ehther cost**: 2 differently named Monarch S/Ts from hand **or Deck**. Pay from the Deck.
 - **Erebus**: a Set S/T is a fine shuffle target. GY effect works in either Main Phase.
 - **Ehther**: its pull returns to hand in the End Phase. Hand effect only in the opponent's Main Phase, once per chain. A pulled Ehther #2 returns ready for that, unless banished.
-- **Kuraz**: Special Summon it with Ehther, Tribute Summon only as a last option. Popping your own Kuraz, Edea or spent cards draws.
-- **Kuraz timing**: its optional "When... Summoned" trigger needs the summon to be the last event before triggers can activate. Escalation summoning Kuraz at Chain Link 2+ misses timing when lower links resolve afterward. Prefer Escalation at CL1 if you need its destruction effect. Ehther's summon trigger starts a new chain; Kuraz can trigger if Ehther's recruiting effect resolves at CL1 with the summon last, even when Ehther itself was summoned mid-chain. Check the chain that actually summons Kuraz.
+- **Kuraz**: Special Summon it with Ehther; Tribute Summon it only as a last option or to put Domain's lock up (below). Popping your own Kuraz, Edea or spent cards draws.
+- **Kuraz timing**: its optional "When... Summoned" trigger needs its summon to be the last event before triggers. Escalation summoning it at Chain Link 2+ misses when lower links resolve after, so use Escalation at CL1 for it. Ehther's recruit resolving at CL1 with the summon last is fine, even if Ehther came mid-chain.
 - **Caius**: banish is mandatory; with no opposing card it hits yours (or the token).
 - **Majesty's Fiend**: stops monster effects for both players (Ehther's hand effect, Erebus's GY effect, Edea, Kuraz). S/Ts still work.
 
@@ -30,7 +29,7 @@ Tribute Summon control, no Extra Deck. Each turn, Tribute Summon a Monarch whose
 - **Domain**: −2 Level once per turn; +800 only when a Tribute Summoned monster attacks a monster, not stacking. Its lock only stops the Extra Deck.
 - **Return**, **Tenacity**: hard once per turn.
 - **Stormforth**: Tributing their monster (token included) doesn't target.
-- **Escalation**: summon triggers activate after the chain finishes; Erebus/Ehther's "If" triggers can wait, but Kuraz's optional "When" trigger can miss timing (above).
+- **Escalation**: summon triggers activate after the chain finishes; Kuraz's can miss timing (above).
 - **Erupt**: also negates your non-Tribute Summoned monsters (Eidos, Edea, Mithra); while it's up, build around Domain + Stormforth.
 - **Prime**: its GY body is Tribute fodder on either turn and cheap bait.
 
@@ -39,6 +38,7 @@ Tribute Summon control, no Extra Deck. Each turn, Tribute Summon a Monarch whose
 - **Going first, Tribute Summon Erebus, Ehther or Thestalos, not Caius**, because they have no card to banish. Use Tenacity and Pantheism to find both pieces, Domain if fodder can't make it 1 Tribute. Then lock with Domain, Erupt or March, or Set Stormforth/Escalation for their turn.
 - **Count summons first**: Normal Summon + 1 extra = at most 2 Tribute Summons. If Edea used the Normal Summon, only one Monarch follows. A Monarch summoned with the extra can't be Tributed for another that turn, so save the second Monarch for Escalation or Ehther's hand effect.
 - **Summons spent, a threat still up**: search for a Tribute Summon on their turn, before it attacks: Pantheism showing 3 Tenacity → Tenacity → Set Escalation, then Erebus off your Tribute Summoned monster shuffles it. Else Stormforth for next turn, not Domain: a lock leaves their monster on the field.
+- **Lock off mid-game** (no Tribute Summoned monster of yours): anything you activate, even Mithra or Domain's −2, opens a chain their Extra Deck can answer (a Set Twin Shadow, a Synchro). If they likely hold one, first Tribute Summon a Lv6 off a monster already on the field, even at the cost of Mithra's extra summon, so the lock is up before any chain; Kuraz then destroys the Set card.
 - **Expecting disruption: Domain first**, fodder from Mithra or Landrobe, Normal Summon kept for the Monarch, so a negated starter costs less; Domain + Mithra gives two Monarchs. **Otherwise Edea → Eidos** for card advantage; with Domain, Ehther needs only Eidos and Edea stays.
 - **No fodder going first: don't force a summon**, set up their-turn plays instead: Pantheism, its GY effect showing Tenacity, Tenacity → Escalation; Set Escalation, Stormforth, Erupt; activate Return face-up (Continuous Spells can't be activated on their turn). When they summon a big monster: Stormforth, let it resolve, Escalation Tributing their monster, Return searches. If that was their only card, take Kuraz or Erebus over Caius.
 - **No Monarch in hand**: Reinforcement → Edea → Landrobe, Domain, Set Prime, hold Stormforth and Change of Heart; fodder in Defense.
@@ -56,7 +56,7 @@ Tribute Summon control, no Extra Deck. Each turn, Tribute Summon a Monarch whose
 ## Going second / breaking boards
 
 - Twin Twisters on Set cards before committing monsters.
-- **Bait negaters with cheap activations**: Prime's GY effect (banishing Tenacity) or Pantheism's GY effect, not Stormforth, Domain or the Tribute Summon. Unnegated, you still get the effect.
+- **Bait negaters with cheap activations**: Prime's GY effect (banishing Tenacity) or Pantheism's GY effect, not Stormforth, Domain or the Tribute Summon.
 - Tribute their best monster with Stormforth or Change of Heart; on an empty field, Mithra's token feeds Stormforth.
 - Attack first with what you lose least (Ehther #2, then the 800s) to draw out attack traps.
 - If you can't break them, build: Tribute Summoned Monarch, Domain, Set traps.

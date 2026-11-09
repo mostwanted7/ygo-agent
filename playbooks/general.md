@@ -20,6 +20,14 @@
   an opponent whose ATK was boosted. Check attack legality and material requirements before counting damage.
 - Optional "When ...: You can ..." triggers can miss timing if their event is not the last thing to happen before
   triggers can activate (e.g. lower Chain Links still resolve). Do not apply this timing rule to optional "If" triggers.
+- One emergency blocker against several attacks (a GY revive, a summon from the hand): if every attack still to
+  come would beat it, save it for the biggest of them, unless an earlier one would already be lethal. Spending it
+  on the first direct attack throws away the difference in LP.
+- Before activating a monster effect, read their face-up monsters for effects that punish activations (a Wedge
+  Counter that lets them take the monster, burn for each activation). A mandatory trigger can't be held back, so
+  summoning its monster hands them that payoff unless the punisher leaves the field this turn. Before burning,
+  check whether they turn your damage into counters they spend (Black-Winged Dragon's counters pay for Black
+  Feather Whirlwind's protection).
 - Check each monster's current ATK/DEF and effect conditions separately; shared archetype or Level does not mean
   shared stats or guaranteed recovery when removed.
 - You cannot see the opponent's hand or face-down cards. Don't assume what they are; play around likely threats.
