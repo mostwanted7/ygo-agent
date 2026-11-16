@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import random
 import struct
+from collections import Counter
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 
@@ -126,6 +127,26 @@ class DuelObserver:
 def derive_core_seed(rng: random.Random) -> tuple[int, int, int, int]:
     seed = tuple(rng.getrandbits(64) for _ in range(4))
     return seed if any(seed) else (1, 0, 0, 0)
+
+
+def unstackable(main: list[int], top: list[int]) -> int | None:
+    """The first code in `top` that `main` doesn't hold (enough copies of) for stack_deck, or None if all fit."""
+    left = Counter(main)
+    for code in top:
+        if left[code] <= 0:
+            return code
+        left[code] -= 1
+    return None
+
+
+@dataclass(frozen=True)
+class StackMismatch:
+    """Why a duelist's deck can't take the cards stacked for its seat (passed to RoomObserver.on_deck_rejected)."""
+    code: int
+    name: str
+
+    def __str__(self) -> str:
+        return f"its Main Deck lacks {self.name} (or enough copies) for the stacked cards"
 
 
 def stack_deck(main: list[int], top: list[int]) -> list[int]:

@@ -5,7 +5,7 @@ import time
 import pytest
 
 from ygo_agent.arena.duel import (VIEW_TEAM0, Duel, DuelConfig, DuelError, DuelObserver, Placement, StartState,
-                                  stack_deck)
+                                  stack_deck, unstackable)
 from ygo_agent.arena.messages import Draw
 from ygo_agent.arena.policies import RandomPolicy, SimplePolicy
 from ygo_agent.arena.runner import run_duel, run_match
@@ -75,6 +75,8 @@ def test_stack_rejects_cards_not_in_deck():
     with pytest.raises(DuelError):
         stack_deck([1, 2, 3], [1, 1])
     assert stack_deck([1, 2, 3, 2], [2, 3]) == [2, 3, 1, 2]
+    assert unstackable([1, 2, 3], [4]) == 4 and unstackable([1, 2, 3], [1, 1]) == 1
+    assert unstackable([1, 2, 3, 2], [2, 3, 2]) is None and unstackable([1], []) is None
 
 
 def test_same_seed_same_game(engine, decks):

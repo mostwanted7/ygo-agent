@@ -7,6 +7,7 @@
     ygo-agent teach --deck blackwing [--opponent windbot:Blue-Eyes]   # the agent plays and explains; you watch
     ygo-agent teach --join         # legacy: the bot explains every decision in a room you host
     ygo-agent coach [--deck saffira] [--web]   # you play in EDOPro, the agent coaches you live and reviews the game
+    ygo-agent solo [--stack-a "Card, Card"]   # duel yourself, no AI: join the room from two EDOPro windows
     ygo-agent replay games/latest 14 [--save NAME --expect '[[2]]' --note "..."]
     ygo-agent test [NAME ...]      # re-run saved regression cases
     ygo-agent decks                # every deck profile: where it lives, playbook, rules, saved cases, .ydk
@@ -129,6 +130,31 @@ def parser():
                    help="legacy: host the room in EDOPro yourself, add an AI opponent, sit as a spectator; the bot joins")
     add_bot(p, arena=True)
     add_common(p)
+
+    p = sub.add_parser("solo", help="duel yourself, no AI: the arena hosts a room and you take both seats from two "
+                                    "EDOPro windows",
+                       description="Duel yourself with no AI involved: the arena hosts a room, you open EDOPro twice "
+                                   "and join it from both windows (the first to join is seat A, the second seat B), "
+                                   "each with its own deck. The room stays open for rematches until Ctrl+C; each "
+                                   "game's replay and log go to games/matches/<time>_human-vs-human/.")
+    p.add_argument("--games", type=int, help="close the room after this many matches (default: when you press Ctrl+C)")
+    p.add_argument("--best-of", type=int, choices=(1, 3, 5), default=1, help="games per match (default 1)")
+    p.add_argument("--first", choices=("a", "b"), help="who goes first in game 1 of each match (default: "
+                                                       "rock-paper-scissors)")
+    p.add_argument("--stack-a", metavar="CARDS", help="comma-separated card names/codes put on top of seat A's Deck, "
+                                                       "in order (the first 5 are its opening hand); seat A's deck "
+                                                       "must have them")
+    p.add_argument("--stack-b", metavar="CARDS", help="same for seat B")
+    p.add_argument("--time-limit", type=int, default=0, help="seconds per turn for each seat (default 0: no limit)")
+    p.add_argument("--seed", type=int, help="make the shuffles reproducible")
+    p.add_argument("--port", type=int, help="room port (default from the config: 7911)")
+    p.add_argument("--password", help="room password")
+    p.add_argument("--no-lan", action="store_true", help="don't answer EDOPro's LAN room search (join by address)")
+    p.add_argument("--out", help="the run's folder (default games/matches/<time>_human-vs-human/)")
+    p.add_argument("--edopro-dir", help="EDOPro install folder")
+    p.add_argument("--games-dir", help="where game logs go")
+    p.add_argument("--rules", help="duel rules: MR1-MR5, GOAT, SPEED, RUSH (default from the config: MR3)")
+    p.add_argument("--config", metavar="FILE", help="use FILE instead of config.local.toml")
 
     p = sub.add_parser("replay", help="re-ask a logged decision with the current playbook and rules")
     p.add_argument("game_dir", nargs="?")
@@ -388,12 +414,13 @@ def cmd_web(args, cfg):
         srv.stop()
 
 
-# ---- arena-hosted commands: play, selfplay, teach ----
+# ---- arena-hosted commands: play, selfplay, teach, solo ----
 
 def room_options(args, cfg):
-    """run_games() keywords for the room options shared by play, selfplay and teach."""
+    """run_games() keywords for the room options shared by play, selfplay, teach and solo."""
     arena = cfg.get("arena", {})
-    return {"rules": cfg["duel"]["rules"], "best_of": args.best_of, "seed": args.seed, "pace": args.pace,
+    return {"rules": cfg["duel"]["rules"], "best_of": args.best_of, "seed": args.seed,
+            "pace": getattr(args, "pace", 0.0),
             "port": cfg["room"]["port"], "password": cfg["room"].get("password", ""),
             "lan": not args.no_lan and arena.get("lan", True),
             "time_limit": args.time_limit if args.time_limit is not None else arena.get("time_limit", 600),
@@ -461,7 +488,7 @@ def cmd_selfplay(args, cfg):
     opts = room_options(args, cfg)
     if not args.spectate and not any(s.kind == "human" for s in (a, b)):
         opts["port"] = None  # a free port for a WindBot-only room
-    stack = {k: v.split(",") for k, v in (("A", args.stack_a), ("B", args.stack_b)) if v}
+    stack = {k: v for k, v in (("A", args.stack_a), ("B", args.stack_b)) if v}
     where = "in a room you can spectate" if args.spectate else (
         "through the arena" if any(s.kind != "agent" for s in (a, b)) else "in-process")
     header = (f"ygo-agent selfplay — A {a} vs B {b}: {args.games} match(es), best of {args.best_of}, rules "
@@ -470,6 +497,21 @@ def cmd_selfplay(args, cfg):
     run_match(cfg, db, a, b, header, games=args.games, parallel=args.parallel, spectate=args.spectate,
               quiet=args.quiet, first=None if args.first is None else "ab".index(args.first), stack=stack,
               out=args.out, timeout=args.timeout, **opts)
+
+
+def cmd_solo(args, cfg):
+    """solo: one person duels themselves from two EDOPro windows. No AI seat: the arena only hosts the room (stacked
+    top cards, who goes first, replays and logs)."""
+    from .match import SeatSpec
+    db = load_db(cfg)
+    opts = room_options(args, cfg)
+    opts["web"] = False  # only AI seats publish games to the web panel: it would stay empty
+    stack = {k: v for k, v in (("A", args.stack_a), ("B", args.stack_b)) if v}
+    header = (f"ygo-agent solo — you vs you, no AI; rules {opts['rules']}, best of {opts['best_of']}, "
+              + (f"{opts['time_limit']}s per turn" if opts["time_limit"] else "no turn timer")
+              + "".join(f"; seat {k}'s top cards stacked" for k in stack))
+    run_match(cfg, db, SeatSpec("human"), SeatSpec("human"), header, games=args.games, stack=stack, out=args.out,
+              first=None if args.first is None else "ab".index(args.first), **opts)
 
 
 def cmd_teach_arena(args, cfg):
@@ -563,6 +605,8 @@ def main(argv=None):
         return cmd_teach_arena(args, cfg)
     if args.cmd == "selfplay":
         return cmd_selfplay(args, cfg)
+    if args.cmd == "solo":
+        return cmd_solo(args, cfg)
     if args.cmd in ("play", "teach"):
         return cmd_play(args, cfg)
     if args.cmd == "replay":

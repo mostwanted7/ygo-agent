@@ -6,6 +6,7 @@ import asyncio
 import json
 import os
 import socket
+import struct
 import threading
 import time
 
@@ -156,6 +157,39 @@ def test_setup_problems_are_match_errors(engine, agent_db, agent_cfg):
         run_games("saffira:heuristic", "heuristic", games=None, **kw(agent_cfg, agent_db, engine))
 
 
+def test_extra_deck_max_allows_a_bigger_extra_deck(tmp_path, engine, agent_db, agent_cfg, quiet):
+    """arena.extra_deck_max: a 20-card Extra Deck is refused at EDOPro's 15 and plays when the arena allows 20."""
+    from collections import Counter
+    root = os.path.join(os.path.dirname(__file__), "..", "..", "decks")
+
+    def section(deck, name):
+        lines, inside = [], False
+        for line in open(os.path.join(root, deck, "deck.ydk")).read().split("\n"):
+            if line.startswith(("#", "!")):
+                inside = line.strip() == name
+            elif inside and line.strip():
+                lines.append(line.strip())
+        return lines
+
+    extra = section("blackwing", "#extra")
+    have = Counter(extra)
+    for code in section("geargia", "#extra"):
+        if len(extra) < 20 and have[code] < 3:
+            extra.append(code)
+            have[code] += 1
+    assert len(extra) == 20
+    ydk = tmp_path / "big-extra.ydk"
+    ydk.write_text("#main\n" + "\n".join(section("blackwing", "#main")) + "\n#extra\n" + "\n".join(extra) + "\n!side\n")
+    with pytest.raises(MatchError, match="extra deck has 20 cards"):
+        run_games(f"{ydk}:heuristic", "blackwing:random", games=1, seed=12, **kw(agent_cfg, agent_db, engine))
+    cfg = {**agent_cfg, "arena": {**agent_cfg.get("arena", {}), "extra_deck_max": 20}}
+    run = run_games(f"{ydk}:heuristic", "blackwing:random", games=1, seed=12, **kw(cfg, agent_db, engine))
+    assert len(run.games) == 1
+    with pytest.raises(MatchError, match="extra_deck_max"):
+        bad = {**agent_cfg, "arena": {**agent_cfg.get("arena", {}), "extra_deck_max": "20"}}
+        run_games("blackwing:heuristic", "blackwing:random", games=1, **kw(bad, agent_db, engine))
+
+
 def test_selfplay_command(tmp_path, capsys):
     games = tmp_path / "games"
     cli.main(["selfplay", "--a", "saffira:heuristic", "--b", "random:blackwing", "--games", "2", "--parallel", "2",
@@ -195,6 +229,57 @@ def test_play_command_hosts_a_room_for_the_human(tmp_path, engine, capsys):
               "--games", "1", "--games-dir", str(tmp_path / "games"), "--chat", "off"])
     assert done.wait(30)
     text = capsys.readouterr().out
-    assert f"port {port}" in text and "LAN Mode" in text and "Human joined the duelist seat" in text
+    assert f"port {port}" in text and "LAN Mode" in text and "Human joined duelist seat" in text
     assert "Results (1 game)" in text and done.log.position == 1
     assert done.log.replay is not None  # EDOPro gets the replay at the end
+
+
+def test_solo_command_seats_one_person_twice(tmp_path, engine, capsys):
+    """`solo`: two clients with the same player name (one person, two EDOPro windows) take seats A and B; --first
+    and --stack-a apply to them, and the run folder gets the results and the replay."""
+    from ygo_agent.arena.deck import load_ydk
+    from ygo_agent.arena.policies import RandomPolicy
+    from ygo_agent.core.constants import Msg
+
+    class Cards:  # what RandomPolicy needs of a SeatView to declare card names
+        cards = engine.cards
+    port = free_port()
+    here = os.path.join(os.path.dirname(__file__), "..", "..", "decks")
+    saffira = load_ydk(os.path.join(here, "saffira", "deck.ydk"), engine.cards).deck
+    blackwing = load_ydk(os.path.join(here, "blackwing", "deck.ydk"), engine.cards).deck
+    card = next(c for c in saffira.main if c not in blackwing.main)
+    done = threading.Event()
+
+    def windows():
+        async def go():
+            clients = []
+            for n, deck in enumerate((saffira, blackwing)):  # A joins first
+                await asyncio.sleep(1.0)
+                policy = RandomPolicy(n + 7)
+                c = ArenaClient("Rebel", deck, lambda prompt, p=policy: p(prompt, Cards), rematch=False)
+                clients.append(await c.connect("127.0.0.1", port))
+                await asyncio.sleep(0.3)
+            for c in clients:
+                await c.wait(240)
+                await c.close()
+            return [c.log for c in clients]
+        done.logs = asyncio.run(go())
+        done.set()
+    threading.Thread(target=windows, daemon=True).start()
+    cli.main(["solo", "--port", str(port), "--no-lan", "--games", "1", "--first", "b", "--seed", "3",
+              "--stack-a", engine.cards.name(card), "--games-dir", str(tmp_path / "games")])
+    assert done.wait(30)
+    text = capsys.readouterr().out
+    assert "you vs you" in text and "no turn timer" in text and "Open EDOPro twice" in text
+    assert "Rebel joined duelist seat A" in text and "Rebel joined duelist seat B" in text
+    assert "Results (1 game)" in text
+    a, b = done.logs
+    assert (a.position, b.position) == (0, 1) and (a.team, b.team) == (1, 0)  # B went first
+    assert a.host_info.time_limit == 0 and a.replay is not None
+    draw = next(m for m in a.game if m[0] == Msg.DRAW and m[1] == a.team)
+    assert struct.unpack_from("<I", draw, 6)[0] == card
+    (run_dir,) = [d for d in (tmp_path / "games" / "matches").iterdir() if d.name != "latest"]
+    saved = json.load(open(run_dir / "results.json"))
+    assert run_dir.name.endswith("human-vs-human") and saved["path"] == "arena" and len(saved["games"]) == 1
+    assert [s["kind"] for s in saved["games"][0]["seats"]] == ["human", "human"]
+    assert (run_dir / "game-001.yrpX").is_file()

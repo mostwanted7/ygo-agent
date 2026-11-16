@@ -35,6 +35,8 @@ password = ""
 time_limit = 600          # seconds per turn for a human player, as in EDOPro (0 = none); AI seats have no limit
 lan = true                # answer EDOPro's LAN room search (--no-lan: join by address only)
 room_name = "ygo-agent"   # shown in EDOPro's LAN list
+extra_deck_max = 15       # most cards an Extra Deck may hold (EDOPro's default 15). Over 15: tick "Ignore Deck
+                          # edit limitations" in EDOPro's deck editor settings to build the deck
 
 [bot]
 # The WindBot fork (windbot-src) that joins the room and asks the agent for every decision.

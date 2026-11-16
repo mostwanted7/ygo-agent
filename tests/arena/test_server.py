@@ -170,6 +170,33 @@ def test_deck_password_and_version_errors(engine, decks):
     assert state == (S.Stage.LOBBY, [False, None])
 
 
+def test_a_stacked_seat_needs_a_deck_with_those_cards(engine, decks):
+    """RoomConfig.stack: Ready with a deck that lacks a stacked card is refused with a chat line saying why; with a
+    deck that has it, the match starts and that card is drawn first."""
+    saffira, blackwing = decks["Saffira"], decks["Blackwing"]
+    card = next(c for c in blackwing.main if c not in saffira.main)
+
+    async def scenario():
+        room, server = await start(engine, max_matches=1, rematch=False, stack={0: [card]})
+        a = await ArenaClient("Rebel", saffira, client_policy(engine, 1)).connect(HOST, server.port)
+        await until(lambda: any("stacked" in t for t in chat_texts(a.log)))
+        refused = room.stage, room.slots[0].ready
+        a.deck = blackwing
+        a.send_deck()
+        a.ready()
+        b = await ArenaClient("Rebel", saffira, client_policy(engine, 2)).connect(HOST, server.port)
+        await asyncio.wait_for(room.finished.wait(), 60)
+        await server.close()
+        return room, a, b, refused
+    room, a, b, refused = run(scenario())
+    assert refused == (S.Stage.LOBBY, False)
+    assert engine.cards.name(card) in next(t for t in chat_texts(a.log) if "stacked" in t)
+    assert P.player_change(0, P.PLAYERCHANGE_NOTREADY) in packets(a, P.STOC_HS_PLAYER_CHANGE)
+    assert len(room.games) == 1 and (a.log.position, b.log.position) == (0, 1)
+    draw = next(m for m in a.log.game if m[0] == Msg.DRAW and m[1] == a.log.team)
+    assert struct.unpack_from("<I", draw, 6)[0] == card
+
+
 def test_best_of_three_with_side_decking(engine, decks):
     async def scenario():
         room, server = await start(engine, best_of=3, max_matches=1, rematch=False)

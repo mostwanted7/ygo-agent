@@ -42,7 +42,7 @@ flowchart LR
   CB --> BK
   B <--> BK
   B --> L --> BUS
-  M["match.run_games: play, selfplay, teach, coach"] --> arena
+  M["match.run_games: play, selfplay, teach, coach, solo"] --> arena
   T["trainer"] --> M
   X["bench"] --> M
 ```
@@ -135,8 +135,9 @@ order (repositories first), found the way EDOPro's `configs.json` describes them
 `ygo_agent/match.py` is the one API every arena-hosted command runs on: `run_games(seat_a, seat_b, games=...)`
 takes seat specs (`<deck>[:<backend>]`, `heuristic`, `random`, `windbot:<deck AI>`, `human`), picks in-process
 games or a room, runs them `parallel` at a time, gives both seats of a duel one web-panel game, collects each
-game's result, stats, log folder and replay, and writes the run's `results.json`. `play`, `selfplay`, `teach` and
-`coach` are thin layers over it, and the trainer and the benchmark call it directly.
+game's result, stats, log folder and replay, and writes the run's `results.json`. `play`, `selfplay`, `teach`,
+`coach` and `solo` (two `human` seats: one person in two EDOPro windows) are thin layers over it, and the trainer
+and the benchmark call it directly.
 
 ## Decks
 

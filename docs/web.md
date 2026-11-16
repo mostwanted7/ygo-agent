@@ -1,8 +1,9 @@
 # Web app and panel
 
-`ygo-agent web` is the whole app: start a duel, a game between AIs, a lesson or a coached game, train a new deck,
-learn from your notes, edit a deck's playbook and tips, check the setup, and watch every game live on the board. It
-runs the same commands you would type (each one is a *job*), so every terminal command stays as it is. The board
+`ygo-agent web` is the whole app: start a duel, a game between AIs, a lesson, a coached game or a duel against
+yourself, train a new deck, learn from your notes, edit a deck's playbook and tips, check the setup, and watch every
+game live on the board. It runs the same commands you would type (each one is a *job*), so every terminal command
+stays as it is. The board
 itself is the **panel**: the page that shows a duel as the agent plays it (the board with card pictures, every
 decision with the options, what was chosen, why, and the plan for the turn, the event log, coach advice, and a note
 box that works like a `!note` in the duel chat). `play/selfplay/teach/coach --web` serve the panel on its own.
@@ -21,12 +22,14 @@ ygo-agent web --demo games/<dir>     # the app, plus a recorded game replayed li
 
 Pages (hash routes; the Games page is the panel below):
 
-- **Home** (`#/`): four start cards. *Duel the agent* (its deck, backend, best of; more options: room password,
+- **Home** (`#/`): five start cards. *Duel the agent* (its deck, backend, best of; more options: room password,
   your seconds per turn, and the legacy flow where you host the room and the WindBot fork joins). *Watch AI vs AI*
   (two seats, each an AI deck on a backend or a WindBot deck AI legal under the rules; games, pace, and "also watch
   in EDOPro", which waits for you as a spectator). *Watch it teach* (deck, backend, opponent, pace). *Get coached*
   (your deck, recognised from what you submit unless you pick one; the coach's backend; the advice level; the
-  opponent). Then what is running, the recent games and the decks.
+  opponent). *Duel yourself* (`solo`: no AI, you join the room from two EDOPro windows, the first to join is seat A;
+  best of, who goes first, the cards stacked on top of each seat's Deck; more options: room password, seconds per
+  turn). Then what is running, the recent games and the decks.
 - **Decks** (`#/decks`) and a deck (`#/decks/NAME`): the playbook rendered, with Edit/Save (the previous text is
   kept as `<deck>/train/history/playbook-<time>.md`; a save is refused while a training or learn job works on the
   deck, or when the file changed since the page loaded); your tips (`tips.md`) with an "Add a tip" box; the pending
@@ -42,7 +45,8 @@ Pages (hash routes; the Games page is the panel below):
 - **Games** (`#/games`): the panel. Opening a game anywhere in the app comes here.
 - **Jobs** (`#/jobs`, `#/jobs/ID`): running and recent jobs; a job shows its equivalent terminal command, its
   output live, Stop, its games (and a "Watch on the board" button once one is live), and for a job that hosts a room
-  the join instructions (LAN Mode → host 127.0.0.1, the port, the password) in a box you can't miss.
+  the join instructions (LAN Mode → host 127.0.0.1, the port, the password; for `solo`, join from two EDOPro
+  windows) in a box you can't miss.
 - **Setup** (`#/setup`): `ygo-agent doctor --json` as a table (run on the first visit, again with a button), the
   backend profiles and whether each can run, where the config, decks, games, EDOPro and job logs are, and how to
   change settings in `config.local.toml`.
@@ -65,6 +69,7 @@ shell, and every value goes in as `--flag=value`:
 | `selfplay` | `a`, `b` (seats), `games`, `best_of`, `pace`?, `parallel`?, `spectate`, `port`?, `password`? | `selfplay --a=SEAT --b=SEAT --games=N --best-of=N [--pace=S] [--parallel=K] [--spectate [--port=P]] --no-web` |
 | `teach` | `deck`, `backend`, `opponent` (a seat), `games`, `pace`?, `port`? | `teach --deck=D --backend=B --opponent=SEAT --games=N [--pace=S] [--port=P] --no-web` |
 | `coach` | `deck`? (else recognised), `backend`, `opponent`, `level`, `best_of`, `games`?, `time_limit`?, `port`? | `coach [--deck=D] --backend=B --opponent=SEAT --level=L --best-of=N [--games=K] [--time-limit=S] --no-web` |
+| `solo` | `best_of`, `games`?, `first`? (`a`/`b`, else rock-paper-scissors), `stack_a`?, `stack_b`? (comma-separated card names or codes, up to 300 characters), `time_limit`?, `port`?, `password`? | `solo --best-of=N [--games=K] [--first=a\|b] [--stack-a=CARDS] [--stack-b=CARDS] [--time-limit=S] [--port=P] [--password=X]` |
 | `train-interview` | `ydk`, `name`, `display_name`? | `train YDK --name=N [--display-name=X] --interview-only` |
 | `train` | `name`, `backend`?, `player_backend`?, `games`?, `lab_hands`?, `max_rounds`?, `budget_usd`? | `train --name=N --resume --no-interview [--backend=B] [--player-backend=B] [--games=K] [--lab-hands=K] [--max-rounds=K] [--budget-usd=X]` |
 | `learn` | `deck`, `backend`?, `budget_usd`? | `learn --deck=D [--backend=B] [--budget-usd=X]` |
@@ -72,16 +77,17 @@ shell, and every value goes in as `--flag=value`:
 
 A seat is `{"kind": "agent", "deck", "backend"}` (→ `deck:backend`; `heuristic` and `random` are backends) or
 `{"kind": "windbot", "name"}` (→ `windbot:NAME`). The app's own `--config`, `--edopro-dir` and `--games-dir` are
-passed on to the commands that take them (play, selfplay, teach, coach; train and doctor take the first two), so the
-games a job plays land where the app looks.
+passed on to the commands that take them (play, selfplay, teach, coach, solo, learn; train and doctor take the first
+two), so the games a job plays land where the app looks. `solo` has no AI seat, so no deck, backend or `--no-web`,
+and its games don't show on the board (only AI seats publish games).
 
 - **Checks.** Decks resolve through `decks.find` (a name, any case; a new deck's name is 1-40 letters, digits, `-`
   and `_`, and mustn't clash with a deck in the other decks folder); backends must be `[backends.NAME]` profiles;
   WindBot deck AIs must be on the legal list (bots.json allows the rules and the deck has no Link monsters, the
   trainer's check); numbers are range-checked (best of 1/3/5, games, pace, ports 1024-65535, budgets); a `.ydk`
-  path must, after following links, be an existing file ending in `.ydk`; passwords and names have no control
-  characters. A `train` needs a training folder (the interview ran).
-- **One room at a time.** play, teach, coach, selfplay with a spectator and play --join use the room port (or the
+  path must, after following links, be an existing file ending in `.ydk`; passwords, names and solo's stacked cards
+  have no control characters. A `train` needs a training folder (the interview ran).
+- **One room at a time.** play, teach, coach, solo, selfplay with a spectator and play --join use the room port (or the
   bridge port): a second one is refused with the job that holds it (409), and a hosting job whose port is taken
   (EDOPro hosting, say) is refused before it starts. `train-interview`, `train` and `learn` take their deck: one at
   a time per deck.

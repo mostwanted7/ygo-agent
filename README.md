@@ -65,10 +65,12 @@ Hosted models use your provider's subscription allowance or API billing; local m
 | **Self-play** | Run AI vs AI or AI vs WindBot games; watch live or run batches with fixed seeds. |
 | **Teach** | Watch the agent play a deck and explain its decisions. |
 | **Coach** | Make your own moves in EDOPro while the agent advises and reviews the game. |
+| **Solo** | Duel yourself from two EDOPro windows, no AI: practise lines, stack opening hands, pick who goes first. |
 | **Train / Learn** | Build a deck playbook, practise it, then incorporate feedback from your games. |
 | **Benchmark / Test** | Compare models, replay decisions, and check saved regression cases. |
 
-Play, self-play, teaching, coaching and deck training are available through the [web app](docs/web.md) and terminal
+Play, self-play, teaching, coaching, solo duels and deck training are available through the [web app](docs/web.md) and
+terminal
 commands; benchmarking, decision replay and regression tests use the terminal. Every game saves readable logs,
 model prompts and replies, statistics, and an EDOPro replay under `games/`.
 

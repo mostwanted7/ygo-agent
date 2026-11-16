@@ -63,6 +63,34 @@ def test_selfplay_teach_coach_argv(builder):
     rejects(builder, "coach", "level", level="expert")
 
 
+def test_solo_argv(builder):
+    plan = builder.build("solo", {"best_of": 3, "first": "a", "port": 7912,
+                                  "stack_a": " Ash Blossom & Joyous Spring, Pot of Greed "})
+    assert plan.argv == ["solo", "--best-of=3", "--first=a", "--stack-a=Ash Blossom & Joyous Spring, Pot of Greed",
+                         "--port=7912", "--config=/x/my.toml", "--games-dir=/g"]
+    assert plan.kind == "solo" and plan.title == "Solo duel: you vs you, best of 3" and plan.deck is None
+    assert plan.room == {"kind": "host", "host": "127.0.0.1", "spectator": False, "password": "", "port": 7912,
+                         "name": "ygo-agent", "seats": 2}
+    plan = builder.build("solo", {})
+    assert plan.argv == ["solo", "--best-of=1", "--config=/x/my.toml", "--games-dir=/g"]
+    assert plan.title == "Solo duel: you vs you" and plan.room["port"] == 7911
+    assert argv(builder, "solo", games=2, first="b", stack_b="46986414", time_limit=0, password="pw", first_x=1) == [
+        "solo", "--best-of=1", "--games=2", "--first=b", "--stack-b=46986414", "--time-limit=0", "--password=pw",
+        "--config=/x/my.toml", "--games-dir=/g"]
+    rejects(builder, "solo", "best_of", best_of=2)
+    rejects(builder, "solo", "best_of", best_of="three")
+    rejects(builder, "solo", "first", first="c")
+    rejects(builder, "solo", "first", first="A")
+    rejects(builder, "solo", "first", first=["a"])
+    rejects(builder, "solo", "stack_a", stack_a="Pot of Greed\n--deck=x")
+    rejects(builder, "solo", "stack_b", stack_b="Pot of Greed\x00")
+    rejects(builder, "solo", "stack_a", stack_a="x" * 301)
+    rejects(builder, "solo", "stack_b", stack_b=["Pot of Greed"])
+    rejects(builder, "solo", "games", games=0)
+    rejects(builder, "solo", "time_limit", time_limit=7201)
+    rejects(builder, "solo", "port", port=80)
+
+
 def test_training_learn_doctor_argv(builder, cfg, tmp_path):
     ydk = tmp_path / "My Deck.ydk"
     ydk.write_text("#main\n")
@@ -205,6 +233,9 @@ def test_exit_status_and_one_room_at_a_time(runner):
     first = runner.launch(Plan("play", ["calm"], "a room", room=dict(room)))
     with pytest.raises(JobError) as e:
         runner.launch(Plan("teach", ["calm"], "another room", room=dict(room)))
+    assert e.value.status == 409 and first.id in str(e.value)
+    with pytest.raises(JobError) as e:
+        runner.start("solo", {})  # hosts a room too
     assert e.value.status == 409 and first.id in str(e.value)
     deck = runner.launch(Plan("learn", ["calm"], "learn", deck="geargia", deck_lock=True))
     with pytest.raises(JobError, match="working on"):

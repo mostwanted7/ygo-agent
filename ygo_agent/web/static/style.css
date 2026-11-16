@@ -836,6 +836,7 @@ details.moreopts[open] summary { margin-bottom: 10px; }
 .sico.watch { background: linear-gradient(135deg, #4cc2ff, #2563eb); }
 .sico.teach { background: linear-gradient(135deg, #34d399, #0d9488); }
 .sico.coach { background: linear-gradient(135deg, #fbbf24, #ea580c); }
+.sico.solo { background: linear-gradient(135deg, #f472b6, #9333ea); }
 .start-foot { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: auto; padding-top: 8px; }
 .start-foot .hint { margin: 0; flex: 1; min-width: 180px; }
 .seats { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 10px; align-items: end; margin-bottom: 10px; }

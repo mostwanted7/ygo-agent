@@ -263,11 +263,16 @@ def duration(seconds: float) -> str:
     return f"{m}m{s:02d}s" if m < 60 else f"{m // 60}h{m % 60:02d}m"
 
 
-def join_instructions(port: int, spectator: bool) -> list[str]:
-    who = "as a spectator (both duelist seats are taken)" if spectator else "and take the free duelist seat"
-    return [f"In EDOPro: LAN Mode → type Host address 127.0.0.1 and port {port} → Join, {who}.",
-            "  (Type the address: EDOPro's LAN room list may not show the room, and its Refresh button can crash "
-            "EDOPro.)"]
+def join_instructions(port: int, spectator: bool, both: bool = False) -> list[str]:
+    """How to join the room from EDOPro. `both`: one person takes both duelist seats from two EDOPro windows."""
+    if both:
+        lines = ["Open EDOPro twice. In each window: LAN Mode → type Host address 127.0.0.1 and port "
+                 f"{port} → Join, pick a deck, Ready. The first window to join is seat A, the second seat B."]
+    else:
+        who = "as a spectator (both duelist seats are taken)" if spectator else "and take the free duelist seat"
+        lines = [f"In EDOPro: LAN Mode → type Host address 127.0.0.1 and port {port} → Join, {who}."]
+    return lines + ["  (Type the address: EDOPro's LAN room list may not show the room, and its Refresh button can "
+                    "crash EDOPro.)"]
 
 
 # --- the stdin "press Enter" helper for spectator waits -------------------------------------------------------------
@@ -497,12 +502,20 @@ class _Run:
             if tags and s.kind == "agent":
                 s.tag = f"{s.role} {s.deck_name}·{s.backend['name']}"
 
+    def deck_sizes(self):
+        """The deck sizes the arena allows: EDOPro's, with `arena.extra_deck_max` cards at most in the Extra Deck."""
+        from .arena.deck import DeckSizes
+        top = self.cfg.get("arena", {}).get("extra_deck_max", 15)
+        if not isinstance(top, int) or isinstance(top, bool) or top < 0:
+            raise MatchError(f"arena.extra_deck_max must be a whole number of cards, not {top!r}")
+        return DeckSizes(extra=(0, top))
+
     def prepare(self):
         self.seats = self.resolve()
         engine = self.engine
         self.config = self.duel_config()
         from .arena.deck import DeckRules, check_deck, load_ydk
-        rules = DeckRules(forbidden_types=self.config.forbidden_types)
+        rules = DeckRules(sizes=self.deck_sizes(), forbidden_types=self.config.forbidden_types)
         self.decks = {}
         for s in self.seats:
             if s.kind != "agent":
@@ -516,7 +529,8 @@ class _Run:
         for seat, cards in (self.stack_spec or {}).items():
             index = ROLES.index(seat.upper()) if isinstance(seat, str) else int(seat)
             try:
-                self.stack[index] = [c if isinstance(c, int) else engine.cards.resolve(str(c).strip()) for c in cards]
+                self.stack[index] = engine.cards.resolve_list(cards) if isinstance(cards, str) else [
+                    c if isinstance(c, int) else engine.cards.resolve(str(c).strip()) for c in cards]
             except KeyError as e:
                 raise MatchError(f"stack: {e.args[0]}") from None
         from .arena.gamelog import game_dir
@@ -744,6 +758,7 @@ class _Run:
                         time_limit=self.time_limit if human else 0, rematch=True,
                         max_matches=None if numbers is None else len(numbers),
                         seed=None if self.seed is None else self.seed + room_no, stack=dict(self.stack),
+                        deck_sizes=self.deck_sizes(),
                         first=self.first, reserved=reserved, lan_discovery=bool(self.lan and watched))
         room = Room(self.engine, rc)
         self._loops.append((asyncio.get_running_loop(), room))
@@ -772,7 +787,7 @@ class _Run:
                 if p.pos is not None and p.pos >= 2:
                     run.say(paint(BOLD + ";" + GREEN, f"{p.name or 'Someone'} joined as a spectator."))
                 elif human and p.name not in reserved.values():
-                    run.say(paint(BOLD + ";" + GREEN, f"{p.name} joined the duelist seat {p.pos}."))
+                    run.say(paint(BOLD + ";" + GREEN, f"{p.name} joined duelist seat {ROLES[p.pos]}."))
 
             def on_leave(self, p):
                 if p.name and p.name not in reserved.values():
@@ -807,9 +822,10 @@ class _Run:
                              "ygo-agent) hosting on it? Pick another port with --port.") from None
         room.listen_port = server.port
         if human:
+            both = all(s.kind == "human" for s in self.seats)
             self.say(paint(BOLD + ";" + YELLOW, f"\nThe room is open on port {server.port}."),
-                     *[paint(YELLOW, line) for line in join_instructions(server.port, spectator=False)],
-                     paint(DIM, "Waiting for you to join. Ctrl+C closes the room."))
+                     *[paint(YELLOW, line) for line in join_instructions(server.port, spectator=False, both=both)],
+                     paint(DIM, f"Waiting for {'both windows' if both else 'you'} to join. Ctrl+C closes the room."))
         procs: list[WindBotProcess] = []
 
         def launch(s) -> WindBotProcess:
@@ -951,7 +967,8 @@ def run_games(seat_a: SeatSpec | str, seat_b: SeatSpec | str, games: int | None 
     AI decision, for watchers. parallel: matches at a time (in-process, or one room each when only WindBots join).
     spectate: host a room and wait for a spectator (or Enter) before each match. web: serve the panel in this
     process (`web_port`; the URL is in `web_url`). out: the run's folder (default games/matches/<time>_<a>-vs-<b>).
-    stack: {seat: [card codes or names]} put on top of that seat's Deck (the first 5 are its opening hand).
+    stack: {seat: [card codes or names], or one comma-separated string of them} put on top of that seat's Deck (the
+    first 5 are its opening hand).
     quiet: only key plays and results in the terminal (`echo` sets it per seat: all/decisions/key/off; `tags`
     prefixes each AI seat's lines). games=None: open-ended (a room with a human: until Ctrl+C).
     port/bind/lan/password/time_limit/room_name: the room, when there is one (port None: a free port, unless a

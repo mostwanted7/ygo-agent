@@ -57,7 +57,7 @@
     $("#toasts").append(t);
     setTimeout(() => t.remove(), actions.length ? 12000 : 4500);
   }
-  const KIND_LABEL = { play: "duel", selfplay: "AI vs AI", teach: "lesson", coach: "coach", "train-interview": "interview", train: "training", learn: "learn", doctor: "setup check" };
+  const KIND_LABEL = { play: "duel", selfplay: "AI vs AI", teach: "lesson", coach: "coach", solo: "solo", "train-interview": "interview", train: "training", learn: "learn", doctor: "setup check" };
   const statusChip = (j) => `<span class="jchip ${j.status}">${j.status === "running" && j.waiting ? "waiting" : esc(j.status)}</span>`;
   const resultChip = (r) => (r ? `<span class="res ${esc(r)}">${esc(String(r).toUpperCase())}</span>` : "");
 
@@ -66,6 +66,7 @@
     watch: '<svg viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>',
     teach: '<svg viewBox="0 0 24 24"><path d="M3 5.5h7a2 2 0 0 1 2 2V19a1.6 1.6 0 0 0-1.6-1.6H3zM21 5.5h-7a2 2 0 0 0-2 2V19a1.6 1.6 0 0 1 1.6-1.6H21z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',
     coach: '<svg viewBox="0 0 24 24"><path d="M2 9l10-4.5L22 9l-10 4.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M6 11v4.6c2 2 10 2 12 0V11M22 9v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+    solo: '<svg viewBox="0 0 24 24"><circle cx="8.5" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="16.5" cy="9" r="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5M14.5 14.2c3.3-.6 6.5 1.3 6.5 4.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
     plus: '<svg viewBox="0 0 20 20"><path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
     stop: '<svg viewBox="0 0 20 20"><rect x="5" y="5" width="10" height="10" rx="2" fill="currentColor"/></svg>',
     room: '<svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 20h8M12 16.5V20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
@@ -294,6 +295,16 @@
           <div class="seats one"><div class="seat-l">vs</div>${seatEditor("opponent", oppInit)}</div>
           <div class="start-foot"><button class="btn primary" type="submit">Open the room</button><span class="hint">${I.coach.time_limit}s per turn: reading the advice takes time.</span></div>
         </form>
+        <form class="box start" data-start="solo">
+          <div class="start-head"><span class="sico solo">${ICONS.solo}</span><div><h2>Duel yourself</h2><p class="lead">No AI: you play both seats from two EDOPro windows, to test a deck or a line. Stack either seat's opening cards.</p></div></div>
+          <div class="row">${field("Best of", seg("best_of", [1, 3, 5], 1), "narrow")}${field("Goes first", `<select name="first"><option value="">Rock-paper-scissors</option><option value="a">Seat A</option><option value="b">Seat B</option></select>`)}</div>
+          <div class="row">${field("Seat A's top cards", `<input name="stack_a" maxlength="300" placeholder="Ash Blossom &amp; Joyous Spring, Pot of Greed" spellcheck="false" title="Comma-separated card names or codes from seat A's Main Deck, put on top: the first five are the opening hand">`)}</div>
+          <div class="row">${field("Seat B's top cards", `<input name="stack_b" maxlength="300" placeholder="comma-separated card names" spellcheck="false" title="Comma-separated card names or codes from seat B's Main Deck, put on top: the first five are the opening hand">`)}</div>
+          <details class="moreopts"><summary>More options</summary>
+            <div class="row">${field("Room password", `<input name="password" maxlength="20" placeholder="none">`)}${field("Seconds per turn", `<input name="time_limit" type="number" min="0" max="7200" placeholder="none">`)}</div>
+          </details>
+          <div class="start-foot"><button class="btn primary" type="submit">Open the room</button><span class="hint">Open EDOPro twice and join the room from both windows: the first to join is seat A.</span></div>
+        </form>
       </div>
       <div class="cols2">
         <div class="box"><div class="box-head"><h2>Recent games</h2><a href="#/games" class="lnk" data-games>All games</a></div><div id="home-games" class="list"></div></div>
@@ -321,6 +332,9 @@
       params = { a: readSeat(form, "a"), b: readSeat(form, "b"), games: num(form, "[name=games]") || 1, pace: num(form, "[name=pace]"), spectate: val(form, "[name=spectate]") };
     } else if (kind === "teach") {
       params = { deck: val(form, "[name=deck]"), backend: val(form, "[name=backend]"), opponent: readSeat(form, "opponent"), pace: num(form, "[name=pace]") };
+    } else if (kind === "solo") {
+      params = { best_of: Number(segValue(form, "best_of") || 1), first: val(form, "[name=first]") || null, stack_a: val(form, "[name=stack_a]"),
+        stack_b: val(form, "[name=stack_b]"), password: val(form, "[name=password]"), time_limit: num(form, "[name=time_limit]") };
     } else {
       params = { deck: val(form, "[name=deck]") || null, backend: val(form, "[name=backend]"), level: val(form, "[name=level]"), opponent: readSeat(form, "opponent") };
     }
@@ -731,12 +745,13 @@
         <ol><li>In EDOPro: <b>LAN Mode → Host Duel</b>, with a long time limit (or none), and wait in the room.</li>
         <li>Press <b>The room is open: send the bot</b> below; the agent's bot joins ${esc(r.host)}:${r.port}.</li></ol></div></div>`;
     }
-    const who = r.spectator ? "as a <b>spectator</b> (both duelist seats are taken)" : "and take the free duelist seat with your deck";
+    const who = r.spectator ? "as a <b>spectator</b> (both duelist seats are taken)" : r.seats === 2
+      ? "from <b>two EDOPro windows</b>: the first to join is seat A, the second seat B" : "and take the free duelist seat with your deck";
     return `<div class="joinbox"><span class="sico">${ICONS.room}</span><div><h2>Join from EDOPro</h2>
       <ol><li><b>LAN Mode</b>, then type the host address <b class="mono">127.0.0.1</b> and port <b class="mono">${r.port}</b> and press <b>Join</b> ${who}.</li>
       <li>Type the address: EDOPro's room list may not show the room, and its Refresh button can crash EDOPro.</li>
       ${r.password ? `<li>Password: <b class="mono">${esc(r.password)}</b></li>` : ""}
-      ${r.spectator ? "" : "<li>Pick your deck and ready up; the duel starts.</li>"}</ol>
+      ${r.spectator ? "" : `<li>Pick your deck${r.seats === 2 ? " in each window" : ""} and ready up; the duel starts.</li>`}</ol>
       <p class="dim">Room “${esc(r.name)}”. From another machine on your network, use this machine's address instead of 127.0.0.1.</p></div></div>`;
   }
 

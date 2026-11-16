@@ -74,3 +74,17 @@ def test_host_command_with_an_ai_seat(engine, decks, tmp_path):
     (run_dir,) = glob.glob(str(tmp_path / "*host_*"))
     assert os.path.isfile(os.path.join(run_dir, "game-001.yrpX"))
     assert human.log.host_info.time_limit == 120
+
+
+def test_card_lists_keep_names_with_commas_whole(engine):
+    """--stack-a/--stack-b (CardDatabase.resolve_list): commas split cards, except inside a card's exact name."""
+    cards = engine.cards
+    queen, ash = cards.resolve("Saffira, Queen of Dragons"), cards.resolve("Ash Blossom & Joyous Spring")
+    assert cards.resolve_list("Saffira, Queen of Dragons, Ash Blossom & Joyous Spring") == [queen, ash]
+    assert cards.resolve_list(f" ash blossom & joyous spring ,{queen},saffira, queen of dragons,") == [ash, queen, queen]
+    try:
+        cards.resolve_list("Saffira, No Such Card Anywhere")
+    except KeyError as e:
+        assert "ambiguous" in str(e)
+    else:
+        raise AssertionError("expected an error")

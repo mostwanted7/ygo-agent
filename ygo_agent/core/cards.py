@@ -129,6 +129,19 @@ class CardDatabase:
             raise KeyError(f"card name {ref!r} is ambiguous: {names}")
         return real.pop()
 
+    def resolve_list(self, text: str) -> list[int]:
+        """Card codes from comma-separated names or codes. A name with commas in it ("Saffira, Queen of Dragons")
+        counts as one card when the pieces joined back make a card's exact name (the longest such run wins)."""
+        pieces = [p.strip() for p in text.split(",")]
+        names = {c.name.lower() for c in self.cards.values() if c.name and "," in c.name}
+        out, i = [], 0
+        while i < len(pieces):
+            j = next((j for j in range(len(pieces), i + 1, -1) if ", ".join(pieces[i:j]).lower() in names), i + 1)
+            if any(pieces[i:j]):
+                out.append(self.resolve(", ".join(pieces[i:j])))
+            i = j
+        return out
+
 
 class Strings:
     """`!system` / `!victory` / `!counter` / `!setname` entries from strings.conf (later files override)."""

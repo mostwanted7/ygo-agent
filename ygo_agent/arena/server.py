@@ -31,7 +31,7 @@ from ..core.constants import WIN_REASON_CONNECTION_LOST, WIN_REASON_SURRENDERED,
 from . import protocol as P
 from .buffer import read_utf16
 from .deck import (AllowedCards, Banlist, Deck, DeckError, DeckRules, DeckSizes, check_deck, classify)
-from .duel import Duel, DuelConfig, DuelObserver, DuelResult, Pending, StartState
+from .duel import Duel, DuelConfig, DuelObserver, DuelResult, Pending, StackMismatch, StartState, unstackable
 from .messages import Prompt
 from .runner import rps_winner
 from .seats import Seat, SeatFeed, SeatView
@@ -181,7 +181,7 @@ class RoomObserver:
     def on_join(self, p: Participant) -> None: ...
     def on_leave(self, p: Participant) -> None: ...
     def on_chat(self, p: Participant | None, text: str) -> None: ...
-    def on_deck_rejected(self, p: Participant, error: DeckError) -> None: ...
+    def on_deck_rejected(self, p: Participant, error: DeckError | StackMismatch) -> None: ...
     def on_game_start(self, room: "Room", duel: Duel) -> None: ...
     def on_game_end(self, room: "Room", duel: Duel, result: DuelResult) -> None: ...
     def on_match_end(self, room: "Room", wins: tuple[int, int]) -> None: ...
@@ -492,6 +492,15 @@ class Room:
                 for o in self.room_observers:
                     o.on_deck_rejected(c, e)
                 return
+            missing = unstackable(c.deck.main, self.config.stack.get(c.pos) or [])
+            if missing is not None:  # the cards stacked for this seat aren't all in the deck: let them pick another
+                c.send(P.STOC_HS_PLAYER_CHANGE, P.player_change(c.pos, P.PLAYERCHANGE_NOTREADY))
+                e = StackMismatch(missing, self.engine.cards.name(missing))
+                self.say(f"This seat has stacked cards, but {e}. Pick a deck that has them, then Ready.", to=c)
+                log.info("%s's deck was rejected: %s", c.name, e)
+                for o in self.room_observers:
+                    o.on_deck_rejected(c, e)
+                return
         c.ready = ready
         self._broadcast(P.STOC_HS_PLAYER_CHANGE,
                         P.player_change(c.pos, P.PLAYERCHANGE_READY if ready else P.PLAYERCHANGE_NOTREADY))
@@ -640,7 +649,17 @@ class Room:
         for p in (first, second):
             if isinstance(p, LocalPlayer) and type(p.seat).on_message is not Seat.on_message:
                 observers.append(SeatFeed(p.seat, p.team))
-        stack = {p.team: c.stack[p.pos] for p in (first, second) if c.stack.get(p.pos)}
+        stack = {}
+        for p in (first, second):
+            top = c.stack.get(p.pos)
+            missing = unstackable(p.deck.main, top or [])
+            if missing is None:
+                if top:
+                    stack[p.team] = top
+            else:  # checked at Ready, so siding took a stacked card out: play on rather than crash the game
+                self.say(f"{p.name}'s Main Deck no longer has {self.engine.cards.name(missing)}: this game starts "
+                         "without the stacked cards.")
+                log.info("game %d: %s's stack dropped (card %d missing)", index + 1, p.name, missing)
         duel = Duel(self.engine, c.duel, (first.deck, second.deck), (first.name, second.name), seed=game_seed,
                     stack=stack, start_state=c.start_state, spectator_team=self.slots[0].team,
                     emit=self._emit, observers=observers)

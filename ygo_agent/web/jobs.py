@@ -10,8 +10,8 @@ Each job reaches the app's bus through the relay (web/relay.py): its own token i
 which job a live game belongs to. Stop is Ctrl+C for the whole process group (the trainer checkpoints, a room closes
 and prints its results), then SIGTERM after 20 s and SIGKILL after 5 more; afterwards whatever is left of the job (a
 WindBot in its own session, say) is found by the token in its environment and killed. Jobs that host a room (play,
-teach, coach, selfplay with a spectator, play --join's bot) share the room port, so one runs at a time; training
-and learning take their deck, so one runs per deck.
+teach, coach, solo, selfplay with a spectator, play --join's bot) share the room port, so one runs at a time;
+training and learning take their deck, so one runs per deck.
 """
 
 from __future__ import annotations
@@ -33,13 +33,14 @@ from dataclasses import dataclass, field
 from .. import decks, paths
 from .relay import ENV_GO, ENV_TOKEN, ENV_URL
 
-KINDS = ("play", "selfplay", "teach", "coach", "train-interview", "train", "learn", "doctor")
+KINDS = ("play", "selfplay", "teach", "coach", "solo", "train-interview", "train", "learn", "doctor")
 DECK_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,39}$")
 HOST = re.compile(r"^[A-Za-z0-9.:-]{1,253}$")
 JOB_ID = re.compile(r"^[\w.-]{1,80}$")
 ANSI = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b[()][A-Za-z0-9]")
 CONTROL = re.compile(r"[\x00-\x1f\x7f]")
 LEVELS = ("beginner", "intermediate")
+STACK_CHARS = 300     # solo's --stack-a/--stack-b: comma-separated card names or codes
 STOP_STEPS = ((signal.SIGINT, 20.0), (signal.SIGTERM, 5.0), (signal.SIGKILL, 5.0))
 KEEP_JOBS = 200       # job files kept in the jobs folder (older ones are deleted)
 CHUNK = 256 * 1024    # output bytes per request
@@ -258,6 +259,26 @@ class Builder:
         argv += self.room_flags(port, password)
         return Plan("coach", argv + ["--no-web"] + self.common("config", "edopro_dir", "games_dir"),
                     f"Coaching {deck or 'your deck'} ({backend}) against {seat_title(opponent)}", room, deck)
+
+    def build_solo(self, p):
+        """Both seats are the user (two EDOPro windows): no AI, so no deck, backend or panel (no --no-web)."""
+        best_of = self.number(p, "best_of", 1, 5, 1)
+        if best_of not in (1, 3, 5):
+            raise JobError("best_of must be 1, 3 or 5")
+        games = self.number(p, "games", 1, 99)
+        first = p.get("first")
+        if first not in (None, "", "a", "b"):
+            raise JobError("first must be a or b (or left out for rock-paper-scissors)")
+        stacks = [(seat, self.text(p, f"stack_{seat}", STACK_CHARS)) for seat in ("a", "b")]
+        limit = self.number(p, "time_limit", 0, 7200)
+        port, password, room = self.room(p, spectator=False)
+        room["seats"] = 2  # the join box: join from two EDOPro windows
+        argv = ["solo", f"--best-of={best_of}"] + ([f"--games={games}"] if games else []) + (
+            [f"--first={first}"] if first else [])
+        argv += [f"--stack-{seat}={cards}" for seat, cards in stacks if cards]
+        argv += ([f"--time-limit={limit}"] if limit is not None else []) + self.room_flags(port, password)
+        title = "Solo duel: you vs you" + (f", best of {best_of}" if best_of > 1 else "")
+        return Plan("solo", argv + self.common("config", "edopro_dir", "games_dir"), title, room)
 
     def new_deck_name(self, value):
         if not isinstance(value, str) or not DECK_NAME.match(value.strip()):

@@ -2,7 +2,8 @@
 
 The user plays EDOPro duels against the agent (`ygo-agent play`: the agent hosts the room; or `play --join`: a
 Claude-driven WindBot joins the user's room), watches it play (`selfplay` against itself or a WindBot deck AI,
-`teach`), or plays a deck themselves while the agent coaches them (`coach`), then gives feedback here. Their goal is
+`teach`), or plays a deck themselves while the agent coaches them (`coach`), then gives feedback here. (`solo` is
+the user duelling themselves from two EDOPro windows: no AI, no agent log, nothing to learn from.) Their goal is
 to have a good opponent to play against, not to review logs, so turn short feedback into precise fixes yourself.
 See README.md for the architecture and `docs/plan.md` for where the project is going.
 
@@ -86,10 +87,10 @@ For `decks/blackwing` the user is learning the deck and can't spot mistakes, so 
 
 ## Code map
 
-- `ygo_agent/cli.py`: the `ygo-agent` command (`play`, `selfplay`, `teach`, `coach`, `play --join`, `teach --join`,
-  `replay`, `test`, `web`, plus `bench` and `train`). `ygo_agent/match.py`: seat specs and `run_games()`, which every arena-hosted
-  command runs on (in-process AI vs AI, or an arena room for WindBot/human/spectators; results, replays, the web
-  panel). `ygo_agent/join.py`: launches the bot into the user's room (`--join`). `ygo_agent/config.py`:
+- `ygo_agent/cli.py`: the `ygo-agent` command (`play`, `selfplay`, `teach`, `coach`, `solo`, `play --join`,
+  `teach --join`, `replay`, `test`, `web`, plus `bench` and `train`). `ygo_agent/match.py`: seat specs and
+  `run_games()`, which every arena-hosted command runs on (in-process AI vs AI, or an arena room for
+  WindBot/human/spectators; results, replays, the web panel). `ygo_agent/join.py`: launches the bot into the user's room (`--join`). `ygo_agent/config.py`:
   `config/default.toml`, then `config.local.toml`, then CLI flags.
 - `ygo_agent/arena/`: the headless EDOPro host on libocgcore (`server.py` rooms, `duel.py`, `native_seat.py`: the
   agent as an in-process seat, `windbot.py`: WindBot deck AIs as opponents); `python -m ygo_agent.arena` for the
