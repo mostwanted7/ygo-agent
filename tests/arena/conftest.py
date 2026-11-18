@@ -22,15 +22,23 @@ def engine():
 
 
 @pytest.fixture(scope="session")
-def decks(engine):
-    from ygo_agent.arena.deck import load_ydk
+def deck_files(tmp_path_factory):
+    """{"Saffira": path, "Blackwing": path}: the repo's deck lists (decks/<name>/deck.ydk), copied under their deck
+    names. Not the EDOPro deck folder: the owner edits those lists (bigger Extra Decks, say), which would break tests
+    that expect EDOPro's legal sizes."""
+    from ygo_agent import paths
+    folder = tmp_path_factory.mktemp("decks")
     out = {}
     for name in ("Saffira", "Blackwing"):
-        path = os.path.join(engine.install.deck_dir, f"{name}.ydk")
-        if not os.path.isfile(path):
-            pytest.skip(f"deck {path} not found")
-        out[name] = load_ydk(path, engine.cards).deck
+        out[name] = str(folder / f"{name}.ydk")
+        shutil.copyfile(os.path.join(paths.DECKS, name.lower(), "deck.ydk"), out[name])
     return out
+
+
+@pytest.fixture(scope="session")
+def decks(engine, deck_files):
+    from ygo_agent.arena.deck import load_ydk
+    return {name: load_ydk(path, engine.cards).deck for name, path in deck_files.items()}
 
 
 @pytest.fixture(scope="session")

@@ -17,8 +17,9 @@ from ygo_agent.arena.client import ArenaClient
 pytestmark = pytest.mark.integration
 
 
-def test_selfplay_direct_writes_logs_replays_and_results(engine, tmp_path, capsys):
+def test_selfplay_direct_writes_logs_replays_and_results(engine, deck_files, tmp_path, capsys):
     assert main(["selfplay-direct", "--games", "3", "--seed", "1", "--out", str(tmp_path),
+                 "--deck0", deck_files["Saffira"], "--deck1", deck_files["Blackwing"],
                  "--stack-hand0", "Tour Guide From the Underworld"]) == 0
     out = capsys.readouterr().out
     assert "3 games in" in out and "0 with retries or Lua errors" in out
@@ -34,9 +35,10 @@ def test_selfplay_direct_writes_logs_replays_and_results(engine, tmp_path, capsy
     assert "embedded yrp: True" in info and "verdict: same game" in info
 
 
-def test_unknown_stack_card_is_an_error(engine, capsys):
+def test_unknown_stack_card_is_an_error(engine, deck_files, capsys):
     try:
-        main(["selfplay-direct", "--no-output", "--stack-hand0", "No Such Card Anywhere"])
+        main(["selfplay-direct", "--no-output", "--deck0", deck_files["Saffira"], "--deck1", deck_files["Blackwing"],
+              "--stack-hand0", "No Such Card Anywhere"])
     except SystemExit as e:
         assert "no card named" in str(e)
     else:
@@ -51,13 +53,13 @@ def free_port():
     return port
 
 
-def test_host_command_with_an_ai_seat(engine, decks, tmp_path):
+def test_host_command_with_an_ai_seat(engine, decks, deck_files, tmp_path):
     port = free_port()
 
     async def scenario():
         proc = await asyncio.create_subprocess_exec(
             sys.executable, "-m", "ygo_agent.arena", "host", "--port", str(port), "--seat1", "ai:random",
-            "--deck1", "Blackwing", "--games", "1", "--no-lan", "--seed", "5", "--out", str(tmp_path),
+            "--deck1", deck_files["Blackwing"], "--games", "1", "--no-lan", "--seed", "5", "--out", str(tmp_path),
             "--stack-hand0", "Tour Guide From the Underworld", "--time-limit", "120",
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
         banner = await asyncio.wait_for(proc.stdout.readline(), 30)
