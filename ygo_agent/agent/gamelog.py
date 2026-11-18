@@ -3,6 +3,7 @@
 import json
 import os
 import re
+import shutil
 import sys
 import threading
 import time
@@ -52,6 +53,52 @@ def unique_dir(parent, name):
         except FileExistsError:
             continue
     raise OSError(f"too many game folders named {name} in {parent}")
+
+
+GAME_FOLDER = re.compile(r"^\d{4}-\d{2}-\d{2}_\d{6}")  # <date>_<time>[_<deck>[-vs-<opponent>]][-N]
+
+
+def prune_games(games_dir, keep, idle=3600):
+    """Delete the game folders in games_dir older than the newest `keep` (0 keeps every game) and return their names.
+    Never deleted: the game `latest` points at, a game with a note `learn` hasn't used yet (feedback.md), a game
+    written to in the last `idle` seconds (another command may still be playing it), and anything that isn't a game
+    folder named by its start time (matches/, replays/, bench/, coach-decks/...)."""
+    if not keep or keep <= 0:
+        return []
+    from ..trainer import notes
+    try:
+        names = sorted((n for n in os.listdir(games_dir) if GAME_FOLDER.match(n)), reverse=True)
+    except OSError:
+        return []
+    try:
+        latest = os.path.basename(os.readlink(os.path.join(games_dir, "latest")))
+    except OSError:
+        latest = None
+    now, seen, removed = time.time(), 0, []
+    for name in names:
+        folder = os.path.join(games_dir, name)
+        log = os.path.join(folder, "game.jsonl")
+        if os.path.islink(folder) or not os.path.isfile(log):
+            continue
+        seen += 1
+        if seen <= keep or name == latest:
+            continue
+        try:
+            if now - max(os.path.getmtime(folder), os.path.getmtime(log)) < idle:
+                continue
+        except OSError:
+            continue
+        try:
+            if any(n.pending for n in notes.read(folder)):
+                continue
+        except ValueError:  # a feedback.md that can't be read: keep its notes
+            continue
+        try:
+            shutil.rmtree(folder)
+        except OSError:
+            continue
+        removed.append(name)
+    return removed
 
 
 RESULTS = {0: "win", 1: "loss", 2: "draw"}

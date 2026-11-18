@@ -53,6 +53,9 @@ def load_config(local=LOCAL_PATH, overrides=None):
 
 def check(cfg):
     agent = cfg["agent"]
+    keep = cfg.get("games_keep", 0)
+    if isinstance(keep, bool) or not isinstance(keep, int) or keep < 0:
+        raise ConfigError(f"games_keep must be a whole number of games, 0 to keep every game (got {keep!r})")
     if agent.get("fallback", "bot") not in FALLBACKS:
         raise ConfigError(f'agent.fallback must be one of {", ".join(FALLBACKS)} (got {agent.get("fallback")!r})')
     prefer = (cfg.get("decks") or {}).get("prefer") or ""

@@ -6,6 +6,9 @@
 edopro_dir = "~/Games/ProjectIgnis"  # EDOPro install: card databases, strings and card scripts
 deck = "saffira"                     # deck profile: a deck folder's name (see [decks]), or a .ydk file
 games_dir = "games"                  # game logs (relative paths are relative to the repo)
+games_keep = 200                     # play, teach, selfplay and coach delete the game logs older than the newest
+                                     # 200 (a self-play game has one per AI seat), except the latest game and games
+                                     # with notes `learn` hasn't used yet; 0 keeps every game
 
 [decks]
 # Deck profiles live in two places, searched in this order: decks/ in the repo (the curated decks that ship with

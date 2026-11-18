@@ -1,5 +1,6 @@
 import json
 import os
+import time
 
 import pytest
 
@@ -71,3 +72,36 @@ def test_case_paths_by_name():
         pytest.skip("no saved cases")
     found = replay.case_paths(["saffira", "blackwing"], ["chinook-on-attack"])
     assert [os.path.basename(p) for p in found] == ["chinook-on-attack.json"]
+
+
+def test_prune_games_keeps_the_newest_and_what_is_still_needed(tmp_path):
+    from ygo_agent.agent.gamelog import prune_games
+
+    def game(name, age=7200, notes=None):
+        folder = tmp_path / name
+        folder.mkdir()
+        (folder / "game.jsonl").write_text("{}\n")
+        if notes:
+            (folder / "feedback.md").write_text(notes)
+        old = time.time() - age
+        os.utime(folder / "game.jsonl", (old, old))
+        os.utime(folder, (old, old))
+
+    for day in range(1, 8):
+        game(f"2026-10-0{day}_120000_saffira-vs-blue-eyes")
+    game("2026-10-01_090000_saffira", notes="- (turn 3, right after decision #14; from Web panel) Attack first.\n")
+    game("2026-10-01_080000_saffira", notes="- (turn 2; from Web panel) Set the trap.\n  - Learned 2026-10-02: done\n")
+    game("2026-09-30_120000_geargia", age=60)  # still being written by another command
+    os.symlink("2026-09-01_120000_blackwing", tmp_path / "latest")
+    game("2026-09-01_120000_blackwing")
+    (tmp_path / "matches").mkdir()
+    (tmp_path / "replays" / "2026-01-01_000000_x").mkdir(parents=True)
+
+    assert prune_games(str(tmp_path), 0) == []
+    removed = prune_games(str(tmp_path), 3)
+    assert removed == [f"2026-10-0{day}_120000_saffira-vs-blue-eyes" for day in (4, 3, 2, 1)] + \
+        ["2026-10-01_080000_saffira"]
+    assert sorted(os.listdir(tmp_path)) == [
+        "2026-09-01_120000_blackwing", "2026-09-30_120000_geargia", "2026-10-01_090000_saffira",
+        "2026-10-05_120000_saffira-vs-blue-eyes", "2026-10-06_120000_saffira-vs-blue-eyes",
+        "2026-10-07_120000_saffira-vs-blue-eyes", "latest", "matches", "replays"]

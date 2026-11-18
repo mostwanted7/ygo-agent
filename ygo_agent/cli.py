@@ -599,6 +599,31 @@ def main(argv=None):
     if args.cmd != "web":
         from .web import relay
         relay.install(cfg)  # a job of the web app: its games go to the app (a no-op otherwise)
+    pruning = args.cmd in GAME_COMMANDS and not getattr(args, "review", None)  # coach --review reads an old game
+    if pruning:
+        prune_games(cfg)
+    try:
+        return run(args, cfg)
+    finally:
+        if pruning:
+            prune_games(cfg)
+
+
+GAME_COMMANDS = ("play", "teach", "selfplay", "coach")  # the commands that write games to games_dir
+
+
+def prune_games(cfg):
+    """Keep the games folder to the newest `games_keep` games (gamelog.prune_games says which are never deleted)."""
+    from . import paths
+    from .agent.gamelog import paint, DIM, prune_games as prune
+    keep, games_dir = cfg.get("games_keep", 0), paths.resolve(cfg.get("games_dir", "games"))
+    removed = prune(games_dir, keep)
+    if removed:
+        print(paint(DIM, f"Deleted the {len(removed)} oldest game log(s) in {games_dir}: games_keep keeps the newest "
+                         f"{keep} (0 keeps every game)."))
+
+
+def run(args, cfg):
     if args.cmd == "play" and not args.join:
         return cmd_play_arena(args, cfg)
     if args.cmd == "teach" and not args.join:

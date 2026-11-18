@@ -41,6 +41,8 @@ def test_bad_values_are_reported(tmp_path):
         load_config(local=None, overrides={"agent": {"card_texts": "tiny"}})
     with pytest.raises(ConfigError, match="fallback"):
         load_config(local=None, overrides={"agent": {"fallback": "human"}})
+    with pytest.raises(ConfigError, match="games_keep"):
+        load_config(local=None, overrides={"games_keep": -1})
     broken = tmp_path / "broken.toml"
     broken.write_text("chat = \n")
     with pytest.raises(ConfigError):

@@ -101,6 +101,9 @@ and the game's stats (`stats.py`: decisions by source, latency, invalid replies,
 `feedback.md`, the `!notes` and panel notes; and `replay.yrpX`, the EDOPro replay of an arena game (`play --join`
 games link the WindBot log instead, and EDOPro saves their replay). A match run also writes
 `games/matches/<time>_<a>-vs-<b>/results.json` with every game's result and each seat's log folder.
+The games folder keeps the newest `games_keep` games (200 by default; 0 keeps them all): `play`, `teach`,
+`selfplay` and `coach` delete older game folders when they start and finish, but never the latest game, a game with a
+note `learn` hasn't used, or a game written to in the last hour. Match run folders, replays and bench logs stay.
 
 ## The arena
 
